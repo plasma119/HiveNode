@@ -1,0 +1,33 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "HiveProgram Test",
+            "request": "launch",
+            "type": "pwa-node",
+            "program": "${workspaceFolder}\\dist\\tests\\hiveProgram_test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
+            "name": "Terminal Test",
+            "request": "launch",
+            "type": "pwa-node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\tests\\terminal_test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        }
+    ]
+}
