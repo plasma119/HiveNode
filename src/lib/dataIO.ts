@@ -128,3 +128,8 @@ export class DataTransformer {
         return data;
     }
 }
+
+export function DataSignaturesToString(signatures: DataSignature[]) {
+    // @ts-ignore
+    return signatures.map(s => `${s.label}[${s.by.name}]:${s.event}`).join('->');
+}

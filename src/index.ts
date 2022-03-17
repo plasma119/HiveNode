@@ -1,3 +1,3 @@
 
 export const version = "0.1.0";
-export * from './bee';
+export * from './bee.js';
