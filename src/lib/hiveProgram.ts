@@ -22,7 +22,7 @@ export default class HiveProgram {
 
     constructor(name: string = 'default', stdIO?: DataIO, helpCmd: HiveCommand | boolean = true) {
         this.name = name;
-        this.stdIO = stdIO || new DataIO(this, 'stdIO');
+        this.stdIO = stdIO || new DataIO(this, 'HiveProgram-stdIO');
         if (!(this instanceof HiveCommand)) {
             this.stdIO.on('input', data => {
                 if (typeof data == 'string') {

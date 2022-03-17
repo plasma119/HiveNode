@@ -106,7 +106,7 @@ export class DataTransformer {
     targetIO: DataIO;
 
     constructor(targetIO: DataIO) {
-        this.stdIO = new DataIO(targetIO, 'DataTransformer');
+        this.stdIO = new DataIO(targetIO, 'DataTransformer-stdIO');
         this.targetIO = targetIO;
         this.stdIO.on('input', (data: any, signatures: DataSignature[]) => {
             const result = this.inputTransform(data, signatures);

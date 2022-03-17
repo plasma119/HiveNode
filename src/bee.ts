@@ -22,7 +22,7 @@ export default class Bee {
     constructor(name: string) {
         this.name = name;
         this.UID = id++;
-        this.stdIO = new DataIO(this, 'stdIO');
+        this.stdIO = new DataIO(this, `${name}-stdIO`);
         this.program = new HiveProgram(`${name}-Core`);
         this.screen = [];
         this.programDT = new DataTransformer(this.program.stdIO);
