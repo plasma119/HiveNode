@@ -1,36 +1,34 @@
-
 // strip down version of Commander.js
 // argument value persistent bug is the main reason to write this whole thing
 // also it just too messy to work with customizing Commander.js
 
-import { parseArgsStringToArgv } from "string-argv";
+import { randomUUID } from 'crypto';
 
-import DataIO from "./dataIO.js";
-import { formatTab } from "./lib.js";
+import { parseArgsStringToArgv } from 'string-argv';
 
-export type HiveCommandCallback = (
-    args: {[key: string]: string},
-    opts: {[key: string]: boolean | string},
-    rawInput: string
-) => void | null | string
+import DataIO, { DataSignature } from './dataIO.js';
+import { formatTab } from './lib.js';
+import { DataPacket } from './router.js';
+
+export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: string]: boolean | string }, info: HiveCommandInfo) => any;
+
+export type HiveCommandInfo = {
+    data: any;
+    rawInput: string;
+    signatures: DataSignature[];
+};
 
 export default class HiveProgram {
     name: string;
+    UUID: string = randomUUID();
     commands: HiveCommand[] = [];
     stdIO: DataIO;
-    currentInput: string = '';
 
     constructor(name: string = 'default', stdIO?: DataIO, helpCmd: HiveCommand | boolean = true) {
         this.name = name;
         this.stdIO = stdIO || new DataIO(this, 'HiveProgram-stdIO');
         if (!(this instanceof HiveCommand)) {
-            this.stdIO.on('input', data => {
-                if (typeof data == 'string') {
-                    this.parse(data);
-                } else {
-                    throw new Error('Input must be string');
-                }
-            });
+            this.stdIO.on('input', this._inputHandler.bind(this));
         }
         if (helpCmd instanceof HiveCommand) {
             this.addCommand(helpCmd);
@@ -41,13 +39,42 @@ export default class HiveProgram {
         }
     }
 
-    parse(str: string) {
-        this.currentInput = str;
+    async _inputHandler(data: any, signatures: DataSignature[]) {
+        const info: HiveCommandInfo = {
+            data: data,
+            rawInput: data,
+            signatures: signatures,
+        };
+        let result: any = '';
+        try {
+            if (data instanceof DataPacket) {
+                // unpack data
+                info.rawInput = data.data;
+            }
+            if (typeof info.rawInput != 'string') {
+                throw new Error('Cannot recognize input data format');
+            }
+            result = await Promise.resolve(this.parse(info.rawInput, info)).catch((e) => {
+                throw e;
+            });
+        } catch (e) {
+            result = e;
+        }
+        if (data instanceof DataPacket) {
+            // re-pack data
+            const packet = new DataPacket(result, this.UUID, data.src);
+            this.stdIO.output(packet, signatures);
+        } else {
+            this.stdIO.output(result, signatures);
+        }
+    }
+
+    parse(str: string, info: HiveCommandInfo) {
         const o = HiveProgram.splitCommandStr(str);
         if (!o) throw new Error('Invalid command');
         const cmd = this._findCommand(o.name);
         if (cmd) {
-            cmd.parse(o.args);
+            return cmd.parse(o.args, info);
         } else {
             throw new Error(`Command not found: ${o.name}`);
         }
@@ -68,10 +95,10 @@ export default class HiveProgram {
     }
 
     _findCommand(name: string) {
-        return this.commands.find(commands => commands.name === name);
-    };
+        return this.commands.find((commands) => commands.name === name);
+    }
 
-    helpCallback(args: {[key: string]: string}): string {
+    helpCallback(args: { [key: string]: string }): string {
         if (args['cmd']) {
             const cmd = this._findCommand(args['cmd']);
             if (cmd) {
@@ -82,7 +109,7 @@ export default class HiveProgram {
         } else {
             let output = `Avaliable commands:\n`;
             let rows: string[] = [];
-            this.commands.forEach(c => {
+            this.commands.forEach((c) => {
                 rows.push(`    ${c.name}    \t${c.description}`);
             });
             output += formatTab(rows);
@@ -94,7 +121,7 @@ export default class HiveProgram {
         const result = command.match(/([^ ]+) *(.*)/);
         if (!result) return null;
         const [, name, args] = result;
-        return {name, args};
+        return { name, args };
     }
 }
 
@@ -118,17 +145,17 @@ export class HiveCommand extends HiveProgram {
         }
     }
 
-    parse(str: string): void {
+    parse(str: string, info: HiveCommandInfo): any {
         this.reset();
         const args = parseArgsStringToArgv(str);
-        let i = 0;
+        let argumentCount = 0;
 
         // check sub-command
         const o = HiveProgram.splitCommandStr(str);
         if (o) {
             const cmd = this._findCommand(o.name);
             if (cmd) {
-                return cmd.parse(o.args);
+                return cmd.parse(o.args, info);
             }
         }
 
@@ -164,9 +191,9 @@ export class HiveCommand extends HiveProgram {
             }
 
             // not option, so must be argument
-            if (i < this.arguments.length) {
-                this.arguments[i].setValue(arg);
-                i++;
+            if (argumentCount < this.arguments.length) {
+                this.arguments[argumentCount].setValue(arg);
+                argumentCount++;
                 continue;
             }
 
@@ -175,37 +202,34 @@ export class HiveCommand extends HiveProgram {
         }
 
         // check required arguments
-        let j = 0;
-        this.arguments.forEach(a => {if (a.required) j++;});
-        if (i < j) {
+        let required = 0;
+        this.arguments.forEach((a) => {
+            if (a.required) required++;
+        });
+        if (argumentCount < required) {
             throw new Error(`Not enough arguments`);
         }
 
         if (this.callback) {
-            const result = this.callback(this.getArguments(), this.getOptions(), this.getRawInput());
-            if (result) this.stdIO.output(result);
+            return this.callback(this.getArguments(), this.getOptions(), info);
         }
     }
 
     reset() {
-        this.arguments.forEach(a => a.reset());
-        this.options.forEach(o => o.reset());
+        this.arguments.forEach((a) => a.reset());
+        this.options.forEach((o) => o.reset());
     }
 
     getArguments() {
-        let result: {[key: string]: string} = {};
-        this.arguments.forEach(a => result[a.name] = a.value);
+        let result: { [key: string]: string } = {};
+        this.arguments.forEach((a) => (result[a.name] = a.value));
         return result;
     }
 
     getOptions() {
-        let result: {[key: string]: boolean | string} = {};
-        this.options.forEach(o => result[o.flag] = o.value);
+        let result: { [key: string]: boolean | string } = {};
+        this.options.forEach((o) => (result[o.flag] = o.value));
         return result;
-    }
-
-    getRawInput() {
-        return this.baseProgram.currentInput;
     }
 
     getBaseProgram() {
@@ -263,15 +287,15 @@ export class HiveCommand extends HiveProgram {
     }
 
     _findOption(arg: string) {
-        return this.options.find(option => option.flag === arg);
-    };
+        return this.options.find((option) => option.flag === arg);
+    }
 
     setAction(callback: HiveCommandCallback) {
         this.callback = callback;
         return this;
     }
 
-    helpCallback(args: {[key: string]: string}): string {
+    helpCallback(args: { [key: string]: string }): string {
         if (args['cmd']) {
             const cmd = this._findCommand(args['cmd']);
             if (cmd) {
@@ -284,7 +308,7 @@ export class HiveCommand extends HiveProgram {
 
             output += `Usage: ${this.getFullName()}`;
             if (this.options.length > 0) output += ` [...options]`;
-            this.arguments.forEach(a => {
+            this.arguments.forEach((a) => {
                 output += ` ${a.baseName}`;
             });
             output += `\n`;
@@ -293,7 +317,7 @@ export class HiveCommand extends HiveProgram {
             if (this.commands.length > 0) {
                 let rows: string[] = [];
                 output += `Avaliable sub-commands:\n`;
-                this.commands.forEach(c => {
+                this.commands.forEach((c) => {
                     rows.push(`    ${c.name}    \t${c.description}`);
                 });
                 output += formatTab(rows);
@@ -302,7 +326,7 @@ export class HiveCommand extends HiveProgram {
             if (this.arguments.length > 0) {
                 let rows: string[] = [];
                 output += `Arguments:\n`;
-                this.arguments.forEach(a => {
+                this.arguments.forEach((a) => {
                     rows.push(`    ${a.baseName}    \t${a.description}`);
                 });
                 output += formatTab(rows);
@@ -310,7 +334,7 @@ export class HiveCommand extends HiveProgram {
             if (this.options.length > 0) {
                 let rows: string[] = [];
                 output += `Options:\n`;
-                this.options.forEach(o => {
+                this.options.forEach((o) => {
                     rows.push(`    ${o.baseFlag}    \t${o.description}`);
                 });
                 output += formatTab(rows);
@@ -339,19 +363,19 @@ export class HiveArgument {
         if (!name) throw new Error('Invalid argument name');
 
         switch (name[0]) {
-          case '<': // e.g. <required>
-            this.required = true;
-            this.name = name.slice(1, -1);
-            break;
-          case '[': // e.g. [optional]
-            this.required = false;
-            this.name = name.slice(1, -1);
-            break;
-          default:
-            this.required = true;
-            this.name = name;
-            this.baseName = `<${name}>`;
-            break;
+            case '<': // e.g. <required>
+                this.required = true;
+                this.name = name.slice(1, -1);
+                break;
+            case '[': // e.g. [optional]
+                this.required = false;
+                this.name = name.slice(1, -1);
+                break;
+            default:
+                this.required = true;
+                this.name = name;
+                this.baseName = `<${name}>`;
+                break;
         }
     }
 
