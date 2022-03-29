@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "HiveSocket Test",
+            "name": "DataIO Test",
             "request": "launch",
             "type": "pwa-node",
-            "program": "${workspaceFolder}\\dist\\tests\\hiveSocket_test.js",
+            "program": "${workspaceFolder}\\dist\\tests\\dataIO_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -21,6 +21,18 @@
             "request": "launch",
             "type": "pwa-node",
             "program": "${workspaceFolder}\\dist\\tests\\hiveProgram_test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
+            "name": "HiveSocket Test",
+            "request": "launch",
+            "type": "pwa-node",
+            "program": "${workspaceFolder}\\dist\\tests\\hiveSocket_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],

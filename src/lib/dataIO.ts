@@ -1,48 +1,47 @@
+import { randomUUID } from 'crypto';
 
 import { TypedEmitter } from 'tiny-typed-emitter';
 
 import { StopPropagation } from './signals.js';
 
 export type DataSignature = {
-    by: object,
-    label: string,
-    timestamp: number,
-    UID: number,
-    event: string
-}
+    by: object;
+    label: string;
+    timestamp: number;
+    UUID: string;
+    event: string;
+};
 
 export type DataLink = (data: any, signatures: DataSignature[]) => void;
-
 export interface DataIOEvent {
-    'input': DataLink;
-    'output': DataLink;
+    input: DataLink;
+    output: DataLink;
 }
 
-let id = 1;
-
 export default class DataIO extends TypedEmitter<DataIOEvent> {
+    UUID: string = randomUUID();
+    label: string;
     private _signature: DataSignature;
     connectList: DataIO[] = [];
     passThroughList: DataIO[] = [];
 
     constructor(owner: object, label: string) {
         super();
+        this.label = label;
         this._signature = {
             by: owner,
             label: label,
             timestamp: 0,
-            UID: id++,
-            event: ''
+            UUID: this.UUID,
+            event: '',
         };
     }
 
-    // should be called by sender's dataIO only
     // listen to dataIO.on('input') to get data
     input(data: any, signatures: DataSignature[] = []) {
         this.emit('input', data, this._sign(signatures.slice(), 'input'));
     }
 
-    // should be called by owner/owner's dataIO only
     // write to dataIO.output() to send data
     output(data: any, signatures: DataSignature[] = []) {
         this.emit('output', data, this._sign(signatures.slice(), 'output'));
@@ -96,6 +95,7 @@ export default class DataIO extends TypedEmitter<DataIOEvent> {
         const signature = Object.create(this._signature);
         signature.timestamp = Date.now();
         signature.event = event;
+        signature.label = this.label;
         signatures.push(signature);
         return signatures;
     }
@@ -131,5 +131,5 @@ export class DataTransformer {
 
 export function DataSignaturesToString(signatures: DataSignature[]) {
     // @ts-ignore
-    return signatures.map(s => `${s.label}[${s.by.name}]:${s.event}`).join('->');
+    return signatures.map((s) => `${s.label}[${s.by.name}]:${s.event}`).join('->');
 }
