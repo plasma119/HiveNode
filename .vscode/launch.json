@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "router Test",
+            "request": "launch",
+            "type": "pwa-node",
+            "program": "${workspaceFolder}\\dist\\tests\\router_test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
             "name": "DataIO Test",
             "request": "launch",
             "type": "pwa-node",

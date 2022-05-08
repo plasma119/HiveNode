@@ -1,14 +1,13 @@
-
 import * as Crypto from 'crypto';
 
 export class Encryption {
-    static base64Encode(str: string, encoding: 'ascii'|'utf8'|'binary' = 'ascii') {
-        const buff = Buffer.from(str? str: '', encoding);
+    static base64Encode(str: string, encoding: 'ascii' | 'utf8' | 'binary' = 'ascii') {
+        const buff = Buffer.from(str ? str : '', encoding);
         return buff.toString('base64');
     }
 
-    static base64Decode(str: string, encoding: 'ascii'|'utf8'|'binary' = 'ascii') {
-        const buff = Buffer.from(str? str: '', 'base64');
+    static base64Decode(str: string, encoding: 'ascii' | 'utf8' | 'binary' = 'ascii') {
+        const buff = Buffer.from(str ? str : '', 'base64');
         return buff.toString(encoding);
     }
 
@@ -46,31 +45,33 @@ export class Encryption {
         decryped += decipher.final('utf-8');
         return decryped;
     }
-
 }
 
 let padding = new Array(80).fill(' ').join('');
 
 // format output columns
 export function format(rows: string[][], seperator = '') {
-	let len: number[] = [];
-	for (let i = 0; i < rows.length; i++) {
-		let cols = rows[i];
-		for (let j = 0; j < cols.length; j++) {
-			if (!len[j]) len[j] = 0;
-			let l = cols[j].length;
-			if (l > len[j]) len[j] = l;
-			if (len[j] > padding.length) len[j] = padding.length;
-		}
-	}
-	return rows.map(cols => cols.map((col, j) => `${col}${padding.slice(0, len[j] - col.length)}`).join(seperator)).join('\n') + '\n';
+    let len: number[] = [];
+    for (let i = 0; i < rows.length; i++) {
+        let cols = rows[i];
+        for (let j = 0; j < cols.length; j++) {
+            if (!len[j]) len[j] = 0;
+            let l = cols[j].length;
+            if (l > len[j]) len[j] = l;
+            if (len[j] > padding.length) len[j] = padding.length;
+        }
+    }
+    return rows.map((cols) => cols.map((col, j) => `${col}${padding.slice(0, len[j] - col.length)}`).join(seperator)).join('\n') + '\n';
 }
 
 // format output columns seperated by delimiter
 // example: 'test\trecord' -> 'testrecord'
 //          'a\t123'       -> 'a   record'
 export function formatTab(rows: string[], seperator = '', delimiter = '\t') {
-	return format(rows.map(r => r.split(delimiter)), seperator);
+    return format(
+        rows.map((r) => r.split(delimiter)),
+        seperator
+    );
 }
 
 export function arrayUnion(array1: any[], array2: any[]) {
@@ -78,7 +79,33 @@ export function arrayUnion(array1: any[], array2: any[]) {
 }
 
 export function sleep(ms: number) {
-	return new Promise((resolve) => {
-		setTimeout(resolve, ms);
-	});
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+
+// https://stackoverflow.com/questions/57118453/structural-type-checking-in-javascript
+// this one is for simple object checking only
+export function duckTypeCheck(obj: any, model: any) {
+    for (let prop in model) {
+        if (!(prop in obj) || typeof obj[prop] !== typeof model[prop] || Array.isArray(model[prop]) !== Array.isArray(obj[prop])) {
+            return false;
+        }
+        if (typeof model[prop] === 'object' && !Array.isArray(model[prop])) {
+            if (!duckTypeCheck(obj[prop], model[prop])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+export function debounce(func: Function, timeout: number = 300) {
+    let timer: NodeJS.Timeout;
+    return (...args: any[]) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            func(...args);
+        }, timeout);
+    };
 }

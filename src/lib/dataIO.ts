@@ -16,17 +16,21 @@ export type DataLink = (data: any, signatures: DataSignature[]) => void;
 export interface DataIOEvent {
     input: DataLink;
     output: DataLink;
+    disconnect: any; // DataIO
 }
 
 export default class DataIO extends TypedEmitter<DataIOEvent> {
     UUID: string = randomUUID();
+    owner: any;
     label: string;
     private _signature: DataSignature;
     connectList: DataIO[] = [];
     passThroughList: DataIO[] = [];
+    destroyed: boolean = false;
 
     constructor(owner: object, label: string) {
         super();
+        this.owner = owner;
         this.label = label;
         this._signature = {
             by: owner,
@@ -64,6 +68,8 @@ export default class DataIO extends TypedEmitter<DataIOEvent> {
         if (j > -1) target.connectList.splice(j, 1);
         target.off('output', this.input.bind(this));
         this.off('output', target.input.bind(target));
+        target.emit('disconnect', this);
+        this.emit('disconnect', target);
     }
 
     // inside object
@@ -85,6 +91,14 @@ export default class DataIO extends TypedEmitter<DataIOEvent> {
         if (j > -1) target.passThroughList.splice(j, 1);
         target.off('output', this.output.bind(this));
         this.off('input', target.input.bind(target));
+        target.emit('disconnect', this);
+        this.emit('disconnect', target);
+    }
+
+    destroy() {
+        this.destroyed = true;
+        this.connectList.forEach((target) => this.disconnect(target));
+        this.passThroughList.forEach((target) => this.unpassThrough(target));
     }
 
     getSignature() {
@@ -106,7 +120,7 @@ export class DataTransformer {
     targetIO: DataIO;
 
     constructor(targetIO: DataIO) {
-        this.stdIO = new DataIO(targetIO, 'DataTransformer-stdIO');
+        this.stdIO = new DataIO(targetIO.owner, 'DataTransformer-stdIO');
         this.targetIO = targetIO;
         this.stdIO.on('input', (data: any, signatures: DataSignature[]) => {
             const result = this.inputTransform(data, signatures);
