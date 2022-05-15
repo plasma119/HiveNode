@@ -5,8 +5,8 @@ import WebSocket from 'ws';
 
 import { version } from '../index.js';
 import DataIO from './dataIO.js';
-import HiveProgram from './hiveProgram.js';
-import { Encryption, sleep } from './lib.js';
+import HiveProgram from '../lib/hiveProgram.js';
+import { Encryption, sleep } from '../lib/lib.js';
 
 export type SocketInfo = {
     name: string
@@ -82,9 +82,9 @@ export default class HiveSocket {
         this._ss.secret = Encryption.hash(secret).digest('base64');
     }
 
-    new(url: string, port: string | number): Promise<HiveSocket> {
+    new(host: string, port: string | number): Promise<HiveSocket> {
         if (this.ws) this.disconnect();
-        this.ws = new WebSocket(`ws://${url}:${port}`);
+        this.ws = new WebSocket(`ws://${host}:${port}`);
         return this._connect(this.ws, true);
     }
 

@@ -1,6 +1,6 @@
 
 import Bee from "../bee.js";
-import DataIO from "../lib/dataIO.js";
+import DataIO from "../network/dataIO.js";
 
 let bee = new Bee('dumdum');
 let io = new DataIO({}, 'io');

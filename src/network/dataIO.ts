@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 
 import { TypedEmitter } from 'tiny-typed-emitter';
 
-import { StopPropagation } from './signals.js';
+import { StopPropagation } from '../lib/signals.js';
 
 export type DataSignature = {
     by: object;
@@ -16,6 +16,7 @@ export type DataLink = (data: any, signatures: DataSignature[]) => void;
 export interface DataIOEvent {
     input: DataLink;
     output: DataLink;
+    connect: any; // DataIO
     disconnect: any; // DataIO
 }
 
@@ -24,9 +25,11 @@ export default class DataIO extends TypedEmitter<DataIOEvent> {
     owner: any;
     label: string;
     private _signature: DataSignature;
-    connectList: DataIO[] = [];
-    passThroughList: DataIO[] = [];
+    connectTable: Map<DataIO, boolean> = new Map();
+    passThroughTable: Map<DataIO, boolean> = new Map();
     destroyed: boolean = false;
+    inputBind: DataLink;
+    outputBind: DataLink;
 
     constructor(owner: object, label: string) {
         super();
@@ -39,35 +42,38 @@ export default class DataIO extends TypedEmitter<DataIOEvent> {
             UUID: this.UUID,
             event: '',
         };
+        this.inputBind = this.input.bind(this);
+        this.outputBind = this.output.bind(this);
     }
 
     // listen to dataIO.on('input') to get data
     input(data: any, signatures: DataSignature[] = []) {
-        this.emit('input', data, this._sign(signatures.slice(), 'input'));
+        if (!this.destroyed) this.emit('input', data, this._sign(signatures.slice(), 'input'));
     }
 
     // write to dataIO.output() to send data
     output(data: any, signatures: DataSignature[] = []) {
-        this.emit('output', data, this._sign(signatures.slice(), 'output'));
+        if (!this.destroyed) this.emit('output', data, this._sign(signatures.slice(), 'output'));
     }
 
     // between objects
     connect(target: DataIO) {
-        this.connectList.push(target);
-        target.connectList.push(this);
-        target.on('output', this.input.bind(this));
-        this.on('output', target.input.bind(target));
+        if (this.connectTable.has(target)) return;
+        this.connectTable.set(target, true);
+        target.connectTable.set(this, true);
+        target.on('output', this.inputBind);
+        this.on('output', target.inputBind);
+        target.emit('connect', this);
+        this.emit('connect', target);
     }
 
     // between objects
     disconnect(target: DataIO) {
-        let i = this.connectList.indexOf(target);
-        if (i === -1) return;
-        this.connectList.splice(i, 1);
-        let j = target.connectList.indexOf(this);
-        if (j > -1) target.connectList.splice(j, 1);
-        target.off('output', this.input.bind(this));
-        this.off('output', target.input.bind(target));
+        if (!this.connectTable.has(target)) return;
+        this.connectTable.delete(target);
+        target.connectTable.delete(this);
+        target.off('output', this.inputBind);
+        this.off('output', target.inputBind);
         target.emit('disconnect', this);
         this.emit('disconnect', target);
     }
@@ -75,30 +81,27 @@ export default class DataIO extends TypedEmitter<DataIOEvent> {
     // inside object
     // !! directional: this -> I -> target -> O -> this
     passThrough(target: DataIO) {
-        this.passThroughList.push(target);
-        target.passThroughList.push(this);
-        target.on('output', this.output.bind(this));
-        this.on('input', target.input.bind(target));
+        if (this.passThroughTable.has(target)) return;
+        this.passThroughTable.set(target, true);
+        target.passThroughTable.set(this, true);
+        target.on('output', this.outputBind);
+        this.on('input', target.inputBind);
     }
 
     // inside object
     // !! directional
     unpassThrough(target: DataIO) {
-        let i = this.passThroughList.indexOf(target);
-        if (i === -1) return;
-        this.passThroughList.splice(i, 1);
-        let j = target.passThroughList.indexOf(this);
-        if (j > -1) target.passThroughList.splice(j, 1);
-        target.off('output', this.output.bind(this));
-        this.off('input', target.input.bind(target));
-        target.emit('disconnect', this);
-        this.emit('disconnect', target);
+        if (!this.passThroughTable.has(target)) return;
+        this.passThroughTable.delete(target);
+        target.passThroughTable.delete(this);
+        target.off('output', this.outputBind);
+        this.off('input', target.inputBind);
     }
 
     destroy() {
         this.destroyed = true;
-        this.connectList.forEach((target) => this.disconnect(target));
-        this.passThroughList.forEach((target) => this.unpassThrough(target));
+        this.connectTable.forEach((_, target) => this.disconnect(target));
+        this.passThroughTable.forEach((_, target) => this.unpassThrough(target));
     }
 
     getSignature() {

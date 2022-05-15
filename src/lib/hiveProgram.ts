@@ -6,9 +6,9 @@ import { randomUUID } from 'crypto';
 
 import { parseArgsStringToArgv } from 'string-argv';
 
-import DataIO, { DataSignature } from './dataIO.js';
+import DataIO, { DataSignature } from '../network/dataIO.js';
 import { formatTab } from './lib.js';
-import { DataPacket } from './router.js';
+import { HiveNetFrame } from '../network/switch.js';
 
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: string]: boolean | string }, info: HiveCommandInfo) => any;
 
@@ -47,7 +47,7 @@ export default class HiveProgram {
         };
         let result: any = '';
         try {
-            if (data instanceof DataPacket) {
+            if (data instanceof HiveNetFrame) {
                 // unpack data
                 info.rawInput = data.data;
             }
@@ -60,9 +60,9 @@ export default class HiveProgram {
         } catch (e) {
             result = e;
         }
-        if (data instanceof DataPacket) {
+        if (data instanceof HiveNetFrame) {
             // re-pack data
-            const packet = new DataPacket(result, this.UUID, data.src);
+            const packet = new HiveNetFrame(result, this.UUID, data.src);
             this.stdIO.output(packet, signatures);
         } else {
             this.stdIO.output(result, signatures);

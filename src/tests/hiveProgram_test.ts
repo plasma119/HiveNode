@@ -1,7 +1,7 @@
 import HiveProgram from '../lib/hiveProgram.js';
-import DataIO from '../lib/dataIO.js';
+import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
-import { DataPacket } from '../lib/router.js';
+import { HiveNetFrame } from '../network/switch.js';
 
 let program = new HiveProgram();
 let io = new DataIO({}, 'io');
@@ -104,6 +104,6 @@ let list = [
     }
 
     await sleep(2000);
-    let p = new DataPacket('test5', 'source', 'destination');
+    let p = new HiveNetFrame('test5', 'source', 'destination');
     io.output(p);
 })();

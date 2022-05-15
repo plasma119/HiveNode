@@ -1,4 +1,4 @@
-import DataIO, { DataSignature, DataSignaturesToString } from '../lib/dataIO.js';
+import DataIO, { DataSignature, DataSignaturesToString } from '../network/dataIO.js';
 
 function log(data: any, signatures: DataSignature[]) {
     console.log(data);

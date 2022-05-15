@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "router Test",
+            "name": "switch Test",
             "request": "launch",
             "type": "pwa-node",
-            "program": "${workspaceFolder}\\dist\\tests\\router_test.js",
+            "program": "${workspaceFolder}\\dist\\tests\\switch_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],

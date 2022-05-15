@@ -4,7 +4,7 @@ import { inspect } from 'util';
 import * as ReadLine from 'readline';
 import MuteStream from 'mute-stream';
 
-import DataIO, { DataSignature } from "./dataIO.js";
+import DataIO, { DataSignature } from "../network/dataIO.js";
 
 export default class Terminal {
     stdIO: DataIO;
