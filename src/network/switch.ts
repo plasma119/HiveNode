@@ -1,5 +1,4 @@
-import { randomUUID } from 'crypto';
-
+import HiveComponent from '../lib/component.js';
 import DataIO, { DataSignature } from './dataIO.js';
 
 export const HIVENETBROADCASTADDRESS = 'HiveNet-Broadcast-address';
@@ -14,7 +13,7 @@ export type HiveNetFrameFlags = {
 let frameNumber = 0;
 
 /*
-    OSI layer 2 - datalink layer
+    OSI model layer 2 - datalink layer
     use ttl to replace spanning tree for handling loop paths
 */
 export class HiveNetFrame {
@@ -41,16 +40,11 @@ export class HiveNetFrame {
     }
 }
 
-export class HiveNetSwitch {
-    UUID: string = randomUUID();
-    name: string;
+export class HiveNetSwitch extends HiveComponent {
     IOs: DataIO[] = [];
     IOsTarget: { io: DataIO; targetIO: DataIO; target: DataIO | HiveNetSwitch }[] = [];
     addressTable: Map<string, { io: DataIO; timestamp: number }> = new Map();
-
-    constructor(name: string) {
-        this.name = name;
-    }
+    expireTime: number = 300000;
 
     newIO(label = 'SwitchIO') {
         const io = new DataIO(this, label);
@@ -96,7 +90,7 @@ export class HiveNetSwitch {
         if (frame.dest != HIVENETBROADCASTADDRESS) {
             // try find target io
             let target = this.addressTable.get(frame.dest);
-            if (target && target.timestamp > Date.now() + 300000) {
+            if (target && target.timestamp > Date.now() + this.expireTime) {
                 // expired
                 target = undefined;
                 this.addressTable.delete(frame.dest);

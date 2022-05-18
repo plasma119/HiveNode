@@ -3,7 +3,7 @@ import WebSocket from "ws";
 
 import DataIO, { DataSignature, DataTransformer } from "./network/dataIO.js";
 import { StopPropagation } from './lib/signals.js';
-import HiveProgram from "./lib/hiveProgram.js";
+import HiveCommand from "./lib/hiveCommand.js";
 import HiveSocket from "./network/HiveSocket.js";
 
 let id = 1;
@@ -17,7 +17,7 @@ export default class Bee {
     name: string;
     UID: number;
     stdIO: DataIO;
-    program: HiveProgram;
+    program: HiveCommand;
     programDT: DataTransformer;
     screen: DataLog[];
     screenLimit: number = 1000;
@@ -31,7 +31,7 @@ export default class Bee {
         this.name = name;
         this.UID = id++;
         this.stdIO = new DataIO(this, `${name}-stdIO`);
-        this.program = new HiveProgram(`${name}-Core`);
+        this.program = new HiveCommand(`${name}-Core`);
         this.screen = [];
         this.programDT = new DataTransformer(this.program.stdIO);
         this.stdIO.passThrough(this.programDT.stdIO);

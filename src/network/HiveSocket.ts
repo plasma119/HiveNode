@@ -5,7 +5,7 @@ import WebSocket from 'ws';
 
 import { version } from '../index.js';
 import DataIO from './dataIO.js';
-import HiveProgram from '../lib/hiveProgram.js';
+import HiveCommand from '../lib/hiveCommand.js';
 import { Encryption, sleep } from '../lib/lib.js';
 
 export type SocketInfo = {
@@ -39,14 +39,17 @@ const DEFAULTSOCKETSECRET: SocketSecret = {
     secret: ''
 }
 
+/*
+    OSI model layer 3 - network layer
+*/
 export default class HiveSocket {
     name: string;
     stdIO: DataIO;
     dataIO: DataIO;
     info: SocketInfo;
     private _ss: SocketSecret;
-    program: HiveProgram;
-    decoder: HiveProgram;
+    program: HiveCommand;
+    decoder: HiveCommand;
 
     ws?: WebSocket;
     targetInfo: SocketInfo;
@@ -60,8 +63,8 @@ export default class HiveSocket {
         this.info = Object.create(DEFAULTSOCKETINFO);
         this._ss = Object.create(DEFAULTSOCKETSECRET);
         this.targetInfo = Object.create(DEFAULTSOCKETINFO);
-        this.program = new HiveProgram('HiveSocket-Core');
-        this.decoder = new HiveProgram('HiveSocket-Decoder');
+        this.program = new HiveCommand('HiveSocket-Core');
+        this.decoder = new HiveCommand('HiveSocket-Decoder');
 
         this.stdIO.passThrough(this.program.stdIO);
         this.dataIO.on('input', (data) => this.send(data));

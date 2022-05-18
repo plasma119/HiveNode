@@ -18,19 +18,19 @@ export type HiveCommandInfo = {
     signatures: DataSignature[];
 };
 
-export default class HiveProgram {
+export default class HiveCommand {
     name: string;
     UUID: string = randomUUID();
-    commands: HiveCommand[] = [];
+    commands: HiveSubCommand[] = [];
     stdIO: DataIO;
 
-    constructor(name: string = 'default', stdIO?: DataIO, helpCmd: HiveCommand | boolean = true) {
+    constructor(name: string = 'default', stdIO?: DataIO, helpCmd: HiveSubCommand | boolean = true) {
         this.name = name;
         this.stdIO = stdIO || new DataIO(this, 'HiveProgram-stdIO');
-        if (!(this instanceof HiveCommand)) {
+        if (!(this instanceof HiveSubCommand)) {
             this.stdIO.on('input', this._inputHandler.bind(this));
         }
-        if (helpCmd instanceof HiveCommand) {
+        if (helpCmd instanceof HiveSubCommand) {
             this.addCommand(helpCmd);
         } else if (helpCmd) {
             this.addNewCommand('help', 'display help')
@@ -70,7 +70,7 @@ export default class HiveProgram {
     }
 
     parse(str: string, info: HiveCommandInfo) {
-        const o = HiveProgram.splitCommandStr(str);
+        const o = HiveCommand.splitCommandStr(str);
         if (!o) throw new Error('Invalid command');
         const cmd = this._findCommand(o.name);
         if (cmd) {
@@ -80,15 +80,15 @@ export default class HiveProgram {
         }
     }
 
-    addCommand(cmd: HiveCommand) {
+    addCommand(cmd: HiveSubCommand) {
         this.commands.push(cmd);
         return cmd;
     }
 
     addNewCommand(nameAndArgs: string, description = '', isHelpCmd = false) {
-        const o = HiveProgram.splitCommandStr(nameAndArgs);
+        const o = HiveCommand.splitCommandStr(nameAndArgs);
         if (!o) throw new Error('Invalid command format');
-        const cmd = new HiveCommand(this, o.name, description, isHelpCmd);
+        const cmd = new HiveSubCommand(this, o.name, description, isHelpCmd);
         if (o.args) cmd.addNewArguments(o.args);
         this.addCommand(cmd);
         return cmd;
@@ -125,15 +125,15 @@ export default class HiveProgram {
     }
 }
 
-export class HiveCommand extends HiveProgram {
-    program: HiveProgram;
-    baseProgram: HiveProgram;
+export class HiveSubCommand extends HiveCommand {
+    program: HiveCommand;
+    baseProgram: HiveCommand;
     description: string;
     arguments: HiveArgument[] = [];
     options: HiveOption[] = [];
     callback?: HiveCommandCallback;
 
-    constructor(program: HiveProgram, name: string, description = '', isHelpCmd = false) {
+    constructor(program: HiveCommand, name: string, description = '', isHelpCmd = false) {
         super(name, program.stdIO, false);
         this.program = program;
         this.baseProgram = this.getBaseProgram();
@@ -151,7 +151,7 @@ export class HiveCommand extends HiveProgram {
         let argumentCount = 0;
 
         // check sub-command
-        const o = HiveProgram.splitCommandStr(str);
+        const o = HiveCommand.splitCommandStr(str);
         if (o) {
             const cmd = this._findCommand(o.name);
             if (cmd) {
@@ -233,8 +233,8 @@ export class HiveCommand extends HiveProgram {
     }
 
     getBaseProgram() {
-        let t: HiveCommand = this;
-        while (t.program instanceof HiveCommand) {
+        let t: HiveSubCommand = this;
+        while (t.program instanceof HiveSubCommand) {
             t = t.program;
         }
         return t;
@@ -242,8 +242,8 @@ export class HiveCommand extends HiveProgram {
 
     getFullName() {
         let name = this.name;
-        let t: HiveCommand = this;
-        while (t.program instanceof HiveCommand) {
+        let t: HiveSubCommand = this;
+        while (t.program instanceof HiveSubCommand) {
             t = t.program;
             name = `${t.name} ${name}`;
         }
@@ -346,7 +346,7 @@ export class HiveCommand extends HiveProgram {
 }
 
 export class HiveArgument {
-    program: HiveProgram;
+    program: HiveCommand;
     name: string;
     baseName: string;
     description: string;
@@ -354,7 +354,7 @@ export class HiveArgument {
     required: boolean;
     value: string;
 
-    constructor(program: HiveProgram, name: string, description = '', defaultValue: string = '') {
+    constructor(program: HiveCommand, name: string, description = '', defaultValue: string = '') {
         this.program = program;
         this.baseName = name;
         this.description = description;
@@ -389,7 +389,7 @@ export class HiveArgument {
 }
 
 export class HiveOption {
-    program: HiveProgram;
+    program: HiveCommand;
     flag: string;
     baseFlag: string;
     description: string;
@@ -397,13 +397,13 @@ export class HiveOption {
     argument?: HiveArgument;
     value: boolean | string;
 
-    constructor(program: HiveProgram, flag: string, description = '', defaultValue: boolean | string = false) {
+    constructor(program: HiveCommand, flag: string, description = '', defaultValue: boolean | string = false) {
         this.program = program;
         this.baseFlag = flag;
         this.description = description;
         this.defaultValue = defaultValue;
         this.value = defaultValue;
-        let o = HiveProgram.splitCommandStr(flag);
+        let o = HiveCommand.splitCommandStr(flag);
         if (!o) throw new Error('Invalid option flag');
         if (o.args) {
             this.argument = new HiveArgument(this.program, o.args);

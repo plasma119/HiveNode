@@ -1,17 +1,20 @@
-import { randomUUID } from 'crypto';
-
 import { TypedEmitter } from 'tiny-typed-emitter';
 
+import HiveComponent from '../lib/component.js';
+import { applyMixins } from '../lib/lib.js';
 import { StopPropagation } from '../lib/signals.js';
 
 export type DataSignature = {
     by: object;
-    label: string;
+    name: string;
     timestamp: number;
     UUID: string;
     event: string;
 };
 
+/*
+    OSI model layer 1 - physical layer
+*/
 export type DataLink = (data: any, signatures: DataSignature[]) => void;
 export interface DataIOEvent {
     input: DataLink;
@@ -20,24 +23,24 @@ export interface DataIOEvent {
     disconnect: any; // DataIO
 }
 
-export default class DataIO extends TypedEmitter<DataIOEvent> {
-    UUID: string = randomUUID();
+interface DataIO extends TypedEmitter<DataIOEvent> {}
+class DataIO extends HiveComponent {
     owner: any;
-    label: string;
     private _signature: DataSignature;
+
     connectTable: Map<DataIO, boolean> = new Map();
     passThroughTable: Map<DataIO, boolean> = new Map();
     destroyed: boolean = false;
     inputBind: DataLink;
     outputBind: DataLink;
 
-    constructor(owner: object, label: string) {
-        super();
+    constructor(owner: object, name: string) {
+        super(name);
         this.owner = owner;
-        this.label = label;
+        this.name = name;
         this._signature = {
             by: owner,
-            label: label,
+            name: name,
             timestamp: 0,
             UUID: this.UUID,
             event: '',
@@ -112,11 +115,13 @@ export default class DataIO extends TypedEmitter<DataIOEvent> {
         const signature = Object.create(this._signature);
         signature.timestamp = Date.now();
         signature.event = event;
-        signature.label = this.label;
+        signature.label = this.name;
         signatures.push(signature);
         return signatures;
     }
 }
+applyMixins(DataIO, [TypedEmitter]);
+export default DataIO;
 
 export class DataTransformer {
     stdIO: DataIO;
@@ -148,5 +153,5 @@ export class DataTransformer {
 
 export function DataSignaturesToString(signatures: DataSignature[]) {
     // @ts-ignore
-    return signatures.map((s) => `${s.label}[${s.by.name}]:${s.event}`).join('->');
+    return signatures.map((s) => `${s.name}[${s.by.name}]:${s.event}`).join('->');
 }

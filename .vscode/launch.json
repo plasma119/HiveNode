@@ -29,10 +29,10 @@
             ]
         },
         {
-            "name": "HiveProgram Test",
+            "name": "HiveCommand Test",
             "request": "launch",
             "type": "pwa-node",
-            "program": "${workspaceFolder}\\dist\\tests\\hiveProgram_test.js",
+            "program": "${workspaceFolder}\\dist\\tests\\hiveCommand_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],

@@ -8,7 +8,7 @@ io.connect(bee.stdIO);
 io.on('input', (data, signatures) => {
     console.log(data);
     // @ts-ignore
-    console.log(signatures.map(s => `${s.label}[${s.by.name}]:${s.event}`).join('->'));
+    console.log(signatures.map(s => `${s.name}[${s.by.name}]:${s.event}`).join('->'));
 })
 
 let list = [

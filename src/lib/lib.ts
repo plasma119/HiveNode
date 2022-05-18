@@ -109,3 +109,14 @@ export function debounce(func: Function, timeout: number = 300) {
         }, timeout);
     };
 }
+
+// for multiple inheritence
+// https://codeburst.io/multiple-inheritance-with-typescript-mixins-d92d01198907
+export function applyMixins(derivedConstructor: any, baseConstructors: any[]) {
+    baseConstructors.forEach((baseConstructor) => {
+        Object.getOwnPropertyNames(baseConstructor.prototype).forEach((name) => {
+            const d = Object.getOwnPropertyDescriptor(baseConstructor.prototype, name);
+            if (d) Object.defineProperty(derivedConstructor.prototype, name, d);
+        });
+    });
+}

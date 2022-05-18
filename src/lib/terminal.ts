@@ -120,7 +120,7 @@ export class TerminalPrompt {
     inputHandler(data: any, signatures: DataSignature[]) {
         this.redraw(() => {
             // @ts-ignore
-            if (this.debug) this.stdout.write(`signatures: ${signatures.map(s => `${s.label}[${s.by.name}]:${s.event}`).join('->')}\n`);
+            if (this.debug) this.stdout.write(`signatures: ${signatures.map(s => `${s.name}[${s.by.name}]:${s.event}`).join('->')}\n`);
             if (typeof data == 'string') {
                 const c = data.charAt(data.length - 1);
                 this.stdout.write(`${data}${c != '\n' && c != '\r'? '\n':''}`);

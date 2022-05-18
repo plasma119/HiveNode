@@ -21,12 +21,12 @@ function getIOs(n: number) {
 
 function connect(io1: DataIO, io2: DataIO) {
     io1.connect(io2);
-    console.log(`${io1.label} <-> ${io2.label}`);
+    console.log(`${io1.name} <-> ${io2.name}`);
 }
 
 function passThrough(io1: DataIO, io2: DataIO) {
     io1.passThrough(io2);
-    console.log(`${io1.label} == ${io2.label}`);
+    console.log(`${io1.name} == ${io2.name}`);
 }
 
 {

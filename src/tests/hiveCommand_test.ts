@@ -1,9 +1,9 @@
-import HiveProgram from '../lib/hiveProgram.js';
+import HiveCommand from '../lib/hiveCommand.js';
 import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
 import { HiveNetFrame } from '../network/switch.js';
 
-let program = new HiveProgram();
+let program = new HiveCommand();
 let io = new DataIO({}, 'io');
 io.connect(program.stdIO);
 io.on('input', (data) => {
