@@ -1,7 +1,7 @@
 import HiveCommand from '../lib/hiveCommand.js';
 import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
-import { HiveNetFrame } from '../network/switch.js';
+import { HiveNetFrame } from '../network/hiveNet.js';
 
 let program = new HiveCommand();
 let io = new DataIO({}, 'io');

@@ -1,10 +1,10 @@
-
 import { inspect } from 'util';
 
 import * as ReadLine from 'readline';
 import MuteStream from 'mute-stream';
 
-import DataIO, { DataSignature } from "../network/dataIO.js";
+import DataIO from '../network/dataIO.js';
+import { DataSignature } from '../network/hiveNet.js';
 
 export default class Terminal {
     stdIO: DataIO;
@@ -22,14 +22,13 @@ export default class Terminal {
             this.stdIO.passThrough(this.prompt.stdIO);
         }
     }
-
 }
 
 export class TerminalPrompt {
     stdout: NodeJS.WriteStream;
     stdin: NodeJS.ReadStream;
     muteStream: MuteStream = new MuteStream({
-        replace: '*'
+        replace: '*',
     });
     stdIO: DataIO;
     debug: boolean = false;
@@ -47,14 +46,14 @@ export class TerminalPrompt {
         this.stdout = stdout;
         this.stdIO = new DataIO(this, 'TerminalPrompt');
         this._promptString = promptString;
-        this.muteStream.pipe(this.stdout, {end: false});
+        this.muteStream.pipe(this.stdout, { end: false });
         this.muteStream.unmute();
         this.interface = ReadLine.createInterface({
             input: this.stdin,
             output: this.muteStream,
             prompt: this._promptString,
             completer: this._completer.bind(this),
-            history: []
+            history: [],
         });
         this.interface.on('history', (history) => {
             if (this._clearNextHistory) history[0] = '';
@@ -105,8 +104,8 @@ export class TerminalPrompt {
             let data = {
                 type: 'password',
                 iv: this._passwordIV,
-                password: str
-            }
+                password: str,
+            };
             str = '';
             this._passwordIV = '';
             this._passwordMode = false;
@@ -120,16 +119,16 @@ export class TerminalPrompt {
     inputHandler(data: any, signatures: DataSignature[]) {
         this.redraw(() => {
             // @ts-ignore
-            if (this.debug) this.stdout.write(`signatures: ${signatures.map(s => `${s.name}[${s.by.name}]:${s.event}`).join('->')}\n`);
+            if (this.debug) this.stdout.write(`signatures: ${signatures.map((s) => `${s.name}[${s.by.name}]:${s.event}`).join('->')}\n`);
             if (typeof data == 'string') {
                 const c = data.charAt(data.length - 1);
-                this.stdout.write(`${data}${c != '\n' && c != '\r'? '\n':''}`);
+                this.stdout.write(`${data}${c != '\n' && c != '\r' ? '\n' : ''}`);
             } else {
                 this.stdout.write(inspect(data, false, 2, true));
                 const p = this.interface.getCursorPos();
                 if (p.cols != 0) this.stdout.write('\n');
             }
-        })
+        });
     }
 
     redraw(f: Function) {
@@ -149,5 +148,4 @@ export class TerminalPrompt {
         this.stdout.write(this.interface.line);
         this.stdout.moveCursor(p.cols - cols, p.rows - rows); // return cursor to previous position
     }
-
 }

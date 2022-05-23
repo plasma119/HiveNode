@@ -1,5 +1,6 @@
-import { HIVENETBROADCASTADDRESS, HiveNetFrame, HiveNetSwitch } from '../network/switch.js';
-import DataIO, { DataSignature, DataSignaturesToString } from '../network/dataIO.js';
+import HiveNetSwitch from '../network/switch.js';
+import DataIO from '../network/dataIO.js';
+import { DataSignature, HiveNetFrame, DataSignaturesToString, HIVENETBROADCASTADDRESS } from '../network/hiveNet.js';
 
 function log(data: any, signatures: DataSignature[]) {
     console.log(data);

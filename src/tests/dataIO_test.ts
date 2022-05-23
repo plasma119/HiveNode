@@ -1,4 +1,5 @@
-import DataIO, { DataSignature, DataSignaturesToString } from '../network/dataIO.js';
+import DataIO from '../network/dataIO.js';
+import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
 
 function log(data: any, signatures: DataSignature[]) {
     console.log(data);

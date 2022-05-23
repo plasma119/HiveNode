@@ -1,10 +1,11 @@
 
 import WebSocket from "ws";
 
-import DataIO, { DataSignature, DataTransformer } from "./network/dataIO.js";
+import DataIO, { DataTransformer } from "./network/dataIO.js";
 import { StopPropagation } from './lib/signals.js';
 import HiveCommand from "./lib/hiveCommand.js";
-import HiveSocket from "./network/HiveSocket.js";
+import HiveSocket from "./network/socket.js";
+import { DataSignature } from "./network/hiveNet.js";
 
 let id = 1;
 

@@ -3,14 +3,7 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import HiveComponent from '../lib/component.js';
 import { applyMixins } from '../lib/lib.js';
 import { StopPropagation } from '../lib/signals.js';
-
-export type DataSignature = {
-    by: object;
-    name: string;
-    timestamp: number;
-    UUID: string;
-    event: string;
-};
+import { DataSignature } from './hiveNet.js';
 
 /*
     OSI model layer 1 - physical layer
@@ -149,9 +142,4 @@ export class DataTransformer {
     outputTransform(data: any, _signatures: DataSignature[]): any {
         return data;
     }
-}
-
-export function DataSignaturesToString(signatures: DataSignature[]) {
-    // @ts-ignore
-    return signatures.map((s) => `${s.name}[${s.by.name}]:${s.event}`).join('->');
 }

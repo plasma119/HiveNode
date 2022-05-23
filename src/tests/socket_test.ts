@@ -1,8 +1,9 @@
 
 import WebSocket from "ws";
 
-import HiveSocket from "../network/HiveSocket.js";
-import DataIO, { DataSignature, DataSignaturesToString } from "../network/dataIO.js";
+import HiveSocket from "../network/socket.js";
+import DataIO from "../network/dataIO.js";
+import { DataSignature, DataSignaturesToString } from "../network/hiveNet.js";
 
 function noop(_a: any) {
 

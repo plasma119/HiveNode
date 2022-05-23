@@ -2,13 +2,12 @@
 // argument value persistent bug is the main reason to write this whole thing
 // also it just too messy to work with customizing Commander.js
 
-import { randomUUID } from 'crypto';
-
 import { parseArgsStringToArgv } from 'string-argv';
 
-import DataIO, { DataSignature } from '../network/dataIO.js';
+import DataIO from '../network/dataIO.js';
+import { DataSignature, HiveNetFrame, HiveNetSegment } from '../network/hiveNet.js';
+import HiveComponent from './component.js';
 import { formatTab } from './lib.js';
-import { HiveNetFrame } from '../network/switch.js';
 
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: string]: boolean | string }, info: HiveCommandInfo) => any;
 
@@ -18,14 +17,12 @@ export type HiveCommandInfo = {
     signatures: DataSignature[];
 };
 
-export default class HiveCommand {
-    name: string;
-    UUID: string = randomUUID();
+export default class HiveCommand extends HiveComponent {
     commands: HiveSubCommand[] = [];
     stdIO: DataIO;
 
-    constructor(name: string = 'default', stdIO?: DataIO, helpCmd: HiveSubCommand | boolean = true) {
-        this.name = name;
+    constructor(name: string = 'HiveCommand', stdIO?: DataIO, helpCmd: HiveSubCommand | boolean = true) {
+        super(name);
         this.stdIO = stdIO || new DataIO(this, 'HiveProgram-stdIO');
         if (!(this instanceof HiveSubCommand)) {
             this.stdIO.on('input', this._inputHandler.bind(this));
@@ -40,17 +37,21 @@ export default class HiveCommand {
     }
 
     async _inputHandler(data: any, signatures: DataSignature[]) {
+        let input = data;
+        // unpack data
+        if (input instanceof HiveNetFrame) {
+            input = input.data;
+        }
+        if (input instanceof HiveNetSegment) {
+            input = input.data;
+        }
         const info: HiveCommandInfo = {
             data: data,
-            rawInput: data,
+            rawInput: input,
             signatures: signatures,
         };
         let result: any = '';
         try {
-            if (data instanceof HiveNetFrame) {
-                // unpack data
-                info.rawInput = data.data;
-            }
             if (typeof info.rawInput != 'string') {
                 throw new Error('Cannot recognize input data format');
             }
@@ -64,6 +65,10 @@ export default class HiveCommand {
             // re-pack data
             const packet = new HiveNetFrame(result, this.UUID, data.src);
             this.stdIO.output(packet, signatures);
+        } else if (data instanceof HiveNetSegment) {
+            // re-pack data
+            const packet = new HiveNetSegment(result, data.dport, data.sport);
+            this.stdIO.output(packet, signatures);
         } else {
             this.stdIO.output(result, signatures);
         }
@@ -72,7 +77,7 @@ export default class HiveCommand {
     parse(str: string, info: HiveCommandInfo) {
         const o = HiveCommand.splitCommandStr(str);
         if (!o) throw new Error('Invalid command');
-        const cmd = this._findCommand(o.name);
+        const cmd = this.findCommand(o.name);
         if (cmd) {
             return cmd.parse(o.args, info);
         } else {
@@ -94,13 +99,13 @@ export default class HiveCommand {
         return cmd;
     }
 
-    _findCommand(name: string) {
+    findCommand(name: string) {
         return this.commands.find((commands) => commands.name === name);
     }
 
     helpCallback(args: { [key: string]: string }): string {
         if (args['cmd']) {
-            const cmd = this._findCommand(args['cmd']);
+            const cmd = this.findCommand(args['cmd']);
             if (cmd) {
                 return cmd.helpCallback({});
             } else {
@@ -153,7 +158,7 @@ export class HiveSubCommand extends HiveCommand {
         // check sub-command
         const o = HiveCommand.splitCommandStr(str);
         if (o) {
-            const cmd = this._findCommand(o.name);
+            const cmd = this.findCommand(o.name);
             if (cmd) {
                 return cmd.parse(o.args, info);
             }
@@ -213,6 +218,8 @@ export class HiveSubCommand extends HiveCommand {
         if (this.callback) {
             return this.callback(this.getArguments(), this.getOptions(), info);
         }
+
+        return 'HiveCommand action not set';
     }
 
     reset() {
@@ -297,7 +304,7 @@ export class HiveSubCommand extends HiveCommand {
 
     helpCallback(args: { [key: string]: string }): string {
         if (args['cmd']) {
-            const cmd = this._findCommand(args['cmd']);
+            const cmd = this.findCommand(args['cmd']);
             if (cmd) {
                 return cmd.helpCallback({});
             } else {

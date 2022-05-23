@@ -1,46 +1,13 @@
 import HiveComponent from '../lib/component.js';
-import DataIO, { DataSignature } from './dataIO.js';
-
-export const HIVENETBROADCASTADDRESS = 'HiveNet-Broadcast-address';
-
-export type HiveNetFrameFlags = {
-    ping?: boolean;
-    pong?: boolean;
-    ack?: boolean;
-    nak?: boolean;
-};
-
-let frameNumber = 0;
+import DataIO from './dataIO.js';
+import { HIVENETBROADCASTADDRESS, HiveNetFrame, DataSignature } from './hiveNet.js';
 
 /*
     OSI model layer 2 - datalink layer
     use ttl to replace spanning tree for handling loop paths
 */
-export class HiveNetFrame {
-    data: any;
-    src: string;
-    dest: string;
-    ttl: number = 16;
-    frameID: number;
-    flags: HiveNetFrameFlags = {
-        ping: false,
-        pong: false,
-        ack: false,
-        nak: false,
-    };
 
-    constructor(data: any, src: string, dest: string, flags?: HiveNetFrameFlags, frameID = frameNumber++) {
-        this.data = data;
-        this.src = src;
-        this.dest = dest;
-        this.frameID = frameID;
-        if (flags) {
-            this.flags = Object.assign(this.flags, flags);
-        }
-    }
-}
-
-export class HiveNetSwitch extends HiveComponent {
+export default class HiveNetSwitch extends HiveComponent {
     IOs: DataIO[] = [];
     IOsTarget: { io: DataIO; targetIO: DataIO; target: DataIO | HiveNetSwitch }[] = [];
     addressTable: Map<string, { io: DataIO; timestamp: number }> = new Map();
@@ -82,7 +49,7 @@ export class HiveNetSwitch extends HiveComponent {
         if (frame.dest === this.UUID || frame.dest === '' || frame.dest === HIVENETBROADCASTADDRESS) {
             // ping
             if (frame.flags.ping) {
-                sender.output(new HiveNetFrame('pong', this.UUID, frame.src, { pong: true }, frame.frameID));
+                sender.output(new HiveNetFrame('pong', this.UUID, frame.src, { pong: true }));
             }
             if (frame.dest != HIVENETBROADCASTADDRESS) return;
         }
@@ -100,7 +67,7 @@ export class HiveNetSwitch extends HiveComponent {
                 frame.ttl--;
                 if (frame.ttl === 0) {
                     // ttl-timeout
-                    sender.output(new HiveNetFrame('ttl-timeout', this.UUID, frame.src, {}, frame.frameID));
+                    sender.output(new HiveNetFrame('ttl-timeout', this.UUID, frame.src, {}));
                     return;
                 } else {
                     // route packet

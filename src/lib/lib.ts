@@ -100,6 +100,30 @@ export function duckTypeCheck(obj: any, model: any) {
     return true;
 }
 
+// check is obj in the format described by model
+export function typeCheck(obj: any, model: any) {
+    for (let prop in model) {
+        const type = model[prop];
+        if (!(prop in obj)) {
+            // property not exist on obj
+            return false;
+        }
+        if (type === 'any') continue;
+        if (!(type === 'array' && Array.isArray(obj[prop]))) {
+            // simple array check, dose not check type inside array
+            return false;
+        } else if (typeof obj[prop] !== type) {
+            // property type not matching
+            return false;
+        }
+        if (typeof type === 'object') {
+            // recursive typecheck
+            if (!typeCheck(obj[prop], type)) return false;
+        }
+    }
+    return true;
+}
+
 export function debounce(func: Function, timeout: number = 300) {
     let timer: NodeJS.Timeout;
     return (...args: any[]) => {
@@ -112,6 +136,7 @@ export function debounce(func: Function, timeout: number = 300) {
 
 // for multiple inheritence
 // https://codeburst.io/multiple-inheritance-with-typescript-mixins-d92d01198907
+// https://www.typescriptlang.org/docs/handbook/mixins.html
 export function applyMixins(derivedConstructor: any, baseConstructors: any[]) {
     baseConstructors.forEach((baseConstructor) => {
         Object.getOwnPropertyNames(baseConstructor.prototype).forEach((name) => {
