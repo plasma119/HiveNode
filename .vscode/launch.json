@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "network Test",
+            "request": "launch",
+            "type": "pwa-node",
+            "program": "${workspaceFolder}\\dist\\tests\\network_test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
             "name": "switch Test",
             "request": "launch",
             "type": "pwa-node",
@@ -44,7 +56,7 @@
             "name": "HiveSocket Test",
             "request": "launch",
             "type": "pwa-node",
-            "program": "${workspaceFolder}\\dist\\tests\\hiveSocket_test.js",
+            "program": "${workspaceFolder}\\dist\\tests\\socket_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],

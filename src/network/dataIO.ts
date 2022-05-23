@@ -14,6 +14,7 @@ export interface DataIOEvent {
     output: DataLink;
     connect: any; // DataIO
     disconnect: any; // DataIO
+    destroy: any;
 }
 
 interface DataIO extends TypedEmitter<DataIOEvent> {}
@@ -94,10 +95,15 @@ class DataIO extends HiveComponent {
         this.off('input', target.inputBind);
     }
 
-    destroy() {
-        this.destroyed = true;
+    clear() {
         this.connectTable.forEach((_, target) => this.disconnect(target));
         this.passThroughTable.forEach((_, target) => this.unpassThrough(target));
+    }
+
+    destroy() {
+        this.destroyed = true;
+        this.clear();
+        this.emit('destroy');
     }
 
     getSignature() {

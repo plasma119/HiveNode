@@ -109,16 +109,15 @@ export function typeCheck(obj: any, model: any) {
             return false;
         }
         if (type === 'any') continue;
-        if (!(type === 'array' && Array.isArray(obj[prop]))) {
+        if (type === 'array' && !Array.isArray(obj[prop])) {
             // simple array check, dose not check type inside array
             return false;
+        } else if (typeof type === 'object') {
+            // recursive typecheck
+            if (!typeCheck(obj[prop], type)) return false;
         } else if (typeof obj[prop] !== type) {
             // property type not matching
             return false;
-        }
-        if (typeof type === 'object') {
-            // recursive typecheck
-            if (!typeCheck(obj[prop], type)) return false;
         }
     }
     return true;

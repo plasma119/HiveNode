@@ -1,4 +1,4 @@
-import { typeCheck } from "../lib/lib";
+import { typeCheck } from '../lib/lib.js';
 
 export type HiveNetFlags = {
     ping?: boolean;
@@ -58,6 +58,34 @@ export class HiveNetSegment {
     }
 }
 
+export class HiveNetPacket {
+    data: any;
+    src: string;
+    dest: string;
+    sport: number;
+    dport: number;
+    ttl: number;
+    flags: HiveNetFlags;
+
+    constructor(o: { data: any; src?: string; dest?: string; sport?: number; dport?: number; ttl?: number; flags?: HiveNetFlags }) {
+        this.data = o.data;
+        this.sport = o.sport || 0;
+        this.dport = o.dport || 0;
+        this.src = o.src || '';
+        this.dest = o.dest || '';
+        this.ttl = o.ttl || 16;
+        this.flags = {
+            ping: false,
+            pong: false,
+            ack: false,
+            nak: false,
+        }
+        if (o.flags) {
+            this.flags = Object.assign(this.flags, o.flags);
+        }
+    }
+}
+
 export const HIVENETBROADCASTADDRESS = 'HiveNet-Broadcast-address';
 const HiveNetFrameStructure = {
     data: 'any',
@@ -69,7 +97,7 @@ const HiveNetFrameStructure = {
         pong: 'boolean',
         ack: 'boolean',
         nak: 'boolean',
-    }
+    },
 };
 const HiveNetSegmentStructure = {
     data: 'any',
@@ -80,7 +108,21 @@ const HiveNetSegmentStructure = {
         pong: 'boolean',
         ack: 'boolean',
         nak: 'boolean',
-    }
+    },
+};
+const HiveNetPacketStructure = {
+    data: 'any',
+    src: 'string',
+    dest: 'string',
+    sport: 'number',
+    dport: 'number',
+    ttl: 'number',
+    flags: {
+        ping: 'boolean',
+        pong: 'boolean',
+        ack: 'boolean',
+        nak: 'boolean',
+    },
 };
 
 export function DataSignaturesToString(signatures: DataSignature[]) {
@@ -104,6 +146,8 @@ export function DataParsing(data: string) {
             } else {
                 obj = new HiveNetFrame(obj.data, obj.src, obj.dest, obj.flags);
             }
+        } else if (typeCheck(obj, HiveNetPacketStructure)) {
+            obj = new HiveNetPacket(obj);
         }
 
         return obj;
