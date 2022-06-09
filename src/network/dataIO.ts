@@ -101,6 +101,7 @@ class DataIO extends HiveComponent {
     }
 
     destroy() {
+        if (this.destroyed) return;
         this.destroyed = true;
         this.clear();
         this.emit('destroy');

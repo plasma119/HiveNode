@@ -1,35 +1,56 @@
-import HiveComponent from '../lib/component';
-import DataIO from './dataIO';
-import { HiveNetFlags, HiveNetFrame, HiveNetSegment } from './hiveNet';
-import HiveNetInterface from './interface';
-import HiveNetSwitch from './switch';
+import HiveComponent from '../lib/component.js';
+import DataIO from './dataIO.js';
+import { HiveNetPacket, HIVENETPORT } from './hiveNet.js';
+import HTP from './protocol.js';
 
+/*
+    OSI model layer 6 - presentation layer
+*/
 export default class HiveNetNode extends HiveComponent {
     stdIO: DataIO = new DataIO(this, 'stdIO');
+    HTP: HTP;
 
-    constructor(name: string) {
+    constructor(name: string, HTP: HTP) {
         super(name);
+        this.HTP = HTP;
+        this.init();
     }
 
-    connect(
-        target: HiveNetInterface | HiveNetSwitch | DataIO,
-        options: {
-            port?: number;
-        } = {}
-    ) {
-        if (target instanceof HiveNetInterface) {
-            target.connect(this.stdIO, 'port', options.port);
-        } else if (target instanceof HiveNetSwitch) {
-            target.connect(this.stdIO);
-        } else {
-            this.stdIO.connect(target);
-        }
-        return true;
+    init() {
+        this.HTP.listen(HIVENETPORT.ECHO, () => {
+            return new HiveNetPacket({ data: Date.now(), flags: { pong: true } });
+        });
+
+        this.HTP.listen(HIVENETPORT.DISCARD, () => {});
+
+        this.HTP.listen(HIVENETPORT.MESSAGE, (data, signatures) => {
+            this.stdIO.output(data.data, signatures);
+        });
     }
-    
-    send(data: any, dest: string, dport: number, flags?: HiveNetFlags) {
-        const segment = new HiveNetSegment(data, 0, dport, flags);
-        const frame = new HiveNetFrame(segment, '', dest, flags);
-        this.stdIO.output(frame);
+
+    ping(dest: string, options: { timeout?: number; dport?: number } = {}): Promise<string | number[]> {
+        return new Promise((resolve) => {
+            if (!options.timeout) options.timeout = 3000;
+            if (!options.dport) options.dport = HIVENETPORT.ECHO;
+            let timeout = false;
+            let t1 = Date.now();
+
+            let timer = setTimeout(() => {
+                timeout = true;
+                resolve('timeout');
+            }, options.timeout);
+
+            this.HTP.sendAndReceiveOnce(t1, dest, options.dport, { ping: true })
+                .then((data) => {
+                    if (timeout) return;
+                    clearTimeout(timer);
+                    resolve([Date.now() - t1, data.data - t1]);
+                })
+                .catch(() => resolve('Error'));
+        });
+    }
+
+    message(dest: string, data: any) {
+        this.HTP.send(data, dest, HIVENETPORT.MESSAGE);
     }
 }

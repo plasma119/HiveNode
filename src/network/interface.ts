@@ -1,15 +1,12 @@
-import HiveComponent from '../lib/component';
-import DataIO from './dataIO';
-import { HiveNetFrame, HiveNetSegment } from './hiveNet';
-import HiveNetNode from './node';
-import HiveNetSwitch from './switch';
+import HiveComponent from '../lib/component.js';
+import DataIO from './dataIO.js';
+import { HiveNetPacket } from './hiveNet.js';
+import HiveNetSwitch from './switch.js';
 
 /*
     OSI model layer 4 - transport layer
-    between node and HiveNet
 */
 export default class HiveNetInterface extends HiveComponent {
-    nodeIO: DataIO = new DataIO(this, 'nodeIO');
     netIO: DataIO = new DataIO(this, 'netIO');
     ports: Map<number, DataIO> = new Map();
     addressTable: Map<string, number> = new Map();
@@ -17,42 +14,29 @@ export default class HiveNetInterface extends HiveComponent {
     constructor(name: string) {
         super(name);
         this.netIO.on('input', (data, signatures) => {
-            if (data instanceof HiveNetFrame) {
-                const frame = data;
-                this.addressTable.set(frame.src, Date.now());
-                if (frame.data instanceof HiveNetSegment) {
-                    const segment = frame.data;
-                    const portData = this.ports.get(segment.dport);
-                    if (portData) {
-                        // passing segment with flags for further processing
-                        portData.output(segment, signatures);
-                    } else {
-                        // not a open port, ignore it
-                    }
+            if (data instanceof HiveNetPacket) {
+                this.addressTable.set(data.src, Date.now());
+                const port = this.ports.get(data.dport);
+                if (port) {
+                    // route packet
+                    port.output(data, signatures);
                 } else {
-                    // not via interface, pass to direct io
-                    this.nodeIO.output(frame.data, signatures);
+                    // not a open port, ignore it
                 }
-            } else {
-                // not via hiveNet, direct io interaction
-                this.nodeIO.output(data, signatures);
             }
+            // not via hiveNet, ignore it
         });
     }
 
-    connect(target: HiveNetSwitch | HiveNetNode | DataIO, type: 'net' | 'port' | 'node', port: number = this.newRandomPortNumber()) {
+    connect(target: HiveNetSwitch | DataIO, type: 'net' | 'port', port: number = this.newRandomPortNumber()) {
         let io: DataIO;
         switch (type) {
             case 'net':
                 io = this.netIO;
                 break;
             case 'port':
-                let o = this.newIO(port);
-                io = o.io;
-                break;
-            case 'node':
             default:
-                io = this.nodeIO;
+                io = this.newIO(port);
                 break;
         }
         target.connect(io);
@@ -63,30 +47,32 @@ export default class HiveNetInterface extends HiveComponent {
         const io = new DataIO(this, `portIO:${port}`);
         this.ports.set(port, io);
         io.on('input', (data, signatures) => {
-            if (data instanceof HiveNetFrame) {
+            if (data instanceof HiveNetPacket) {
                 data.src = this.UUID;
-                if (data.data instanceof HiveNetSegment) {
-                    data.data.sport = port;
-                }
-            } else if (data instanceof HiveNetSegment) {
                 data.sport = port;
             }
             this.netIO.output(data, signatures);
         });
         io.on('destroy', () => this.closePort(port));
-        return { io, port };
+        return io;
     }
 
     newRandomPortNumber() {
         let port = 0;
         let i = 0;
         do {
-            port = 10000 + Math.floor(Math.random() * 10000);
+            port = 10000 + Math.floor(Math.random() * 50000);
         } while (i++ < 20 && this.ports.has(port));
         return port;
     }
 
+    getPort(port: number) {
+        return this.ports.get(port);
+    }
+
     closePort(port: number) {
+        const io = this.ports.get(port);
+        if (io && !io.destroyed) io.destroy();
         return this.ports.delete(port);
     }
 }

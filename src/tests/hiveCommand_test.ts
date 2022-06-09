@@ -1,7 +1,6 @@
 import HiveCommand from '../lib/hiveCommand.js';
 import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
-import { HiveNetFrame } from '../network/hiveNet.js';
 
 let program = new HiveCommand();
 let io = new DataIO({}, 'io');
@@ -103,7 +102,4 @@ let list = [
         }
     }
 
-    await sleep(2000);
-    let p = new HiveNetFrame('test5', 'source', 'destination');
-    io.output(p);
 })();

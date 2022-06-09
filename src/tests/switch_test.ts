@@ -1,3 +1,5 @@
+
+/*
 import HiveNetSwitch from '../network/switch.js';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetFrame, DataSignaturesToString, HIVENETBROADCASTADDRESS } from '../network/hiveNet.js';
@@ -74,3 +76,4 @@ function ping(io: DataIO, dest: string, data = '') {
         console.log('broadcast completed.');
     }
 })();
+*/

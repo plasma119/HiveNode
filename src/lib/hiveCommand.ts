@@ -5,7 +5,7 @@
 import { parseArgsStringToArgv } from 'string-argv';
 
 import DataIO from '../network/dataIO.js';
-import { DataSignature, HiveNetFrame, HiveNetSegment } from '../network/hiveNet.js';
+import { DataSignature, HiveNetPacket } from '../network/hiveNet.js';
 import HiveComponent from './component.js';
 import { formatTab } from './lib.js';
 
@@ -39,10 +39,7 @@ export default class HiveCommand extends HiveComponent {
     async _inputHandler(data: any, signatures: DataSignature[]) {
         let input = data;
         // unpack data
-        if (input instanceof HiveNetFrame) {
-            input = input.data;
-        }
-        if (input instanceof HiveNetSegment) {
+        if (input instanceof HiveNetPacket) {
             input = input.data;
         }
         const info: HiveCommandInfo = {
@@ -61,13 +58,14 @@ export default class HiveCommand extends HiveComponent {
         } catch (e) {
             result = e;
         }
-        if (data instanceof HiveNetFrame) {
+        if (data instanceof HiveNetPacket) {
             // re-pack data
-            const packet = new HiveNetFrame(result, this.UUID, data.src);
-            this.stdIO.output(packet, signatures);
-        } else if (data instanceof HiveNetSegment) {
-            // re-pack data
-            const packet = new HiveNetSegment(result, data.dport, data.sport);
+            const packet = new HiveNetPacket({
+                data: result,
+                src: this.UUID,
+                dest: data.src,
+                dport: data.sport,
+            });
             this.stdIO.output(packet, signatures);
         } else {
             this.stdIO.output(result, signatures);
@@ -192,6 +190,8 @@ export class HiveSubCommand extends HiveCommand {
                         option.setValue(true);
                     }
                     continue;
+                } else {
+                    throw new Error(`Invalid Option: ${arg}`);
                 }
             }
 
