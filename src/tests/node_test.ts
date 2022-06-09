@@ -1,7 +1,6 @@
 import { DataSignature, DataSignaturesToString } from "../network/hiveNet.js";
 import HiveNetInterface from "../network/interface.js";
 import HiveNetNode from "../network/node.js";
-import HTP from "../network/protocol.js";
 import HiveNetSwitch from "../network/switch.js";
 
 function log(data: any, signatures: DataSignature[]) {
@@ -17,13 +16,9 @@ let intA = new HiveNetInterface('interface-A');
 let intB = new HiveNetInterface('interface-B');
 let intC = new HiveNetInterface('interface-C');
 
-let htpA = new HTP(intA);
-let htpB = new HTP(intB);
-let htpC = new HTP(intC);
-
-let nodeA = new HiveNetNode('node-A', htpA);
-let nodeB = new HiveNetNode('node-B', htpB);
-let nodeC = new HiveNetNode('node-C', htpC);
+let nodeA = new HiveNetNode('node-A', intA);
+let nodeB = new HiveNetNode('node-B', intB);
+let nodeC = new HiveNetNode('node-C', intC);
 
 intA.connect(sw, 'net');
 intB.connect(sw, 'net');

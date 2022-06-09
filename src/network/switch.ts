@@ -1,6 +1,6 @@
 import HiveComponent from '../lib/component.js';
 import DataIO from './dataIO.js';
-import { HIVENETBROADCASTADDRESS, HiveNetPacket, DataSignature } from './hiveNet.js';
+import { HIVENETADDRESS, HiveNetPacket, DataSignature } from './hiveNet.js';
 
 /*
     OSI model layer 2 - datalink layer
@@ -59,7 +59,7 @@ export default class HiveNetSwitch extends HiveComponent {
         this.addressTable.set(packet.src, { io: sender, timestamp: Date.now() });
 
         // to this router
-        if (packet.dest === this.UUID || packet.dest === '' || packet.dest === HIVENETBROADCASTADDRESS) {
+        if (packet.dest === this.UUID || packet.dest === '' || packet.dest === HIVENETADDRESS.BROADCAST) {
             // ping
             if (packet.flags.ping) {
                 sender.output(
@@ -72,14 +72,14 @@ export default class HiveNetSwitch extends HiveComponent {
                     })
                 );
             }
-            if (packet.dest != HIVENETBROADCASTADDRESS) return;
+            if (packet.dest != HIVENETADDRESS.BROADCAST) return;
         }
 
         // ttl check
         packet.ttl--;
         if (packet.ttl === 0 && !packet.flags.timeout) {
             // ttl-timeout
-            if (packet.dest != HIVENETBROADCASTADDRESS) {
+            if (packet.dest != HIVENETADDRESS.BROADCAST) {
                 sender.output(
                     new HiveNetPacket({
                         data: 'ttl-timeout',
@@ -94,7 +94,7 @@ export default class HiveNetSwitch extends HiveComponent {
         }
 
         // loopback prevention for broadcast
-        if (packet.dest === HIVENETBROADCASTADDRESS) {
+        if (packet.dest === HIVENETADDRESS.BROADCAST) {
             for (let signature of signatures) {
                 if (signature.UUID === this.UUID) return;
             }
@@ -106,7 +106,7 @@ export default class HiveNetSwitch extends HiveComponent {
         signatures.push(signature);
 
         // routing
-        if (packet.dest != HIVENETBROADCASTADDRESS) {
+        if (packet.dest != HIVENETADDRESS.BROADCAST) {
             // try find target io
             let target = this.addressTable.get(packet.dest);
             if (target && target.timestamp > Date.now() + this.expireTime) {

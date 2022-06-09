@@ -1,22 +1,20 @@
 
-import WebSocket from "ws";
+import WebSocket from 'ws';
 
-import DataIO, { DataTransformer } from "./network/dataIO.js";
+import DataIO, { DataTransformer } from './network/dataIO.js';
 import { StopPropagation } from './lib/signals.js';
-import HiveCommand from "./lib/hiveCommand.js";
-import HiveSocket from "./network/socket.js";
-import { DataSignature } from "./network/hiveNet.js";
-
-let id = 1;
+import HiveCommand from './lib/hiveCommand.js';
+import HiveSocket from './network/socket.js';
+import { DataSignature } from './network/hiveNet.js';
+import { version } from './index.js'
+import HiveComponent from './lib/component.js';
 
 type DataLog = {
     data: any,
     signatures: DataSignature[]
 }
 
-export default class Bee {
-    name: string;
-    UID: number;
+export default class Bee extends HiveComponent {
     stdIO: DataIO;
     program: HiveCommand;
     programDT: DataTransformer;
@@ -29,8 +27,7 @@ export default class Bee {
     _onNewConnection?: (client: HiveSocket) => void;
 
     constructor(name: string) {
-        this.name = name;
-        this.UID = id++;
+        super(name);
         this.stdIO = new DataIO(this, `${name}-stdIO`);
         this.program = new HiveCommand(`${name}-Core`);
         this.screen = [];
@@ -58,12 +55,9 @@ export default class Bee {
     }
 
     initProgram() {
-        this.program.addNewCommand('rickroll', 'lol')
-            .addNewArgument('[never]', 'gonna')
-            .addNewArgument('[give]', 'you')
-            .addNewArgument('[up]', ':)')
+        this.program.addNewCommand('version', 'display current HiveNode version')
             .setAction(() => {
-                return 'DUM\n';
+                return version;
             })
     }
 

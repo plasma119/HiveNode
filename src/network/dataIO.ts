@@ -126,10 +126,15 @@ export default DataIO;
 export class DataTransformer {
     stdIO: DataIO;
     targetIO: DataIO;
+    inputTransform: (data: any, _signatures: DataSignature[]) => any;
+    outputTransform: (data: any, _signatures: DataSignature[]) => any;
 
     constructor(targetIO: DataIO) {
         this.stdIO = new DataIO(targetIO.owner, 'DataTransformer-stdIO');
         this.targetIO = targetIO;
+        this.inputTransform = (data) => data;
+        this.outputTransform = (data) => data;
+
         this.stdIO.on('input', (data: any, signatures: DataSignature[]) => {
             const result = this.inputTransform(data, signatures);
             if (result === StopPropagation) return;
@@ -142,11 +147,11 @@ export class DataTransformer {
         });
     }
 
-    inputTransform(data: any, _signatures: DataSignature[]): any {
-        return data;
+    setInputTransform(inputTransform: (data: any, _signatures: DataSignature[]) => any) {
+        this.inputTransform = inputTransform;
     }
 
-    outputTransform(data: any, _signatures: DataSignature[]): any {
-        return data;
+    setOutputTransform(outputTransform: (data: any, _signatures: DataSignature[]) => any) {
+        this.outputTransform = outputTransform;
     }
 }

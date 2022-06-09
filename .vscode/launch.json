@@ -88,6 +88,19 @@
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ]
+        },
+        {
+            "name": "Run DumDum",
+            "request": "launch",
+            "type": "pwa-node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\dumdum.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
         }
     ]
 }

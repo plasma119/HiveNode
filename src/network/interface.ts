@@ -1,6 +1,6 @@
 import HiveComponent from '../lib/component.js';
 import DataIO from './dataIO.js';
-import { HiveNetPacket } from './hiveNet.js';
+import { HIVENETADDRESS, HiveNetPacket } from './hiveNet.js';
 import HiveNetSwitch from './switch.js';
 
 /*
@@ -51,7 +51,12 @@ export default class HiveNetInterface extends HiveComponent {
                 data.src = this.UUID;
                 data.sport = port;
             }
-            this.netIO.output(data, signatures);
+            if (data.src === data.dest || data.dest === HIVENETADDRESS.LOCAL) {
+                // loopback address
+                this.netIO.input(data, signatures);
+            } else {
+                this.netIO.output(data, signatures);
+            }
         });
         io.on('destroy', () => this.closePort(port));
         return io;

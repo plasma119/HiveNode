@@ -53,7 +53,7 @@ export default class HiveCommand extends HiveComponent {
                 throw new Error('Cannot recognize input data format');
             }
             result = await Promise.resolve(this.parse(info.rawInput, info)).catch((e) => {
-                throw e;
+                result = e;
             });
         } catch (e) {
             result = e;

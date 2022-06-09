@@ -45,11 +45,16 @@ export class HiveNetPacket {
     }
 }
 
-export const HIVENETBROADCASTADDRESS = 'HiveNet-Broadcast-address';
+export const HIVENETADDRESS = {
+    BROADCAST: 'HiveNet-address-Broadcast',
+    LOCAL: 'HiveNet-address-Local'
+};
 export const HIVENETPORT = {
     DISCARD: 10,
     ECHO: 11,
     MESSAGE: 12,
+    SHELL: 20,
+    STDIO: 21,
     HTPSEND: 30,
 }
 

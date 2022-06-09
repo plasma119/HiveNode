@@ -44,9 +44,9 @@ export default class HTP {
         });
     }
 
-    listen(sport: number, callback: HTPCallback) {
+    listen(sport: number, callback?: HTPCallback) {
         const port = this.netInterface.newIO(sport);
-        this._bindCallback(port, callback);
+        if (callback) this._bindCallback(port, callback);
         return port;
     }
 
