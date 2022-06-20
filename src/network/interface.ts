@@ -13,6 +13,7 @@ export default class HiveNetInterface extends HiveComponent {
 
     constructor(name: string) {
         super(name);
+        // port routing
         this.netIO.on('input', (data, signatures) => {
             if (data instanceof HiveNetPacket) {
                 this.addressTable.set(data.src, Date.now());

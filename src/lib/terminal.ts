@@ -4,7 +4,7 @@ import * as ReadLine from 'readline';
 import MuteStream from 'mute-stream';
 
 import DataIO from '../network/dataIO.js';
-import { DataSignature } from '../network/hiveNet.js';
+import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
 
 export default class Terminal {
     stdIO: DataIO;
@@ -118,8 +118,7 @@ export class TerminalPrompt {
 
     inputHandler(data: any, signatures: DataSignature[]) {
         this.redraw(() => {
-            // @ts-ignore
-            if (this.debug) this.stdout.write(`signatures: ${signatures.map((s) => `${s.name}[${s.by.name}]:${s.event}`).join('->')}\n`);
+            if (this.debug) this.stdout.write(`signatures: ${DataSignaturesToString(signatures)}\n`);
             if (typeof data == 'string') {
                 const c = data.charAt(data.length - 1);
                 this.stdout.write(`${data}${c != '\n' && c != '\r' ? '\n' : ''}`);

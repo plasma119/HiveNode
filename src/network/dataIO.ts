@@ -145,6 +145,7 @@ export class DataTransformer {
             if (result === StopPropagation) return;
             this.stdIO.output(result, signatures);
         });
+        this.targetIO.on('destroy', () => this.stdIO.destroy());
     }
 
     setInputTransform(inputTransform: (data: any, _signatures: DataSignature[]) => any) {

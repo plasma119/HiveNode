@@ -17,18 +17,6 @@
             ]
         },
         {
-            "name": "network Test",
-            "request": "launch",
-            "type": "pwa-node",
-            "program": "${workspaceFolder}\\dist\\tests\\network_test.js",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
-        },
-        {
             "name": "switch Test",
             "request": "launch",
             "type": "pwa-node",
@@ -90,11 +78,24 @@
             ]
         },
         {
-            "name": "Run DumDum",
+            "name": "Run Server",
             "request": "launch",
             "type": "pwa-node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\dumdum.js",
+            "program": "${workspaceFolder}\\dist\\tests\\server.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
+            "name": "Run Client",
+            "request": "launch",
+            "type": "pwa-node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\tests\\client.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],

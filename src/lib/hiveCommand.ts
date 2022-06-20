@@ -17,6 +17,8 @@ export type HiveCommandInfo = {
     signatures: DataSignature[];
 };
 
+class HiveCommandError extends Error {}
+
 export default class HiveCommand extends HiveComponent {
     commands: HiveSubCommand[] = [];
     stdIO: DataIO;
@@ -50,14 +52,17 @@ export default class HiveCommand extends HiveComponent {
         let result: any = '';
         try {
             if (typeof info.rawInput != 'string') {
-                throw new Error('Cannot recognize input data format');
+                throw new HiveCommandError('Cannot recognize input data format');
             }
-            result = await Promise.resolve(this.parse(info.rawInput, info)).catch((e) => {
-                result = e;
-            });
+            result = await this.parse(info.rawInput, info);
         } catch (e) {
-            result = e;
+            if (e instanceof HiveCommandError) {
+                result = e.message;
+            } else {
+                result = e;
+            }
         }
+        if (result === undefined || result === null) return;
         if (data instanceof HiveNetPacket) {
             // re-pack data
             const packet = new HiveNetPacket({
@@ -74,12 +79,12 @@ export default class HiveCommand extends HiveComponent {
 
     parse(str: string, info: HiveCommandInfo) {
         const o = HiveCommand.splitCommandStr(str);
-        if (!o) throw new Error('Invalid command');
+        if (!o) throw new HiveCommandError('Invalid command');
         const cmd = this.findCommand(o.name);
         if (cmd) {
             return cmd.parse(o.args, info);
         } else {
-            throw new Error(`Command not found: ${o.name}`);
+            throw new HiveCommandError(`Command not found: ${o.name}`);
         }
     }
 
@@ -90,7 +95,7 @@ export default class HiveCommand extends HiveComponent {
 
     addNewCommand(nameAndArgs: string, description = '', isHelpCmd = false) {
         const o = HiveCommand.splitCommandStr(nameAndArgs);
-        if (!o) throw new Error('Invalid command format');
+        if (!o) throw new HiveCommandError('Invalid command format');
         const cmd = new HiveSubCommand(this, o.name, description, isHelpCmd);
         if (o.args) cmd.addNewArguments(o.args);
         this.addCommand(cmd);
@@ -174,7 +179,7 @@ export class HiveSubCommand extends HiveCommand {
                         // try to get argument for flag
                         if (option.argument.required) {
                             const value = args.shift();
-                            if (!value) throw new Error(`Missing argument for option ${option.flag}`);
+                            if (!value) throw new HiveCommandError(`Missing argument for option ${option.flag}`);
                             option.setValue(value);
                         } else {
                             if (args.length > 0 && args[0] && !this._findOption(args[0])) {
@@ -191,7 +196,7 @@ export class HiveSubCommand extends HiveCommand {
                     }
                     continue;
                 } else {
-                    throw new Error(`Invalid Option: ${arg}`);
+                    throw new HiveCommandError(`Invalid Option: ${arg}`);
                 }
             }
 
@@ -212,7 +217,7 @@ export class HiveSubCommand extends HiveCommand {
             if (a.required) required++;
         });
         if (argumentCount < required) {
-            throw new Error(`Not enough arguments`);
+            throw new HiveCommandError(`Not enough arguments`);
         }
 
         if (this.callback) {
@@ -367,7 +372,7 @@ export class HiveArgument {
         this.description = description;
         this.defaultValue = defaultValue;
         this.value = defaultValue;
-        if (!name) throw new Error('Invalid argument name');
+        if (!name) throw new HiveCommandError('Invalid argument name');
 
         switch (name[0]) {
             case '<': // e.g. <required>
@@ -411,7 +416,7 @@ export class HiveOption {
         this.defaultValue = defaultValue;
         this.value = defaultValue;
         let o = HiveCommand.splitCommandStr(flag);
-        if (!o) throw new Error('Invalid option flag');
+        if (!o) throw new HiveCommandError('Invalid option flag');
         if (o.args) {
             this.argument = new HiveArgument(this.program, o.args);
         }

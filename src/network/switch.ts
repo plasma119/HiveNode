@@ -47,10 +47,8 @@ export default class HiveNetSwitch extends HiveComponent {
     }
 
     routePacket(sender: DataIO, packet: HiveNetPacket, signatures: DataSignature[]) {
-        if (!(packet instanceof HiveNetPacket)) {
-            sender.output('invalid data type to router!');
-            return;
-        }
+        // ignore invalid packet
+        if (!(packet instanceof HiveNetPacket)) return;
 
         // ignore self packet
         if (packet.src === this.UUID) return;

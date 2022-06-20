@@ -38,7 +38,7 @@ export class HiveNetPacket {
             ack: false,
             nak: false,
             timeout: false,
-        }
+        };
         if (o.flags) {
             this.flags = Object.assign(this.flags, o.flags);
         }
@@ -47,16 +47,17 @@ export class HiveNetPacket {
 
 export const HIVENETADDRESS = {
     BROADCAST: 'HiveNet-address-Broadcast',
-    LOCAL: 'HiveNet-address-Local'
+    LOCAL: 'HiveNet-address-Local',
 };
 export const HIVENETPORT = {
     DISCARD: 10,
-    ECHO: 11,
+    PING: 11,
     MESSAGE: 12,
     SHELL: 20,
     STDIO: 21,
+    SSH: 22,
     HTPSEND: 30,
-}
+};
 
 const HiveNetPacketStructure = {
     data: 'any',
@@ -70,7 +71,7 @@ const HiveNetPacketStructure = {
         pong: 'boolean',
         ack: 'boolean',
         nak: 'boolean',
-        timeout: 'boolean'
+        timeout: 'boolean',
     },
 };
 
@@ -79,20 +80,43 @@ export function DataSignaturesToString(signatures: DataSignature[]) {
     return signatures.map((s) => `${s.name}[${s.by.name}]:${s.event}`).join('->');
 }
 
-export function DataSerialize(data: any) {
-    return JSON.stringify(data);
+export function DataSerialize(data: any, signatures: DataSignature[]) {
+    if (data instanceof HiveNetPacket && data.data === undefined) data.data = '';
+    if (data instanceof Error) data = data.message + data.stack;
+    return JSON.stringify({ data, signatures: SignaturePreSerialize(signatures) });
 }
 
-export function DataParsing(data: string) {
+function SignaturePreSerialize(signatures: DataSignature[]) {
+    let s = signatures.slice()
+    s.forEach((s) => {
+        s.UUID = s.UUID;
+        s.name = s.name;
+        // @ts-ignore
+        s.by = { name: s.by.name };
+        s.event = s.event;
+    });
+    if (!s) s = [];
+    return s;
+}
+
+export function DataParsing(data: string, signatures: DataSignature[]) {
     try {
         let obj = JSON.parse(data);
-        // try to rebuild HiveNet data packets
-        if (typeCheck(obj, HiveNetPacketStructure)) {
-            obj = new HiveNetPacket(obj);
+        if (obj.signatures && Array.isArray(obj.signatures)) {
+            signatures.unshift(...obj.signatures);
+            obj = obj.data;
         }
-
-        return obj;
+        return ObjectParsing(obj);
     } catch (e) {
         return data;
     }
+}
+
+function ObjectParsing(obj: any) {
+    if (!obj) return obj;
+    // try to rebuild HiveNet data packets
+    if (typeCheck(obj, HiveNetPacketStructure)) {
+        obj = new HiveNetPacket(obj);
+    }
+    return obj;
 }
