@@ -12,9 +12,10 @@ import { formatTab } from './lib.js';
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: string]: boolean | string }, info: HiveCommandInfo) => any;
 
 export type HiveCommandInfo = {
-    data: any;
+    rawData: any;
     rawInput: string;
     signatures: DataSignature[];
+    reply: (message: any) => void;
 };
 
 class HiveCommandError extends Error {}
@@ -25,7 +26,7 @@ export default class HiveCommand extends HiveComponent {
 
     constructor(name: string = 'HiveCommand', stdIO?: DataIO, helpCmd: HiveSubCommand | boolean = true) {
         super(name);
-        this.stdIO = stdIO || new DataIO(this, 'HiveProgram-stdIO');
+        this.stdIO = stdIO || new DataIO(this, 'HiveCommand-stdIO');
         if (!(this instanceof HiveSubCommand)) {
             this.stdIO.on('input', this._inputHandler.bind(this));
         }
@@ -39,17 +40,34 @@ export default class HiveCommand extends HiveComponent {
     }
 
     async _inputHandler(data: any, signatures: DataSignature[]) {
-        let input = data;
         // unpack data
+        let input = data;
         if (input instanceof HiveNetPacket) {
             input = input.data;
         }
         const info: HiveCommandInfo = {
-            data: data,
+            rawData: data,
             rawInput: input,
             signatures: signatures,
+            reply: (message) => {
+                if (message === undefined || message === null) return;
+                if (data instanceof HiveNetPacket) {
+                    // re-pack data
+                    const packet = new HiveNetPacket({
+                        data: message,
+                        src: this.UUID,
+                        dest: message.src,
+                        dport: message.sport,
+                    });
+                    this.stdIO.output(packet, signatures);
+                } else {
+                    this.stdIO.output(message, signatures);
+                }
+            }
         };
         let result: any = '';
+
+        // execute command
         try {
             if (typeof info.rawInput != 'string') {
                 throw new HiveCommandError('Cannot recognize input data format');
@@ -62,19 +80,9 @@ export default class HiveCommand extends HiveComponent {
                 result = e;
             }
         }
-        if (result === undefined || result === null) return;
-        if (data instanceof HiveNetPacket) {
-            // re-pack data
-            const packet = new HiveNetPacket({
-                data: result,
-                src: this.UUID,
-                dest: data.src,
-                dport: data.sport,
-            });
-            this.stdIO.output(packet, signatures);
-        } else {
-            this.stdIO.output(result, signatures);
-        }
+
+        // return result
+        info.reply(result);
     }
 
     parse(str: string, info: HiveCommandInfo) {
