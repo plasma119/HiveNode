@@ -1,12 +1,12 @@
 import * as Crypto from 'crypto';
 
 export class Encryption {
-    static base64Encode(str: string, encoding: 'ascii' | 'utf8' | 'binary' = 'ascii') {
+    static base64Encode(str: string, encoding: 'ascii' | 'utf-8' | 'binary' = 'utf-8') {
         const buff = Buffer.from(str ? str : '', encoding);
         return buff.toString('base64');
     }
 
-    static base64Decode(str: string, encoding: 'ascii' | 'utf8' | 'binary' = 'ascii') {
+    static base64Decode(str: string, encoding: 'ascii' | 'utf-8' | 'binary' = 'utf-8') {
         const buff = Buffer.from(str ? str : '', 'base64');
         return buff.toString(encoding);
     }
