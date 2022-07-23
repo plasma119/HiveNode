@@ -15,6 +15,7 @@ export type HiveCommandInfo = {
     rawData: any;
     rawInput: string;
     signatures: DataSignature[];
+    currentProgram: HiveCommand;
     reply: (message: any) => void;
 };
 
@@ -49,6 +50,7 @@ export default class HiveCommand extends HiveComponent {
             rawData: data,
             rawInput: input,
             signatures: signatures,
+            currentProgram: this,
             reply: (message) => {
                 if (message === undefined || message === null) return;
                 if (data instanceof HiveNetPacket) {
@@ -162,10 +164,6 @@ export class HiveSubCommand extends HiveCommand {
     }
 
     parse(str: string, info: HiveCommandInfo): any {
-        this.reset();
-        const args = parseArgsStringToArgv(str);
-        let argumentCount = 0;
-
         // check sub-command
         const o = HiveCommand.splitCommandStr(str);
         if (o) {
@@ -175,22 +173,29 @@ export class HiveSubCommand extends HiveCommand {
             }
         }
 
+        // initialize
+        info.currentProgram = this;
+        this.reset();
+        const args = parseArgsStringToArgv(str);
+        let argumentCount = 0;
+
+        // parse command
         while (args.length) {
             const arg = args.shift();
             if (!arg) continue;
 
             // check option
             if (arg.length > 1 && arg[0] === '-') {
-                const option = this._findOption(arg);
+                const option = this.findOption(arg);
                 if (option) {
                     if (option.argument) {
                         // try to get argument for flag
                         if (option.argument.required) {
                             const value = args.shift();
-                            if (!value) throw new HiveCommandError(`Missing argument for option ${option.flag}`);
+                            if (!value) throw new HiveCommandError(`Missing required argument for option: ${option.flag}`);
                             option.setValue(value);
                         } else {
-                            if (args.length > 0 && args[0] && !this._findOption(args[0])) {
+                            if (args.length > 0 && args[0] && !this.findOption(args[0])) {
                                 option.setValue(args[0]);
                                 args.shift();
                             } else {
@@ -306,8 +311,12 @@ export class HiveSubCommand extends HiveCommand {
         return this;
     }
 
-    _findOption(arg: string) {
-        return this.options.find((option) => option.flag === arg);
+    findArgument(name: string) {
+        return this.arguments.find((option) => option.name === name);
+    }
+
+    findOption(name: string) {
+        return this.options.find((option) => option.flag === name);
     }
 
     setAction(callback: HiveCommandCallback) {
