@@ -7,12 +7,15 @@ import HiveNetNode from './network/node.js';
 import HiveSocket from './network/socket.js';
 import HiveNetSwitch from './network/switch.js';
 import Terminal from './lib/terminal.js';
+import { StopPropagation } from './lib/signals.js';
+import HiveCommand from './lib/hiveCommand.js';
 
-export class Hive extends HiveComponent {
+export default class Hive extends HiveComponent {
     node: HiveNetNode;
     switch: HiveNetSwitch;
     server?: WebSocket.Server;
 
+    terminalShell: HiveCommand;
     _terminalDest: string = HIVENETADDRESS.LOCAL;
 
     constructor(name: string) {
@@ -20,15 +23,17 @@ export class Hive extends HiveComponent {
         this.node = new HiveNetNode(name);
         this.switch = new HiveNetSwitch(`${name}-switch`);
         this.switch.connect(this.node.netInterface.netIO);
+        this.terminalShell = new HiveCommand(`${name}-terminalShell`);
         this.initShell();
     }
 
     initShell() {
-        // TODO: capture input directly
-        let h = this.node.shell.addNewCommand('hive', 'HiveNode command');
-        h.addNewCommand('remote', 'Connect terminal to target')
+        let h = this.terminalShell.addNewCommand('hivenet', 'HiveNet Commands');
+        h.addNewCommand('connect', 'Connect terminal to target node via HiveNet')
             .addNewArgument('<UUID>', 'target UUID')
-            .setAction((args) => this._terminalDest = args['UUID']);
+            .setAction((args) => (this._terminalDest = args['UUID']));
+        h.addNewCommand('disconnect', 'Connect terminal back to local node')
+            .setAction(() => (this._terminalDest = HIVENETADDRESS.LOCAL));
     }
 
     listen(port: number, debug: boolean = false) {
@@ -45,10 +50,11 @@ export class Hive extends HiveComponent {
             this.switch.connect(dt.stdIO);
 
             // debug
-            if (debug) dt.stdIO.on('output', (d, s) => {
-                console.log(DataSignaturesToString(s));
-                console.log(d);
-            })
+            if (debug)
+                dt.stdIO.on('output', (d, s) => {
+                    console.log(DataSignaturesToString(s));
+                    console.log(d);
+                });
 
             client.use(ws).then(() => this.node.stdIO.output(`Handshake done.`));
         });
@@ -57,7 +63,7 @@ export class Hive extends HiveComponent {
     }
 
     async connect(host: string, port: number) {
-        this.node.stdIO.output(`Connecting to ${host}:${port}...`)
+        this.node.stdIO.output(`Connecting to ${host}:${port}...`);
 
         // TODO: rework with socket
         const socket = new HiveSocket('remote');
@@ -74,6 +80,10 @@ export class Hive extends HiveComponent {
         // TODO: rework with terminal
         const dt = new DataTransformer(this.node.stdIO);
         dt.setInputTransform((data) => {
+            if (typeof data == 'string' && data[0] == '$') {
+                this.terminalShell.stdIO.input(data.slice(1));
+                return StopPropagation;
+            }
             return new HiveNetPacket({ data, dest: this._terminalDest, dport: HIVENETPORT.SHELL });
         });
         dt.setOutputTransform((data) => {
@@ -82,6 +92,7 @@ export class Hive extends HiveComponent {
             }
             return data;
         });
+        this.terminalShell.stdIO.on('output', (data, signatures) => dt.stdIO.output(data, signatures));
         if (headless) {
             dt.stdIO.on('output', (data) => console.log(data));
         } else {
