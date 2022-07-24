@@ -58,8 +58,8 @@ export default class HiveCommand extends HiveComponent {
                     const packet = new HiveNetPacket({
                         data: message,
                         src: this.UUID,
-                        dest: message.src,
-                        dport: message.sport,
+                        dest: data.src,
+                        dport: data.sport,
                     });
                     this.stdIO.output(packet, signatures);
                 } else {
