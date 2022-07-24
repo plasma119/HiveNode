@@ -112,10 +112,10 @@ class DataIO extends HiveComponent {
     }
 
     private _sign(signatures: DataSignature[], event: string) {
-        const signature = Object.create(this._signature);
+        const signature: DataSignature = Object.create(this._signature);
         signature.timestamp = Date.now();
         signature.event = event;
-        signature.label = this.name;
+        signature.name = this.name;
         signatures.push(signature);
         return signatures;
     }
