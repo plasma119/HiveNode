@@ -27,8 +27,8 @@ nodeA.stdIO.on('output', log);
 nodeB.stdIO.on('output', log);
 nodeC.stdIO.on('output', log);
 
-nodeA.netping(intA.UUID).then(console.log)
-nodeA.netping(intB.UUID).then(console.log)
-nodeA.netping(intC.UUID).then(console.log)
+// nodeA.netping(intA.UUID).then(console.log)
+// nodeA.netping(intB.UUID).then(console.log)
+// nodeA.netping(intC.UUID).then(console.log)
 
-nodeB.message(intC.UUID, 'from node-B');
+// nodeB.message(intC.UUID, 'from node-B');
