@@ -22,7 +22,7 @@ export type HiveCommandInfo = {
 class HiveCommandError extends Error {}
 
 export default class HiveCommand extends HiveComponent {
-    commands: HiveSubCommand[] = [];
+    commands: Map<String, HiveSubCommand> = new Map();
     stdIO: DataIO;
 
     constructor(name: string = 'HiveCommand', stdIO?: DataIO, helpCmd: HiveSubCommand | boolean = true) {
@@ -99,7 +99,8 @@ export default class HiveCommand extends HiveComponent {
     }
 
     addCommand(cmd: HiveSubCommand) {
-        this.commands.push(cmd);
+        if (this.commands.has(cmd.name)) this.stdIO.output(`[Warning]: Overwriting HiveSubCommand: ${cmd.name}`);
+        this.commands.set(cmd.name, cmd);
         return cmd;
     }
 
@@ -113,7 +114,7 @@ export default class HiveCommand extends HiveComponent {
     }
 
     findCommand(name: string) {
-        return this.commands.find((commands) => commands.name === name);
+        return this.commands.get(name);
     }
 
     helpCallback(args: { [key: string]: string }): string {
@@ -147,8 +148,8 @@ export class HiveSubCommand extends HiveCommand {
     program: HiveCommand;
     baseProgram: HiveCommand;
     description: string;
-    arguments: HiveArgument[] = [];
-    options: HiveOption[] = [];
+    arguments: Map<String, HiveArgument> = new Map();
+    options: Map<String, HiveOption> = new Map();
     callback?: HiveCommandCallback;
 
     constructor(program: HiveCommand, name: string, description = '', isHelpCmd = false) {
@@ -178,6 +179,7 @@ export class HiveSubCommand extends HiveCommand {
         this.reset();
         const args = parseArgsStringToArgv(str);
         let argumentCount = 0;
+        let argumentArr = Array.from(this.arguments.values());
 
         // parse command
         while (args.length) {
@@ -192,7 +194,7 @@ export class HiveSubCommand extends HiveCommand {
                         // try to get argument for flag
                         if (option.argument.required) {
                             const value = args.shift();
-                            if (!value) throw new HiveCommandError(`Missing required argument for option: ${option.flag}`);
+                            if (!value) throw new HiveCommandError(`Missing required argument for option: ${option.name}`);
                             option.setValue(value);
                         } else {
                             if (args.length > 0 && args[0] && !this.findOption(args[0])) {
@@ -214,8 +216,8 @@ export class HiveSubCommand extends HiveCommand {
             }
 
             // not option, so must be argument
-            if (argumentCount < this.arguments.length) {
-                this.arguments[argumentCount].setValue(arg);
+            if (argumentCount < this.arguments.size) {
+                argumentArr[argumentCount].setValue(arg);
                 argumentCount++;
                 continue;
             }
@@ -253,7 +255,7 @@ export class HiveSubCommand extends HiveCommand {
 
     getOptions() {
         let result: { [key: string]: boolean | string } = {};
-        this.options.forEach((o) => (result[o.flag] = o.value));
+        this.options.forEach((o) => (result[o.name] = o.value));
         return result;
     }
 
@@ -276,7 +278,8 @@ export class HiveSubCommand extends HiveCommand {
     }
 
     addArgument(argument: HiveArgument) {
-        this.arguments.push(argument);
+        if (this.commands.has(argument.name)) this.stdIO.output(`[Warning]: Overwriting HiveCommandArgument: ${argument.name}`);
+        this.arguments.set(argument.name, argument);
         return this;
     }
 
@@ -294,7 +297,8 @@ export class HiveSubCommand extends HiveCommand {
     }
 
     addOption(option: HiveOption) {
-        this.options.push(option);
+        if (this.commands.has(option.name)) this.stdIO.output(`[Warning]: Overwriting HiveCommandOption: ${option.name}`);
+        this.options.set(option.name, option);
         return this;
     }
 
@@ -312,11 +316,11 @@ export class HiveSubCommand extends HiveCommand {
     }
 
     findArgument(name: string) {
-        return this.arguments.find((option) => option.name === name);
+        return this.arguments.get(name);
     }
 
     findOption(name: string) {
-        return this.options.find((option) => option.flag === name);
+        return this.options.get(name);
     }
 
     setAction(callback: HiveCommandCallback) {
@@ -336,14 +340,14 @@ export class HiveSubCommand extends HiveCommand {
             let output = '';
 
             output += `Usage: ${this.getFullName()}`;
-            if (this.options.length > 0) output += ` [...options]`;
+            if (this.options.size > 0) output += ` [...options]`;
             this.arguments.forEach((a) => {
                 output += ` ${a.baseName}`;
             });
             output += `\n`;
-            if (this.commands.length > 0) output += `       ${this.getFullName()} <sub-command>\n`;
+            if (this.commands.size > 0) output += `       ${this.getFullName()} <sub-command>\n`;
 
-            if (this.commands.length > 0) {
+            if (this.commands.size > 0) {
                 let rows: string[] = [];
                 output += `Avaliable sub-commands:\n`;
                 this.commands.forEach((c) => {
@@ -352,7 +356,7 @@ export class HiveSubCommand extends HiveCommand {
                 output += formatTab(rows);
             }
 
-            if (this.arguments.length > 0) {
+            if (this.arguments.size > 0) {
                 let rows: string[] = [];
                 output += `Arguments:\n`;
                 this.arguments.forEach((a) => {
@@ -360,11 +364,12 @@ export class HiveSubCommand extends HiveCommand {
                 });
                 output += formatTab(rows);
             }
-            if (this.options.length > 0) {
+
+            if (this.options.size > 0) {
                 let rows: string[] = [];
                 output += `Options:\n`;
                 this.options.forEach((o) => {
-                    rows.push(`    ${o.baseFlag}    \t${o.description}`);
+                    rows.push(`    ${o.baseName}    \t${o.description}`);
                 });
                 output += formatTab(rows);
             }
@@ -419,25 +424,25 @@ export class HiveArgument {
 
 export class HiveOption {
     program: HiveCommand;
-    flag: string;
-    baseFlag: string;
+    name: string;
+    baseName: string;
     description: string;
     defaultValue: boolean | string;
     argument?: HiveArgument;
     value: boolean | string;
 
-    constructor(program: HiveCommand, flag: string, description = '', defaultValue: boolean | string = false) {
+    constructor(program: HiveCommand, name: string, description = '', defaultValue: boolean | string = false) {
         this.program = program;
-        this.baseFlag = flag;
+        this.baseName = name;
         this.description = description;
         this.defaultValue = defaultValue;
         this.value = defaultValue;
-        let o = HiveCommand.splitCommandStr(flag);
+        let o = HiveCommand.splitCommandStr(name);
         if (!o) throw new HiveCommandError('Invalid option flag');
         if (o.args) {
             this.argument = new HiveArgument(this.program, o.args);
         }
-        this.flag = o.name;
+        this.name = o.name;
     }
 
     setValue(value: boolean | string) {
