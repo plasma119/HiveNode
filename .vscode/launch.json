@@ -7,7 +7,7 @@
         {
             "name": "node Test",
             "request": "launch",
-            "type": "pwa-node",
+            "type": "node",
             "program": "${workspaceFolder}\\dist\\tests\\node_test.js",
             "skipFiles": [
                 "<node_internals>/**"
@@ -19,7 +19,7 @@
         {
             "name": "switch Test",
             "request": "launch",
-            "type": "pwa-node",
+            "type": "node",
             "program": "${workspaceFolder}\\dist\\tests\\switch_test.js",
             "skipFiles": [
                 "<node_internals>/**"
@@ -31,7 +31,7 @@
         {
             "name": "DataIO Test",
             "request": "launch",
-            "type": "pwa-node",
+            "type": "node",
             "program": "${workspaceFolder}\\dist\\tests\\dataIO_test.js",
             "skipFiles": [
                 "<node_internals>/**"
@@ -43,7 +43,7 @@
         {
             "name": "HiveCommand Test",
             "request": "launch",
-            "type": "pwa-node",
+            "type": "node",
             "program": "${workspaceFolder}\\dist\\tests\\hiveCommand_test.js",
             "skipFiles": [
                 "<node_internals>/**"
@@ -55,8 +55,20 @@
         {
             "name": "HiveSocket Test",
             "request": "launch",
-            "type": "pwa-node",
+            "type": "node",
             "program": "${workspaceFolder}\\dist\\tests\\socket_test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
+            "name": "Logger Test",
+            "request": "launch",
+            "type": "node",
+            "program": "${workspaceFolder}\\dist\\tests\\logger_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -67,7 +79,7 @@
         {
             "name": "Terminal Test",
             "request": "launch",
-            "type": "pwa-node",
+            "type": "node",
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\tests\\terminal_test.js",
             "skipFiles": [
@@ -80,7 +92,7 @@
         {
             "name": "Run Server",
             "request": "launch",
-            "type": "pwa-node",
+            "type": "node",
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\tests\\server.js",
             "skipFiles": [
@@ -93,7 +105,7 @@
         {
             "name": "Run Client",
             "request": "launch",
-            "type": "pwa-node",
+            "type": "node",
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\tests\\client.js",
             "skipFiles": [
