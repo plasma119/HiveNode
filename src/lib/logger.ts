@@ -44,7 +44,7 @@ export default class Logger extends HiveComponent {
         if (this.options.newFilePerDay) setInterval(() => this._updateLogFile(), 60 * 1000);
         if (!fs.existsSync(this.options.logFolder) || !fs.lstatSync(this.options.logFolder).isDirectory()) {
             fs.mkdirSync(this.options.logFolder, { recursive: true });
-            this.log(`${this.name}: Generated folder: ${options.logFolder}`);
+            this.log(`Generated log folder: ${options.logFolder}`);
         }
     }
 
@@ -57,9 +57,9 @@ export default class Logger extends HiveComponent {
         if (!this.logFileStream) {
             this.logFileStream = this._newLogFile();
             if (fs.existsSync(this.logFilePath)) {
-                this.log(`${this.name}: Reusing log file: ${this.fileTimestamp}.txt`);
+                this.log(`Reusing log file: ${this.fileTimestamp}.txt`);
             } else {
-                this.log(`${this.name}: Generating log file: ${this.fileTimestamp}.txt`);
+                this.log(`Generating log file: ${this.fileTimestamp}.txt`);
             }
         }
         if (this.drainWaiting) {
@@ -69,13 +69,13 @@ export default class Logger extends HiveComponent {
         if (!this.logFileStream.write(log + '\n')) {
             this.drainWaiting = true;
             this.logFileStream.once('drain', this._drainCallback.bind(this));
-            this.log(`${this.name}: [Warning] Waiting for drain...`);
+            this.log(`[Warning] Waiting for log file drain...`);
         }
     }
 
     generateNewLogFile() {
         this.logFileStream = this._newLogFile();
-        this.log(`${this.name}: Generating log file: ${this.fileTimestamp}.txt`);
+        this.log(`Generating log file: ${this.fileTimestamp}.txt`);
     }
 
     _updateLogFile() {
@@ -107,7 +107,7 @@ export default class Logger extends HiveComponent {
         const queue = this.queue;
         this.queue = [];
         queue.forEach((q) => this.log(q, true));
-        this.log(`${this.name}: Drain completed.`);
+        this.log(`Log file drain completed.`);
     }
 
     _getTimeStamp() {
