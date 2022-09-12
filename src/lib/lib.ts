@@ -144,3 +144,8 @@ export function applyMixins(derivedConstructor: any, baseConstructors: any[]) {
         });
     });
 }
+
+// Generic option wrapper
+export type Options<T> = {
+    [O in keyof T]?: T[O];
+};
