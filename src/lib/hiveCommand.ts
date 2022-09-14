@@ -65,7 +65,7 @@ export default class HiveCommand extends HiveComponent {
                 } else {
                     this.stdIO.output(message, signatures);
                 }
-            }
+            },
         };
         let result: any = '';
 
@@ -237,6 +237,12 @@ export class HiveSubCommand extends HiveCommand {
 
         if (this.callback) {
             return this.callback(this.getArguments(), this.getOptions(), info);
+        }
+
+        // action not set, try find help command
+        let help = this.findCommand('help');
+        if (help) {
+            return help.parse('', info);
         }
 
         return 'HiveCommand action not set';
