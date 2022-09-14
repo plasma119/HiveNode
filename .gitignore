@@ -2,4 +2,5 @@ dist/*
 node_modules/*
 src/os
 src/os/*
+log
 log/*

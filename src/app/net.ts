@@ -5,13 +5,15 @@ import HiveAppMessage from './net/message.js';
 import HiveAppPing from './net/ping.js';
 import HiveAppSSH from './net/ssh.js';
 import HiveAppView from './net/view.js';
+import HiveAppInfo from './net/info.js';
 
 export default class HiveAppNet extends HiveApp {
     apps: HiveApp[] = [
         new HiveAppPing(this.node),
         new HiveAppView(this.node),
         new HiveAppMessage(this.node),
-        new HiveAppSSH(this.node)
+        new HiveAppSSH(this.node),
+        new HiveAppInfo(this.node),
     ];
 
     constructor(node: HiveNetNode) {

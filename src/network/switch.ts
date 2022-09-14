@@ -1,13 +1,12 @@
-import HiveComponent from '../lib/component.js';
 import DataIO from './dataIO.js';
-import { HIVENETADDRESS, HiveNetPacket, DataSignature } from './hiveNet.js';
+import { HIVENETADDRESS, HiveNetPacket, DataSignature, HiveNetFlags, HiveNetDevice, HIVENETPORT } from './hiveNet.js';
 
 /*
     OSI model layer 2 - datalink layer
     use ttl to replace spanning tree for handling loop paths
 */
 
-export default class HiveNetSwitch extends HiveComponent {
+export default class HiveNetSwitch extends HiveNetDevice {
     IOs: DataIO[] = [];
     IOsTarget: { io: DataIO; targetIO: DataIO; target: DataIO | HiveNetSwitch }[] = [];
     addressTable: Map<string, { io: DataIO; timestamp: number }> = new Map();
@@ -16,14 +15,14 @@ export default class HiveNetSwitch extends HiveComponent {
     private _signature: DataSignature;
 
     constructor(name: string) {
-        super(name);
+        super(name, 'switch');
         this._signature = {
             by: this,
             name: this.name,
             timestamp: 0,
             UUID: this.UUID,
             event: 'route',
-        }
+        };
     }
 
     newIO(label = 'SwitchIO') {
@@ -60,16 +59,15 @@ export default class HiveNetSwitch extends HiveComponent {
         if (packet.dest === this.UUID || packet.dest === '' || packet.dest === HIVENETADDRESS.BROADCAST) {
             // ping
             if (packet.flags.ping) {
-                sender.output(
-                    new HiveNetPacket({
-                        data: Date.now(),
-                        src: this.UUID,
-                        dest: packet.src,
-                        dport: packet.sport,
-                        flags: { pong: true },
-                    })
-                );
+                this._returnPacket(sender, packet, Date.now(), {
+                    pong: true,
+                });
             }
+            // info
+            if (packet.dport === HIVENETPORT.INFO) {
+                this._returnPacket(sender, packet, this.getDeviceInfo(), {});
+            }
+            // forward broadcast packet
             if (packet.dest != HIVENETADDRESS.BROADCAST) return;
         }
 
@@ -78,15 +76,9 @@ export default class HiveNetSwitch extends HiveComponent {
         if (packet.ttl === 0 && !packet.flags.timeout) {
             // ttl-timeout
             if (packet.dest != HIVENETADDRESS.BROADCAST) {
-                sender.output(
-                    new HiveNetPacket({
-                        data: 'ttl-timeout',
-                        src: this.UUID,
-                        dest: packet.src,
-                        dport: packet.sport,
-                        flags: { timeout: true },
-                    })
-                );
+                this._returnPacket(sender, packet, 'ttl-timeout', {
+                    timeout: true,
+                });
             }
             return;
         }
@@ -124,5 +116,18 @@ export default class HiveNetSwitch extends HiveComponent {
         this.IOs.forEach((io) => {
             if (io != sender) io.output(packet, signatures.slice());
         });
+    }
+
+    _returnPacket(sender: DataIO, packet: HiveNetPacket, data: any, flags: HiveNetFlags) {
+        sender.output(
+            new HiveNetPacket({
+                data: data,
+                src: this.UUID,
+                sport: 0,
+                dest: packet.src,
+                dport: packet.sport,
+                flags: flags,
+            })
+        );
     }
 }

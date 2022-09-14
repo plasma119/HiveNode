@@ -14,7 +14,10 @@ export default class HiveApp implements HiveAppInterface {
     constructor(node: HiveNetNode, name: string) {
         this.node = node;
         this.name = name;
-        node.apps.push(this);
+        if (node.apps.has(name)) {
+            node.stdIO.output(`[Warning] HiveApp name duplication: ${name}`);
+        }
+        node.apps.set(name, this);
         this.init();
     }
 

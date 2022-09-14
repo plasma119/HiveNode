@@ -1,8 +1,7 @@
-import HiveComponent from '../lib/component.js';
 import HiveCommand from '../lib/hiveCommand.js';
 import { sleep } from '../lib/lib.js';
 import DataIO from './dataIO.js';
-import { HIVENETPORT } from './hiveNet.js';
+import { HiveNetDevice, HIVENETPORT } from './hiveNet.js';
 import HTP from './protocol.js';
 import HiveNetInterface from './interface.js';
 import { version } from '../index.js';
@@ -12,7 +11,7 @@ import HiveAppNet from '../app/net.js';
 /*
     OSI model layer 6 - presentation layer
 */
-export default class HiveNetNode extends HiveComponent {
+export default class HiveNetNode extends HiveNetDevice {
     stdIO: DataIO = new DataIO(this, 'stdIO');
     netInterface: HiveNetInterface;
     HTP: HTP;
@@ -20,10 +19,10 @@ export default class HiveNetNode extends HiveComponent {
 
     stdIOPortIO?: DataIO;
 
-    apps: HiveApp[] = [];
+    apps: Map<string, HiveApp> = new Map();
 
     constructor(name: string) {
-        super(name);
+        super(name, 'node');
         this.netInterface = new HiveNetInterface(name);
         this.HTP = new HTP(this.netInterface);
         this.shell = new HiveCommand();
@@ -49,7 +48,7 @@ export default class HiveNetNode extends HiveComponent {
             info.reply('exiting...');
             await sleep(1000);
             process.exit();
-        })
+        });
     }
 
     initPorts() {

@@ -30,11 +30,11 @@ export default class Hive extends HiveComponent {
     initShell() {
         let h = this.terminalShell.addNewCommand('hivenet', 'HiveNet Commands');
 
-        h.addNewCommand('connect', 'Connect terminal to target node via HiveNet')
+        h.addNewCommand('connectTerminal', 'Connect terminal to target node via HiveNet')
             .addNewArgument('<UUID>', 'target UUID')
             .setAction((args) => (this._terminalDest = args['UUID']));
 
-        h.addNewCommand('disconnect', 'Connect terminal back to local node').setAction(() => (this._terminalDest = HIVENETADDRESS.LOCAL));
+        h.addNewCommand('disconnectTerminal', 'Connect terminal back to local node').setAction(() => (this._terminalDest = HIVENETADDRESS.LOCAL));
 
         h.addNewCommand('listen', 'Enable HiveNet connection')
             .addNewOption('-port <port>', 'port to listen', '8080')
@@ -86,7 +86,7 @@ export default class Hive extends HiveComponent {
         return socket;
     }
 
-    buildTerminal(headless?: boolean, debug?: boolean) {
+    buildTerminal(headless: boolean = false, debug: boolean = false) {
         // TODO: rework with terminal
         const dt = new DataTransformer(this.node.stdIO);
         dt.setInputTransform((data) => {

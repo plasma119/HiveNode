@@ -1,12 +1,6 @@
+import { version } from '../index.js';
+import HiveComponent from '../lib/component.js';
 import { typeCheck } from '../lib/lib.js';
-
-export type HiveNetFlags = {
-    ping?: boolean;
-    pong?: boolean;
-    ack?: boolean;
-    nak?: boolean;
-    timeout?: boolean;
-};
 
 export type DataSignature = {
     by: object;
@@ -14,6 +8,14 @@ export type DataSignature = {
     timestamp: number;
     UUID: string;
     event: string;
+};
+
+export type HiveNetFlags = {
+    ping?: boolean;
+    pong?: boolean;
+    ack?: boolean;
+    nak?: boolean;
+    timeout?: boolean;
 };
 
 export class HiveNetPacket {
@@ -45,20 +47,6 @@ export class HiveNetPacket {
     }
 }
 
-export const HIVENETADDRESS = {
-    BROADCAST: 'HiveNet-address-Broadcast',
-    LOCAL: 'HiveNet-address-Local',
-};
-export const HIVENETPORT = {
-    DISCARD: 10,
-    PING: 11,
-    MESSAGE: 12,
-    SHELL: 20,
-    STDIO: 21,
-    SSH: 22,
-    HTPSEND: 30,
-};
-
 const HiveNetPacketStructure = {
     data: 'any',
     src: 'string',
@@ -73,6 +61,49 @@ const HiveNetPacketStructure = {
         nak: 'boolean',
         timeout: 'boolean',
     },
+};
+
+export type HiveNetDeviceType = 'switch' | 'node' | 'unknown';
+
+export type HiveNetDeviceInfo = {
+    UUID: string;
+    name: string;
+    type: HiveNetDeviceType;
+    HiveNodeVersion: string;
+}
+
+export class HiveNetDevice extends HiveComponent {
+    deviceType: HiveNetDeviceType
+
+    constructor(name: string, deviceType: HiveNetDeviceType) {
+        super(name);
+        this.deviceType = deviceType;
+    }
+
+    getDeviceInfo(): HiveNetDeviceInfo {
+        return {
+            UUID: this.UUID,
+            name: this.name,
+            type: this.deviceType,
+            HiveNodeVersion: version
+        }
+    }
+}
+
+export const HIVENETADDRESS = {
+    BROADCAST: 'HiveNet-address-Broadcast',
+    LOCAL: 'HiveNet-address-Local',
+};
+
+export const HIVENETPORT = {
+    DISCARD: 10,
+    PING: 11,
+    MESSAGE: 12,
+    INFO: 13,
+    SHELL: 20,
+    STDIO: 21,
+    SSH: 22,
+    HTPSEND: 30,
 };
 
 export function DataSignaturesToString(signatures: DataSignature[]) {
