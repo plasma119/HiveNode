@@ -17,6 +17,10 @@ export default class HiveNetInterface extends HiveComponent {
         this.netIO.on('input', (data, signatures) => {
             if (data instanceof HiveNetPacket) {
                 this.addressTable.set(data.src, Date.now());
+                if (data.dest != this.UUID) {
+                    // wrong destination, ignore it
+                    return;
+                }
                 const port = this.ports.get(data.dport);
                 if (port) {
                     // route packet

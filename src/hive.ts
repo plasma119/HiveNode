@@ -15,6 +15,7 @@ export default class Hive extends HiveComponent {
     switch: HiveNetSwitch;
     server?: WebSocket.Server;
 
+    terminal?: Terminal
     terminalShell: HiveCommand;
     _terminalDest: string = HIVENETADDRESS.LOCAL;
 
@@ -28,6 +29,11 @@ export default class Hive extends HiveComponent {
     }
 
     initShell() {
+        this.terminalShell.addNewCommand('debug', 'Toggle Terminal debug')
+            .setAction(() => {
+                if (this.terminal && this.terminal.prompt) this.terminal.prompt.debug = !this.terminal.prompt.debug;
+            })
+
         let h = this.terminalShell.addNewCommand('hivenet', 'HiveNet Commands');
 
         h.addNewCommand('connectTerminal', 'Connect terminal to target node via HiveNet')
@@ -107,6 +113,7 @@ export default class Hive extends HiveComponent {
             dt.stdIO.on('output', (data) => console.log(data));
         } else {
             const terminal = new Terminal();
+            this.terminal = terminal;
             terminal.connectDevice(process);
             terminal.connectDevice(dt.stdIO);
             if (terminal.prompt && debug) terminal.prompt.debug = debug;
