@@ -14,17 +14,20 @@ exitHelper.onSIGINT(() => {
 });
 exitHelper.addCleanUp(() => {
     return new Promise(async (resolve) => {
+        resolve();
         while (!foo) {
             await sleep(3000);
             console.log('Zzz...');
         }
-        resolve();
     })
 });
 exitHelper.addCleanUp(async () => {
     await sleep(10000);
     console.log('BANG!');
     foo = true;
+});
+exitHelper.onProgramExit(() => {
+    console.log('really exiting.');
 });
 
 (async () => {

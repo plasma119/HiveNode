@@ -77,6 +77,19 @@
             ]
         },
         {
+            "name": "exit helper Test",
+            "request": "launch",
+            "type": "node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\tests\\exitHelper_test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
             "name": "Terminal Test",
             "request": "launch",
             "type": "node",

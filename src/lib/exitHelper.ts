@@ -1,9 +1,8 @@
-
 import { IgnoreSIGINT, Signal } from './signals.js';
 
 export default class ExitHelper {
     exiting: boolean = false;
-    cleanUpList: (() => void | Promise<void>)[] = [];
+    cleanUpList: ((exitCode: NodeJS.Signals) => void | Promise<void>)[] = [];
 
     exitCallback?: Function;
     SIGINTCallback?: Function;
@@ -13,7 +12,7 @@ export default class ExitHelper {
         //process.on('exit', exitHandler);
         process.on('SIGTERM', this._exitHandler);
         process.on('SIGHUP', this._exitHandler);
-        
+
         //catches ctrl+c event
         process.on('SIGINT', (exitCode) => {
             if (this.SIGINTCallback) {
@@ -22,33 +21,37 @@ export default class ExitHelper {
             }
             this._exitHandler(exitCode);
         });
-        
+
         // catches "kill pid" (for example: nodemon restart)
         process.on('SIGUSR1', this._exitHandler);
         process.on('SIGUSR2', this._exitHandler);
-        
+
         //catches uncaught exceptions
-        //process.on('uncaughtException', this.exitHandler);
+        process.on('uncaughtException', this._exitHandler);
+        process.on('unhandledRejection', this._exitHandler);
     }
 
     async _exitHandler(exitCode: NodeJS.Signals) {
-        if (this.exiting) process.exit(); // user really want to exit
+        if (this.exiting) process.exit(); // user really want to exit/error during exit handling
         this.exiting = true;
         process.stdout.write(exitCode + '\n');
         process.stdout.write(`Exiting...\n`);
         if (this.cleanUpList) {
             process.stdout.write(`Cleaning up...\n`);
-            try {
-                await Promise.allSettled(this.cleanUpList.map(c => c()).filter(r => r));
-            } catch (e) {
-                console.log(e);
+            //await Promise.allSettled(this.cleanUpList.map(cleanup => cleanup()).filter(notVoid => notVoid));
+            for (let i = 0; i < this.cleanUpList.length; i++) {
+                try {
+                    await this.cleanUpList[i](exitCode);
+                } catch (e) {
+                    console.log(e);
+                }
             }
         }
-        if (this.exitCallback) await this.exitCallback(exitCode);
+        if (this.exitCallback) this.exitCallback(exitCode);
         process.exit();
     }
 
-    addCleanUp(callback: () => void | Promise<void>) {
+    addCleanUp(callback: (exitCode: NodeJS.Signals) => void | Promise<void>) {
         this.cleanUpList.push(callback);
     }
 
