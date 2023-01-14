@@ -52,6 +52,8 @@ program.addNewCommand('test5', 'return promise').setAction(() => {
     });
 });
 
+let program2 = HiveCommand.fromImport(program.export());
+
 let list = [
     'testInvalid',
 
@@ -88,6 +90,23 @@ let list = [
 ];
 
 (async () => {
+    for (let i = 0; i < list.length; i++) {
+        try {
+            console.log(list[i]);
+            io.output(list[i]);
+            await sleep(100);
+        } catch (e) {
+            if (e instanceof Error) {
+                console.log(e.message);
+            } else {
+                console.log(e);
+            }
+        }
+    }
+
+    io.disconnect(program.stdIO);
+    io.connect(program2.stdIO);
+
     for (let i = 0; i < list.length; i++) {
         try {
             console.log(list[i]);

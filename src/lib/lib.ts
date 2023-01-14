@@ -104,22 +104,48 @@ export function duckTypeCheck(obj: any, model: any) {
 export function typeCheck(obj: any, model: any) {
     for (let prop in model) {
         const type = model[prop];
+        const data = obj[prop];
         if (!(prop in obj)) {
             // property not exist on obj
             return false;
         }
-        if (type === 'any') continue;
-        if (type === 'array' && !Array.isArray(obj[prop])) {
-            // simple array check, dose not check type inside array
-            return false;
+        if (typeof type === 'string') {
+            if (!typeCheckHelper(data, type)) return false;
+        } else if (Array.isArray(type) && Array.isArray(data)) {
+            // detailed array check
+            for (let i = 0; i < data.length; i++) {
+                let failed = false;
+                for (let j = 0; j < type.length; j++) {
+                    if (typeCheck(data[i], type[j])) break;
+                    failed = true;
+                }
+                if (failed) return false;
+            }
         } else if (typeof type === 'object') {
             // recursive typecheck
-            if (!typeCheck(obj[prop], type)) return false;
-        } else if (typeof obj[prop] !== type) {
+            if (!typeCheck(data, type)) return false;
+        } else if (typeof data !== type) {
             // property type not matching
             return false;
         }
     }
+    return true;
+}
+
+function typeCheckHelper(data: any, type: string) {
+    let tokens = type.split('|');
+    for (let i = 0; i < tokens.length; i++) {
+        if (typeCheckSimple(data, tokens[i])) return true;
+    }
+    return false;
+}
+
+function typeCheckSimple(data: any, type: string) {
+    if (type === 'any') return true;
+    if (type === 'array') {
+        // simple array check, dose not check type inside array
+        if (!Array.isArray(data)) return false;
+    } else if (type != typeof data) return false;
     return true;
 }
 

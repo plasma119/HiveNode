@@ -37,6 +37,7 @@ export type HiveCommandExport = {
 
 const HiveCommandStructure = {
     name: 'string',
+    description: 'string',
     args: [
         {
             name: 'string',
@@ -48,7 +49,7 @@ const HiveCommandStructure = {
         {
             name: 'string',
             description: 'string',
-            defaultValue: 'string',
+            defaultValue: 'boolean|string',
         },
     ],
     cmds: 'array',
