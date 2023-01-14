@@ -7,7 +7,7 @@ import { parseArgsStringToArgv } from 'string-argv';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetPacket } from '../network/hiveNet.js';
 import HiveComponent from './component.js';
-import { formatTab } from './lib.js';
+import { formatTab, typeCheck } from './lib.js';
 
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: string]: boolean | string }, info: HiveCommandInfo) => any;
 
@@ -19,24 +19,63 @@ export type HiveCommandInfo = {
     reply: (message: any) => void;
 };
 
+export type HiveCommandExport = {
+    name: string;
+    description: string;
+    args: {
+        name: string;
+        description: string;
+        defaultValue: string;
+    }[];
+    opts: {
+        name: string;
+        description: string;
+        defaultValue: boolean | string;
+    }[];
+    cmds: HiveCommandExport[];
+};
+
+const HiveCommandStructure = {
+    name: 'string',
+    args: [
+        {
+            name: 'string',
+            description: 'string',
+            defaultValue: 'string',
+        },
+    ],
+    opts: [
+        {
+            name: 'string',
+            description: 'string',
+            defaultValue: 'string',
+        },
+    ],
+    cmds: 'array',
+};
+
 class HiveCommandError extends Error {}
 
 export default class HiveCommand extends HiveComponent {
     commands: Map<String, HiveSubCommand> = new Map();
     stdIO: DataIO;
+    isHelpCmd: boolean; // for auto-generated help command
 
     constructor(name: string = 'HiveCommand', stdIO?: DataIO, helpCmd: HiveSubCommand | boolean = true) {
         super(name);
         this.stdIO = stdIO || new DataIO(this, 'HiveCommand-stdIO');
+        this.isHelpCmd = false;
         if (!(this instanceof HiveSubCommand)) {
             this.stdIO.on('input', this._inputHandler.bind(this));
         }
         if (helpCmd instanceof HiveSubCommand) {
             this.addCommand(helpCmd);
         } else if (helpCmd) {
-            this.addNewCommand('help', 'display help')
+            // this one is basic help command, so it needs sub-command 'help' for detailed help
+            let help = this.addNewCommand('help', 'display help')
                 .addNewArgument('[cmd]', 'display help for specific command')
                 .setAction(this.helpCallback.bind(this));
+            help.isHelpCmd = true; // it's help command with 'help' sub-command
         }
     }
 
@@ -104,11 +143,8 @@ export default class HiveCommand extends HiveComponent {
         return cmd;
     }
 
-    addNewCommand(nameAndArgs: string, description = '', isHelpCmd = false) {
-        const o = HiveCommand.splitCommandStr(nameAndArgs);
-        if (!o) throw new HiveCommandError('Invalid command format');
-        const cmd = new HiveSubCommand(this, o.name, description, isHelpCmd);
-        if (o.args) cmd.addNewArguments(o.args);
+    addNewCommand(name: string, description = '', isHelpCmd = false) {
+        const cmd = new HiveSubCommand(this, name, description, isHelpCmd);
         this.addCommand(cmd);
         return cmd;
     }
@@ -136,11 +172,44 @@ export default class HiveCommand extends HiveComponent {
         }
     }
 
+    import(data: HiveCommandExport, safe: boolean = false) {
+        if (!safe && !typeCheck(data, HiveCommandStructure)) throw new HiveCommandError('Invalid HiveCommandExport data!');
+        this.name = data.name;
+        this.commands.forEach((cmd, key) => {
+            if (!cmd.isHelpCmd) this.commands.delete(key);
+        });
+        data.cmds.forEach((cmdData) => {
+            if (!typeCheck(cmdData, HiveCommandStructure)) throw new HiveCommandError('Invalid HiveCommandExport data!');
+            let cmd = this.addNewCommand(cmdData.name, cmdData.description);
+            cmd.import(cmdData);
+        });
+    }
+
+    export() {
+        let result: HiveCommandExport = {
+            name: this.name,
+            description: '',
+            args: [],
+            opts: [],
+            cmds: [],
+        };
+        this.commands.forEach((cmd) => {
+            if (!cmd.isHelpCmd) result.cmds.push(cmd.export());
+        });
+        return result;
+    }
+
     static splitCommandStr(command: string) {
         const result = command.match(/([^ ]+) *(.*)/);
         if (!result) return null;
         const [, name, args] = result;
         return { name, args };
+    }
+
+    static fromImport(data: HiveCommandExport) {
+        let cmd = new HiveCommand();
+        cmd.import(data);
+        return cmd;
     }
 }
 
@@ -157,6 +226,7 @@ export class HiveSubCommand extends HiveCommand {
         this.program = program;
         this.baseProgram = this.getBaseProgram();
         this.description = description;
+        this.isHelpCmd = isHelpCmd;
         if (!isHelpCmd) {
             this.addNewCommand('help', 'display help', true)
                 .addNewArgument('[cmd]', 'display help for specific sub-command')
@@ -295,10 +365,14 @@ export class HiveSubCommand extends HiveCommand {
         return this;
     }
 
-    addNewArguments(names: string) {
-        names.split(/ +/).forEach((name) => {
-            this.addNewArgument(name);
-        });
+    addNewArguments(
+        argumentArr: {
+            name: string;
+            description?: string;
+            defaultValue?: string;
+        }[]
+    ) {
+        argumentArr.forEach((arg) => this.addNewArgument(arg.name, arg.description, arg.defaultValue));
         return this;
     }
 
@@ -308,16 +382,20 @@ export class HiveSubCommand extends HiveCommand {
         return this;
     }
 
-    addNewOption(flag: string, description = '', defaultValue: boolean | string = false) {
-        const option = new HiveOption(this, flag, description, defaultValue);
+    addNewOption(name: string, description = '', defaultValue: boolean | string = false) {
+        const option = new HiveOption(this, name, description, defaultValue);
         this.addOption(option);
         return this;
     }
 
-    addNewOptions(flags: string) {
-        flags.split(/ +/).forEach((flag) => {
-            this.addNewArgument(flag);
-        });
+    addNewOptions(
+        optionArr: {
+            name: string;
+            description?: string;
+            defaultValue?: boolean | string;
+        }[]
+    ) {
+        optionArr.forEach((opt) => this.addNewOption(opt.name, opt.description, opt.defaultValue));
         return this;
     }
 
@@ -382,6 +460,33 @@ export class HiveSubCommand extends HiveCommand {
 
             return output;
         }
+    }
+
+    import(data: HiveCommandExport, safe: boolean = false) {
+        super.import(data, safe);
+        this.description = data.description;
+        this.addNewArguments(data.args);
+        this.addNewOptions(data.opts);
+    }
+
+    export() {
+        let result = super.export();
+        result.description = this.description;
+        this.arguments.forEach((arg) => {
+            result.args.push({
+                name: arg.name,
+                description: arg.description,
+                defaultValue: arg.defaultValue,
+            });
+        });
+        this.options.forEach((opt) => {
+            result.opts.push({
+                name: opt.name,
+                description: opt.description,
+                defaultValue: opt.defaultValue,
+            });
+        });
+        return result;
     }
 }
 
