@@ -124,9 +124,6 @@ export function typeCheck(obj: any, model: any) {
         } else if (typeof type === 'object') {
             // recursive typecheck
             if (!typeCheck(data, type)) return false;
-        } else if (typeof data !== type) {
-            // property type not matching
-            return false;
         }
     }
     return true;
@@ -145,7 +142,10 @@ function typeCheckSimple(data: any, type: string) {
     if (type === 'array') {
         // simple array check, dose not check type inside array
         if (!Array.isArray(data)) return false;
-    } else if (type != typeof data) return false;
+    } else if (type != typeof data) {
+        // property type not matching
+        return false;
+    }
     return true;
 }
 
