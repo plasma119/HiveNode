@@ -11,6 +11,8 @@ export default class HiveNetInterface extends HiveComponent {
     ports: Map<number, DataIO> = new Map();
     addressTable: Map<string, number> = new Map();
 
+    nextPortNumber: number = 10000;
+
     constructor(name: string) {
         super(name);
         // port routing
@@ -52,14 +54,18 @@ export default class HiveNetInterface extends HiveComponent {
         const io = new DataIO(this, `portIO:${port}`);
         this.ports.set(port, io);
         io.on('input', (data, signatures) => {
-            if (data instanceof HiveNetPacket) {
-                data.src = this.UUID;
-                data.sport = port;
-            }
+            // ignore invalid packet
+            if (!(data instanceof HiveNetPacket)) return;
+
+            // stamp packet
+            data.src = this.UUID;
+            data.sport = port;
+
             if (data.src === data.dest || data.dest === HIVENETADDRESS.LOCAL) {
                 // loopback address
                 this.netIO.input(data, signatures);
             } else {
+                // send to netIO
                 this.netIO.output(data, signatures);
             }
         });
@@ -68,11 +74,8 @@ export default class HiveNetInterface extends HiveComponent {
     }
 
     newRandomPortNumber() {
-        let port = 0;
-        let i = 0;
-        do {
-            port = 10000 + Math.floor(Math.random() * 50000);
-        } while (i++ < 20 && this.ports.has(port));
+        let port = this.nextPortNumber++;
+        if (this.ports.has(port)) throw new Error('HiveNetInterface: failed to generate new port number');
         return port;
     }
 
