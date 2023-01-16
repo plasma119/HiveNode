@@ -1,4 +1,3 @@
-
 import { inspect } from 'util';
 
 import WebSocket from 'ws';
@@ -6,21 +5,21 @@ import WebSocket from 'ws';
 import { version } from '../index.js';
 import DataIO from './dataIO.js';
 import HiveCommand from '../lib/hiveCommand.js';
-import { Encryption, sleep } from '../lib/lib.js';
+import { Encryption, sleep, typeCheck } from '../lib/lib.js';
 
 export type SocketInfo = {
-    name: string
-    version: string
-    handShakeDone: boolean
-}
+    name: string;
+    version: string;
+    handShakeDone: boolean;
+};
 
 const DEFAULTSOCKETINFO: SocketInfo = {
     name: 'unknown',
     version: 'unknwon',
-    handShakeDone: false
-}
+    handShakeDone: false,
+};
 
-export type SocketSecret = {
+type SocketSecret = {
     algorithm: string;
     noise: string;
     noise2: string;
@@ -28,19 +27,20 @@ export type SocketSecret = {
     salt2: string;
     secret: string;
     key?: Buffer;
-}
+};
 
 const DEFAULTSOCKETSECRET: SocketSecret = {
-    algorithm: "aes-256-ctr",
+    algorithm: 'aes-256-ctr',
     noise: '',
     noise2: '',
     salt: 'cake',
     salt2: 'lie',
-    secret: ''
-}
+    secret: '',
+};
 
 /*
     OSI model layer 3 - network layer
+    TODO: decoder program for advance socket control
 */
 export default class HiveSocket {
     name: string;
@@ -85,13 +85,15 @@ export default class HiveSocket {
         this._ss.secret = Encryption.hash(secret).digest('base64');
     }
 
-    new(host: string, port: string | number): Promise<HiveSocket> {
+    // client socket
+    new(host: string, port: string | number): Promise<SocketInfo> {
         if (this.ws) this.disconnect();
         this.ws = new WebSocket(`ws://${host}:${port}`);
         return this._connect(this.ws, true);
     }
 
-    use(socket: WebSocket): Promise<HiveSocket> {
+    // server socket
+    use(socket: WebSocket): Promise<SocketInfo> {
         if (this.ws) this.disconnect();
         this.ws = socket;
         return this._connect(socket, false);
@@ -103,7 +105,7 @@ export default class HiveSocket {
         this.ws = undefined;
     }
 
-    _connect(socket: WebSocket, newConnection: boolean): Promise<HiveSocket> {
+    _connect(socket: WebSocket, isClient: boolean): Promise<SocketInfo> {
         this.updateInfo();
         this._ss = Object.create(DEFAULTSOCKETSECRET);
         this.targetInfo = Object.create(DEFAULTSOCKETINFO);
@@ -112,19 +114,22 @@ export default class HiveSocket {
         return new Promise(async (resolve, reject) => {
             const ready = async () => {
                 this.stdIO.output(`WebSocket Connected. Now exchanging secret key...`);
-                await this._handShake(newConnection).catch(() => {
-                    this._handShakeCallback = undefined;
-                    reject();
-                });
-                return resolve(this);
-            }
+                this._handShake(isClient)
+                    .then((info) => {
+                        resolve(info);
+                    })
+                    .catch(() => {
+                        this._handShakeCallback = undefined;
+                        reject('HandShake failed.');
+                    });
+            };
             socket.on('message', this._recieveHandler.bind(this));
             socket.on('error', (e) => {
                 this.stdIO.output(e.message);
                 this.ws = undefined;
-                return reject();
+                reject(e);
             });
-            if (newConnection) {
+            if (isClient) {
                 socket.on('open', ready);
             } else {
                 ready();
@@ -132,98 +137,129 @@ export default class HiveSocket {
         });
     }
 
-    _handShake(startHandshake: boolean): Promise<void> {
+    _handShake(isClient: boolean): Promise<SocketInfo> {
         return new Promise(async (resolve, reject) => {
-            const flags: {[key: string]: boolean} = {};
+            const flags: { [key: string]: boolean } = {};
 
-            const shake = async (func: Function, flag: string) => {
+            const shake = async (func: () => () => void, flag: string) => {
+                let echo = func();
                 let i = 0;
-                while (i++ < 5 && !flags[flag] && !this.targetInfo.handShakeDone) {
-                    func();
+                while (i++ < 10 && !flags[flag] && !this.targetInfo.handShakeDone) {
+                    echo();
                     await sleep(1000);
                 }
                 if (!flags[flag] && !this.targetInfo.handShakeDone) {
-                    this.stdIO.output(`ERROR: HandShake timeout`);
-                    reject();
+                    this.stdIO.output(`ERROR: HandShake timeout: flag[${flag}]`);
+                    reject(`HandShake timeout: flag[${flag}]`);
                 }
-            }
+            };
 
+            // client
             const buzz = () => {
-                this._send('buzz', JSON.stringify({
-                    info: this.info
-                }));
-            }
+                return () => {
+                    this._send(
+                        'buzz',
+                        JSON.stringify({
+                            info: this.info,
+                        })
+                    );
+                };
+            };
+
+            // server
             const fuzz = () => {
                 this._ss.noise = Encryption.randomData().toString('base64');
-                this._send('fuzz', JSON.stringify({
-                    info: this.info,
-                    noise: this._ss.noise
-                }));
-            }
+                return () => {
+                    this._send(
+                        'fuzz',
+                        JSON.stringify({
+                            info: this.info,
+                            noise: this._ss.noise,
+                        })
+                    );
+                };
+            };
+
+            // client
             const hive = () => {
                 this._ss.noise2 = Encryption.randomData().toString('base64');
                 const proof = Encryption.hash(this._ss.noise);
                 proof.update(this._ss.salt);
                 proof.update(this._ss.secret);
-                this._send('hive', JSON.stringify({
-                    proof: proof.digest('base64'),
-                    noise2: this._ss.noise2
-                }));
-            }
+                return () => {
+                    this._send(
+                        'hive',
+                        JSON.stringify({
+                            proof: proof.digest('base64'),
+                            noise2: this._ss.noise2,
+                        })
+                    );
+                };
+            };
+
+            // server
             const mind = () => {
                 const proof = Encryption.hash(this._ss.noise2);
                 proof.update(this._ss.salt2);
                 proof.update(this._ss.secret);
-                this._send('mind', JSON.stringify({
-                    proof: proof.digest('base64')
-                }));
-            }
+                return () => {
+                    this._send(
+                        'mind',
+                        JSON.stringify({
+                            proof: proof.digest('base64'),
+                        })
+                    );
+                };
+            };
+
+            // both
             const ready = () => {
                 const salt = Encryption.hash(this._ss.noise).update(this._ss.noise).digest('base64');
                 this._ss.key = Encryption.genKey(this._ss.secret, salt);
                 this.handShakeDone = true;
-                this._send('ready', '');
-            }
+                return () => {
+                    this._send('ready', '');
+                };
+            };
 
             this._handShakeCallback = (header, data) => {
                 // this.stdIO.output(`DEBUG: recieved: ${header}`);
-                switch(header) {
+                switch (header) {
+                    // both
                     case 'ready':
                         flags['ready'] = true;
                         this.targetInfo.handShakeDone = true;
                         this._handShakeCallback = undefined;
-                        resolve();
+                        resolve(this.targetInfo);
                         break;
 
                     // client
                     case 'fuzz':
                         {
-                            let json = this._parseJSON(data);
-                            if (typeof json != 'object') break;
-                            let info = json.info
-                            let noise = json.noise
-                            if (typeof info == 'object' && typeof noise == 'string') {
-                                Object.assign(this.targetInfo, info);
-                                this._ss.noise = noise;
-                                flags['fuzz'] = true;
-                                shake(hive, 'mind');
-                            }
+                            let json = this._parseJSON(data, {
+                                info: 'object',
+                                noise: 'string',
+                            });
+                            if (!json) break;
+                            Object.assign(this.targetInfo, json.info);
+                            this._ss.noise = json.noise;
+                            flags['fuzz'] = true;
+                            shake(hive, 'mind');
                         }
                         break;
 
                     case 'mind':
                         {
-                            let json = this._parseJSON(data);
-                            if (typeof json != 'object') break;
-                            let proof = json.proof;
-                            if (typeof proof == 'string') {
-                                const myproof = Encryption.hash(this._ss.noise2);
-                                myproof.update(this._ss.salt2);
-                                myproof.update(this._ss.secret);
-                                if (myproof.digest('base64') == proof) {
-                                    flags['mind'] = true;
-                                    shake(ready, 'ready');
-                                }
+                            let json = this._parseJSON(data, {
+                                proof: 'string',
+                            });
+                            if (!json) break;
+                            const myproof = Encryption.hash(this._ss.noise2);
+                            myproof.update(this._ss.salt2);
+                            myproof.update(this._ss.secret);
+                            if (myproof.digest('base64') == json.proof) {
+                                flags['mind'] = true;
+                                shake(ready, 'ready');
                             }
                         }
                         break;
@@ -231,10 +267,11 @@ export default class HiveSocket {
                     // server
                     case 'buzz':
                         {
-                            let json = this._parseJSON(data);
-                            if (typeof json != 'object') break;
-                            let info = json.info;
-                            if (typeof info == 'object') Object.assign(this.targetInfo, info);
+                            let json = this._parseJSON(data, {
+                                info: 'object',
+                            });
+                            if (!json) break;
+                            Object.assign(this.targetInfo, json.info);
                             flags['buzz'] = true;
                             shake(fuzz, 'hive');
                         }
@@ -242,32 +279,35 @@ export default class HiveSocket {
 
                     case 'hive':
                         {
-                            let json = this._parseJSON(data);
-                            if (typeof json != 'object') break;
-                            let proof = json.proof;
-                            let noise2 = json.noise2;
-                            if (typeof proof == 'string' && typeof noise2 == 'string') {
-                                const myproof = Encryption.hash(this._ss.noise);
-                                myproof.update(this._ss.salt);
-                                myproof.update(this._ss.secret);
-                                if (myproof.digest('base64') == proof) {
-                                    this._ss.noise2 = noise2;
-                                    flags['hive'] = true;
-                                    shake(mind, 'ready');
-                                    shake(ready, 'ready');
-                                }
+                            let json = this._parseJSON(data, {
+                                proof: 'string',
+                                noise2: 'string',
+                            });
+                            if (!json) break;
+                            const myproof = Encryption.hash(this._ss.noise);
+                            myproof.update(this._ss.salt);
+                            myproof.update(this._ss.secret);
+                            if (myproof.digest('base64') == json.proof) {
+                                this._ss.noise2 = json.noise2;
+                                flags['hive'] = true;
+                                shake(mind, 'ready');
+                                shake(ready, 'ready');
                             }
                         }
                         break;
                 }
-            }
-            if (startHandshake) shake(buzz, 'fuzz');
+            };
+
+            // client start handShake sequence
+            if (isClient) shake(buzz, 'fuzz');
         });
     }
 
-    _parseJSON(data: string) {
+    _parseJSON(data: string, structure: any) {
         try {
-            return JSON.parse(data);
+            const obj = JSON.parse(data);
+            if (!typeCheck(obj, structure)) return null;
+            return obj;
         } catch (e) {
             return null;
         }
@@ -299,7 +339,7 @@ export default class HiveSocket {
         } else if (this._handShakeCallback) {
             try {
                 this._handShakeCallback(header, data);
-            } catch(e) {
+            } catch (e) {
                 this.stdIO.output(e);
             }
         }
@@ -349,6 +389,4 @@ export default class HiveSocket {
         }
         return '';
     }
-
 }
-
