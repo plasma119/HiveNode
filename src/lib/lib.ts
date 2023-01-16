@@ -84,6 +84,10 @@ export function sleep(ms: number) {
     });
 }
 
+export function isFunction(target: any): boolean {
+    return target && (Object.prototype.toString.call(target) === '[object Function]' || 'function' === typeof target || target instanceof Function);
+}
+
 // https://stackoverflow.com/questions/57118453/structural-type-checking-in-javascript
 // this one is for simple object checking only
 export function duckTypeCheck(obj: any, model: any) {
@@ -101,27 +105,31 @@ export function duckTypeCheck(obj: any, model: any) {
 }
 
 // check is obj in the format described by model
-export function typeCheck(obj: any, model: any) {
+export function typeCheck(obj: any, model: any): boolean {
     for (let prop in model) {
         const type = model[prop];
         const data = obj[prop];
+        if (type === 'any') return true;
         if (!(prop in obj)) {
             // property not exist on obj
             return false;
         }
-        if (typeof type === 'string') {
+        if (typeof type == 'string') {
             if (!typeCheckHelper(data, type)) return false;
         } else if (Array.isArray(type) && Array.isArray(data)) {
             // detailed array check
             for (let i = 0; i < data.length; i++) {
-                let failed = false;
+                let pass = false;
                 for (let j = 0; j < type.length; j++) {
-                    if (typeCheck(data[i], type[j])) break;
-                    failed = true;
+                    // check multiple possible types defined in model
+                    if (typeCheck(data[i], type[j])) {
+                        pass = true;
+                        break;
+                    }
                 }
-                if (failed) return false;
+                if (!pass) return false;
             }
-        } else if (typeof type === 'object') {
+        } else if (typeof type == 'object') {
             // recursive typecheck
             if (!typeCheck(data, type)) return false;
         }
@@ -129,7 +137,7 @@ export function typeCheck(obj: any, model: any) {
     return true;
 }
 
-function typeCheckHelper(data: any, type: string) {
+function typeCheckHelper(data: any, type: string): boolean {
     let tokens = type.split('|');
     for (let i = 0; i < tokens.length; i++) {
         if (typeCheckSimple(data, tokens[i])) return true;
@@ -137,16 +145,14 @@ function typeCheckHelper(data: any, type: string) {
     return false;
 }
 
-function typeCheckSimple(data: any, type: string) {
-    if (type === 'any') return true;
-    if (type === 'array') {
+function typeCheckSimple(data: any, type: string): boolean {
+    if (type == 'function') {
+        return isFunction(data);
+    } else if (type == 'array') {
         // simple array check, dose not check type inside array
-        if (!Array.isArray(data)) return false;
-    } else if (type != typeof data) {
-        // property type not matching
-        return false;
+        return Array.isArray(data);
     }
-    return true;
+    return type == typeof data;
 }
 
 export function debounce(func: Function, timeout: number = 300) {
