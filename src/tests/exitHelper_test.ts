@@ -1,9 +1,8 @@
 
-import ExitHelper from "../lib/exitHelper.js";
+import exitHelper from "../lib/exitHelper.js";
 import { sleep } from "../lib/lib.js";
 import { IgnoreSIGINT } from "../lib/signals.js";
 
-let exitHelper = new ExitHelper();
 let foo = false;
 let boo = false;
 exitHelper.onSIGINT(() => {

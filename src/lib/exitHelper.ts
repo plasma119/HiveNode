@@ -1,6 +1,6 @@
 import { IgnoreSIGINT, Signal } from './signals.js';
 
-export default class ExitHelper {
+class ExitHelper {
     exiting: boolean = false;
     cleanUpList: ((exitCode: NodeJS.Signals) => void | Promise<void>)[] = [];
 
@@ -34,8 +34,8 @@ export default class ExitHelper {
     async _exitHandler(exitCode: NodeJS.Signals) {
         if (this.exiting) process.exit(); // user really want to exit/error during exit handling
         this.exiting = true;
-        process.stdout.write(exitCode + '\n');
-        process.stdout.write(`Exiting...\n`);
+        process.stdout.write(exitCode);
+        process.stdout.write(`\nExiting...\n`);
         if (this.cleanUpList) {
             process.stdout.write(`Cleaning up...\n`);
             //await Promise.allSettled(this.cleanUpList.map(cleanup => cleanup()).filter(notVoid => notVoid));
@@ -63,3 +63,6 @@ export default class ExitHelper {
         this.SIGINTCallback = callback;
     }
 }
+
+const exitHelper = new ExitHelper();
+export default exitHelper;
