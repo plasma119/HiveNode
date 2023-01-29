@@ -1,3 +1,4 @@
+import { ListenerSignature, DefaultListener } from '../lib/basicEventEmitter.js';
 import { version } from '../index.js';
 import HiveComponent from '../lib/component.js';
 import { typeCheck } from '../lib/lib.js';
@@ -72,7 +73,7 @@ export type HiveNetDeviceInfo = {
     HiveNodeVersion: string;
 }
 
-export class HiveNetDevice extends HiveComponent {
+export class HiveNetDevice<EventList extends ListenerSignature<EventList> = DefaultListener> extends HiveComponent {
     deviceType: HiveNetDeviceType
 
     constructor(name: string, deviceType: HiveNetDeviceType) {
@@ -104,6 +105,7 @@ export const HIVENETPORT = {
     STDIO: 21,
     SSH: 22,
     HTPSEND: 30,
+    KERNEL: 80,
 };
 
 export function DataSignaturesToString(signatures: DataSignature[]) {

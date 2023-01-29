@@ -1,7 +1,4 @@
-import { TypedEmitter } from 'tiny-typed-emitter';
-
 import HiveComponent from '../lib/component.js';
-import { applyMixins } from '../lib/lib.js';
 import { StopPropagation } from '../lib/signals.js';
 import { DataSignature } from './hiveNet.js';
 
@@ -9,21 +6,21 @@ import { DataSignature } from './hiveNet.js';
     OSI model layer 1 - physical layer
 */
 export type DataLink = (data: any, signatures: DataSignature[]) => void;
-export interface DataIOEvent {
+
+export type DataIOEvent = {
     input: DataLink;
     output: DataLink;
-    connect: any; // DataIO
-    disconnect: any; // DataIO
-    destroy: any;
-}
+    connect: (io: DataIO) => void;
+    disconnect: (io: DataIO) => void;
+    destroy: () => void;
+};
 
-interface DataIO extends TypedEmitter<DataIOEvent> {}
-class DataIO extends HiveComponent {
+export default class DataIO extends HiveComponent<DataIOEvent> {
     owner: any;
     private _signature: DataSignature;
 
     connectTable: Map<DataIO, boolean> = new Map();
-    passThroughTable: Map<DataIO, boolean> = new Map();
+    passThroughTable: Map<DataIO, DataIO> = new Map();
     destroyed: boolean = false;
     inputBind: DataLink;
     outputBind: DataLink;
@@ -79,8 +76,8 @@ class DataIO extends HiveComponent {
     // !! directional: this -> I -> target -> O -> this
     passThrough(target: DataIO) {
         if (this.passThroughTable.has(target)) return;
-        this.passThroughTable.set(target, true);
-        target.passThroughTable.set(this, true);
+        this.passThroughTable.set(target, this);
+        target.passThroughTable.set(this, this);
         target.on('output', this.outputBind);
         this.on('input', target.inputBind);
     }
@@ -88,9 +85,15 @@ class DataIO extends HiveComponent {
     // inside object
     // !! directional
     unpassThrough(target: DataIO) {
-        if (!this.passThroughTable.has(target)) return;
+        let base = this.passThroughTable.get(target);
+        if (!base) return;
         this.passThroughTable.delete(target);
         target.passThroughTable.delete(this);
+        if (base != this) {
+            this.off('output', target.outputBind);
+            target.off('input', this.inputBind);
+            return;
+        }
         target.off('output', this.outputBind);
         this.off('input', target.inputBind);
     }
@@ -120,8 +123,6 @@ class DataIO extends HiveComponent {
         return signatures;
     }
 }
-applyMixins(DataIO, [TypedEmitter]);
-export default DataIO;
 
 export class DataTransformer {
     stdIO: DataIO;
