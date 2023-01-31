@@ -62,6 +62,7 @@ export class TerminalPrompt {
             this.prompt();
             this.outputHandler(str);
         });
+        this.interface.on('SIGINT', () => process.emit('SIGINT'));
         this.stdIO.on('input', this.inputHandler.bind(this));
         this.prompt();
     }
