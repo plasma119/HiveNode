@@ -181,3 +181,5 @@ export function applyMixins(derivedConstructor: any, baseConstructors: any[]) {
 export type Options<T> = {
     [O in keyof T]?: T[O];
 };
+
+export type Constructor<T> = new (...args: any) => T;

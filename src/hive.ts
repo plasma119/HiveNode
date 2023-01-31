@@ -3,15 +3,16 @@ import WebSocket from 'ws';
 import HiveComponent from './lib/component.js';
 import { DataTransformer } from './network/dataIO.js';
 import { DataSerialize, DataParsing, HIVENETADDRESS, HiveNetPacket, HIVENETPORT, DataSignaturesToString } from './network/hiveNet.js';
-import HiveNetNode from './network/node.js';
+//import HiveNetNode from './network/node.js';
 import HiveSocket from './network/socket.js';
 import HiveNetSwitch from './network/switch.js';
 import Terminal from './lib/terminal.js';
 import { StopPropagation } from './lib/signals.js';
 import HiveCommand from './lib/hiveCommand.js';
+import HiveOS from './os/os.js';
 
 export default class Hive extends HiveComponent {
-    node: HiveNetNode;
+    node: HiveOS;
     switch: HiveNetSwitch;
     server?: WebSocket.Server;
 
@@ -21,7 +22,7 @@ export default class Hive extends HiveComponent {
 
     constructor(name: string) {
         super(name);
-        this.node = new HiveNetNode(name);
+        this.node = new HiveOS(name);
         this.switch = new HiveNetSwitch(`${name}-switch`);
         this.switch.connect(this.node.netInterface.netIO);
         this.terminalShell = new HiveCommand(`${name}-terminalShell`);

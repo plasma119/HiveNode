@@ -1,5 +1,5 @@
-import Hive from "../hive.js";
+import HiveOS from "../os/os.js";
 
-let node = new Hive('server');
+let node = new HiveOS('server');
 node.buildTerminal(false, true);
-node.listen(8080);
+node.kernel.program.stdIO.input('net listen');

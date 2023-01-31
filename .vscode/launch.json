@@ -103,13 +103,32 @@
             ]
         },
         {
+            "name": "Hive OS Test",
+            "request": "launch",
+            "type": "node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\tests\\os_test.js",
+            "skipFiles": [
+                "<node_internals>/**",
+                "${workspaceFolder}/src/lib/basicEventEmitter.ts",
+                "${workspaceFolder}/src/lib/component.ts",
+                "${workspaceFolder}/src/network/dataIO.ts",
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
             "name": "Run Server",
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\tests\\server.js",
             "skipFiles": [
-                "<node_internals>/**"
+                "<node_internals>/**",
+                "${workspaceFolder}/src/lib/basicEventEmitter.ts",
+                "${workspaceFolder}/src/lib/component.ts",
+                "${workspaceFolder}/src/network/dataIO.ts",
             ],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
@@ -122,7 +141,10 @@
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\tests\\client.js",
             "skipFiles": [
-                "<node_internals>/**"
+                "<node_internals>/**",
+                "${workspaceFolder}/src/lib/basicEventEmitter.ts",
+                "${workspaceFolder}/src/lib/component.ts",
+                "${workspaceFolder}/src/network/dataIO.ts",
             ],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"

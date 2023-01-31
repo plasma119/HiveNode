@@ -1,0 +1,323 @@
+import WebSocket from 'ws';
+
+import HiveCommand from '../../lib/hiveCommand.js';
+import { format, sleep } from '../../lib/lib.js';
+import { DataTransformer } from '../../network/dataIO.js';
+import {
+    DataParsing,
+    DataSerialize,
+    DataSignaturesToString,
+    HIVENETADDRESS,
+    HiveNetDeviceInfo,
+    HiveNetPacket,
+    HIVENETPORT,
+} from '../../network/hiveNet.js';
+import HiveSocket from '../../network/socket.js';
+import HiveNetSwitch from '../../network/switch.js';
+import HiveOS from '../os.js';
+import HiveProcess from '../process.js';
+
+export class HiveProcessNet extends HiveProcess {
+    infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
+    nameMap: Map<string, string> = new Map(); // Map<name, UUID>
+
+    switch: HiveNetSwitch;
+    server?: WebSocket.Server;
+    sshServer?: WebSocket.Server;
+
+    constructor(name: string, os: HiveOS, pid: number, ppid: number) {
+        super(name, os, pid, ppid);
+        this.switch = new HiveNetSwitch(`${this.os.name}-HiveNetSwitch`);
+        this.os.netInterface.connect(this.switch, 'net');
+    }
+
+    initProgram() {
+        const program = new HiveCommand('net', 'HiveNet commands');
+
+        // message
+        this.os.HTP.listen(HIVENETPORT.MESSAGE, (packet, signatures) => {
+            this.os.stdIO.output(packet.data, signatures);
+        });
+        program
+            .addNewCommand('message', 'Message target node')
+            .addNewArgument('<target>', 'target UUID or name')
+            .addNewArgument('<text>', 'message to send')
+            .setAction(async (args, _opts, info) => {
+                let uuid = await this.resolveUUID(args['target'], info.reply);
+                if (!uuid) return;
+                this.message(uuid, args['text']);
+                return 'Message sent.';
+            });
+
+        // ping
+        this.os.HTP.listen(HIVENETPORT.PING, (packet) => {
+            if (packet.flags.ping) return new HiveNetPacket({ data: Date.now(), flags: { pong: true } });
+            return null;
+        });
+        program
+            .addNewCommand('ping', 'Ping target node')
+            .addNewArgument('<target>', 'target UUID or name')
+            .setAction(async (args, _opts, info) => {
+                let uuid = await this.resolveUUID(args['target'], info.reply);
+                if (!uuid) return;
+                let result = await this.ping(uuid);
+                if (typeof result == 'string') return result;
+                let [rt, ht] = result;
+                return `Round trip: ${rt}ms, Half trip: ${ht}ms`;
+            });
+
+        // info
+        this.os.HTP.listen(HIVENETPORT.INFO, () => this.os.getDeviceInfo());
+        program
+            .addNewCommand('info', 'Get node device info')
+            .addNewArgument('[target]', 'target UUID or name')
+            .setAction(async (args, _opts, info) => {
+                if (args['target']) {
+                    let uuid = await this.resolveUUID(args['target'], info.reply);
+                    if (!uuid) return;
+                    let targetInfo = await this.getInfo(uuid);
+                    if (targetInfo) return targetInfo;
+                    return 'Failed to get target device info.';
+                }
+                return this.os.getDeviceInfo();
+            });
+
+        // view
+        program
+            .addNewCommand('view', 'Display current connected hiveNet nodes')
+            .addNewOption('-detail', 'Display data signatures')
+            .setAction((_, opts) => this.netview(!!opts['-detail']));
+
+        // connect
+        program
+            .addNewCommand('connect', 'New HiveNet connection')
+            .addNewArgument('<host>', 'host to connect')
+            .addNewOption('-port <port>', 'port to connect', HIVENETPORT.HIVENETPORT)
+            .setAction((args, opts) => {
+                this.connect(args['host'], typeof opts['-port'] == 'string' ? Number.parseInt(opts['-port']) : HIVENETPORT.HIVENETPORT);
+                return;
+            });
+
+        // listen
+        program
+            .addNewCommand('listen', 'Enable HiveNet connection')
+            .addNewOption('-port <port>', 'port to listen', HIVENETPORT.HIVENETPORT)
+            .setAction((_args, opts) => {
+                this.listen(typeof opts['-port'] == 'string' ? Number.parseInt(opts['-port']) : HIVENETPORT.HIVENETPORT);
+                return;
+            });
+
+        // ssh
+        program
+            .addNewCommand('ssh', 'remote shell directly to target node')
+            .addNewArgument('<host>', 'target ip address')
+            .addNewArgument('<port>', 'target port number')
+            .setAction((args) => {
+                this.connect(args['host'], args['port'], true);
+                return;
+            });
+
+        // ssh-server
+        program
+            .addNewCommand('ssh-server', 'enable remote shell access')
+            .addNewArgument('<port>', 'port number')
+            .setAction((args) => {
+                this.listen(args['port'], true);
+                return;
+            });
+
+        // remote
+        program
+            .addNewCommand('remote', 'remote terminal to target node via HiveNet')
+            .addNewArgument('<target>', 'target UUID or name')
+            .setAction(async (args, _opts, info) => {
+                let uuid = await this.resolveUUID(args['target'], info.reply);
+                if (!uuid) return;
+                let targetInfo = await this.getInfo(uuid, true);
+                if (!targetInfo) return 'Failed to get target node info.';
+                this.os.terminalDest = uuid;
+                return `Connected to target node: ${targetInfo.info.name} [HiveOS: ${targetInfo.info.HiveNodeVersion}]`;
+            });
+
+        this.os.registerService(program);
+        return program;
+    }
+
+    async resolveUUID(target: string, reply?: (message: any) => void) {
+        let uuid = target.startsWith('UUID') ? target : this.nameMap.get(target);
+        if (!uuid) {
+            if (reply) reply('Resolving target UUID...');
+            await this.netview();
+            uuid = this.nameMap.get(target);
+            if (!uuid) {
+                if (reply) 'Target not found.';
+                return null;
+            }
+            if (reply) reply(`Resolved UUID: ${uuid}`);
+        }
+        return uuid;
+    }
+
+    message(dest: string, data: any) {
+        this.os.HTP.send(data, dest, HIVENETPORT.MESSAGE);
+    }
+
+    // return [roundtrip time, first half-trip time]
+    ping(dest: string, options: { timeout?: number; dport?: number } = {}): Promise<string | number[]> {
+        return new Promise((resolve) => {
+            if (!options.timeout) options.timeout = 3000;
+            if (!options.dport) options.dport = HIVENETPORT.PING;
+            let timeout = false;
+            let t1 = Date.now();
+
+            let timer = setTimeout(() => {
+                timeout = true;
+                resolve('Timeout');
+            }, options.timeout);
+
+            this.os.HTP.sendAndReceiveOnce(t1, dest, options.dport, { ping: true })
+                .then((data) => {
+                    if (timeout) return;
+                    clearTimeout(timer);
+                    resolve([Date.now() - t1, data.data - t1]); //[roundtrip time, first half-trip time]
+                })
+                .catch(() => resolve('Error'));
+        });
+    }
+
+    getInfo(UUID: string, noCache: boolean = false): Promise<{ timestamp: number; info: HiveNetDeviceInfo } | null> {
+        return new Promise(async (resolve) => {
+            let resolved = false;
+            let result = this.infoMap.get(UUID);
+            if (result && !noCache) {
+                // in cache
+                resolve(result);
+                resolved = true;
+                return;
+            }
+
+            sleep(10000).then(() => {
+                // failed to resolve
+                if (resolved) return;
+                resolve(null);
+                resolved = true;
+            });
+
+            // try to resolve through HiveNet
+            const data = await this.os.HTP.sendAndReceiveOnce('', UUID, HIVENETPORT.INFO).catch(() => resolve(null));
+            if (resolved || !data) return;
+            result = {
+                timestamp: Date.now(),
+                info: data.data,
+            };
+            this.infoMap.set(UUID, result);
+            this.nameMap.set(result.info.name, UUID);
+            resolve(result);
+            resolved = true;
+        });
+    }
+
+    async netview(detail: boolean = false) {
+        let list: string[][] = [];
+        let t = Date.now();
+
+        let port = this.os.HTP.listen(this.os.netInterface.newRandomPortNumber(), async (packet, signatures) => {
+            let info = (await this.getInfo(packet.src, true))?.info;
+            let time = Date.now() - t;
+            if (!info)
+                info = {
+                    name: 'unknown',
+                    UUID: packet.src,
+                    type: 'unknown',
+                    HiveNodeVersion: 'unknown',
+                };
+            if (detail) {
+                list.push([`${info.name}[${packet.src}]:`, `${info.type}`, `${time}ms`, DataSignaturesToString(signatures)]);
+            } else {
+                list.push([`${info.name}:`, `${info.type}`, `${time}ms`]);
+            }
+        });
+
+        // TODO: figure out how to fix the 3s delay to output
+        port.input(new HiveNetPacket({ data: t, dest: HIVENETADDRESS.BROADCAST, dport: HIVENETPORT.PING, flags: { ping: true } }));
+        await sleep(3000);
+        port.destroy();
+        return format(list, ' ');
+    }
+
+    async connect(host: string, port: string | number, directSSH: boolean = false) {
+        if (typeof port == 'string') port = Number.parseInt(port);
+        if (directSSH) {
+            this.os.stdIO.output(`Direct ssh connecting to ${host}:${port}...`);
+        } else {
+            this.os.stdIO.output(`HiveNet connecting to ${host}:${port}...`);
+        }
+
+        // TODO: rework with socket
+        const socket = new HiveSocket('remote');
+        const socketDT = new DataTransformer(socket.dataIO);
+        socketDT.setInputTransform(DataSerialize);
+        socketDT.setOutputTransform(DataParsing);
+
+        if (directSSH) {
+            // TODO: fix input routing
+            //if (this.os.stdIOPortIO) this.os.stdIO.unpassThrough(this.os.stdIOPortIO);
+            this.os.stdIO.passThrough(socketDT.stdIO);
+        } else {
+            this.switch.connect(socketDT.stdIO);
+        }
+
+        await socket
+            .new(host, port)
+            .then(() => this.os.stdIO.output(`Handshake done.`))
+            .catch((e) => this.os.stdIO.output(e));
+        return socket;
+    }
+
+    listen(port: string | number, directSSH: boolean = false) {
+        if (typeof port == 'string') port = Number.parseInt(port);
+        const server = new WebSocket.Server({ port });
+        if (directSSH) {
+            this.sshServer = server;
+            server.on('listening', () => this.os.stdIO.output(`SSH server now listening on port:${port}`));
+        } else {
+            this.server = server;
+            server.on('listening', () => this.os.stdIO.output(`HiveNet server now listening on port:${port}`));
+        }
+        server.on('connection', (ws, req) => {
+            // new client
+            if (directSSH) {
+                this.os.stdIO.output(`New ssh connecting from ${req.socket.remoteAddress}.`);
+            } else {
+                this.os.stdIO.output(`New hiveNet connecting from ${req.socket.remoteAddress}.`);
+            }
+
+            // TODO: rework with socket
+            const client = new HiveSocket('');
+            const dt = new DataTransformer(client.dataIO);
+            dt.setInputTransform(DataSerialize);
+            dt.setOutputTransform(DataParsing);
+
+            if (directSSH) {
+                let io = this.os.netInterface.newIO(this.os.netInterface.newRandomPortNumber());
+                dt.stdIO.connect(io);
+            } else {
+                this.switch.connect(dt.stdIO);
+            }
+
+            // debug
+            if (this.os.debugMode)
+                dt.stdIO.on('output', (d, s) => {
+                    console.log(DataSignaturesToString(s));
+                    console.log(d);
+                });
+
+            client
+                .use(ws)
+                .then(() => this.os.stdIO.output(`Handshake done.`))
+                .catch((e) => this.os.stdIO.output(e));
+        });
+        server.on('error', (e) => this.os.stdIO.output(e.stack));
+        return server;
+    }
+}

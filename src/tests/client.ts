@@ -1,5 +1,5 @@
-import Hive from "../hive.js";
+import HiveOS from "../os/os.js";
 
-let node = new Hive('client');
+let node = new HiveOS('client');
 node.buildTerminal(false, true);
-node.connect('127.0.0.1', 8080);
+node.kernel.program.stdIO.input('net connect 127.0.0.1');

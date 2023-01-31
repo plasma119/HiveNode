@@ -71,10 +71,10 @@ export type HiveNetDeviceInfo = {
     name: string;
     type: HiveNetDeviceType;
     HiveNodeVersion: string;
-}
+};
 
 export class HiveNetDevice<EventList extends ListenerSignature<EventList> = DefaultListener> extends HiveComponent {
-    deviceType: HiveNetDeviceType
+    deviceType: HiveNetDeviceType;
 
     constructor(name: string, deviceType: HiveNetDeviceType) {
         super(name);
@@ -86,8 +86,8 @@ export class HiveNetDevice<EventList extends ListenerSignature<EventList> = Defa
             UUID: this.UUID,
             name: this.name,
             type: this.deviceType,
-            HiveNodeVersion: version
-        }
+            HiveNodeVersion: version,
+        };
     }
 }
 
@@ -106,6 +106,8 @@ export const HIVENETPORT = {
     SSH: 22,
     HTPSEND: 30,
     KERNEL: 80,
+    TERMINAL: 81,
+    HIVENETPORT: 8081,
 };
 
 export function DataSignaturesToString(signatures: DataSignature[]) {
@@ -120,7 +122,7 @@ export function DataSerialize(data: any, signatures: DataSignature[]) {
 }
 
 function SignaturePreSerialize(signatures: DataSignature[]) {
-    let s = signatures.slice()
+    let s = signatures.slice();
     s.forEach((s) => {
         s.UUID = s.UUID;
         s.name = s.name;
