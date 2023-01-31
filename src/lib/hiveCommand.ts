@@ -25,12 +25,12 @@ export type HiveCommandExport = {
     args: {
         name: string;
         description: string;
-        defaultValue: string;
+        defaultValue: string | number;
     }[];
     opts: {
         name: string;
         description: string;
-        defaultValue: boolean | string;
+        defaultValue: boolean | string | number;
     }[];
     cmds: HiveCommandExport[];
     action?: HiveCommandCallback;
@@ -43,14 +43,14 @@ const HiveCommandStructure = {
         {
             name: 'string',
             description: 'string',
-            defaultValue: 'string',
+            defaultValue: 'string|number',
         },
     ],
     opts: [
         {
             name: 'string',
             description: 'string',
-            defaultValue: 'boolean|string',
+            defaultValue: 'boolean|string|number',
         },
     ],
     cmds: 'array',
@@ -364,7 +364,7 @@ export class HiveSubCommand extends HiveCommand {
         return this;
     }
 
-    addNewArgument(name: string, description = '', defaultValue: string = '') {
+    addNewArgument(name: string, description = '', defaultValue: string | number = '') {
         const argument = new HiveArgument(this, name, description, defaultValue);
         this.addArgument(argument);
         return this;
@@ -374,7 +374,7 @@ export class HiveSubCommand extends HiveCommand {
         argumentArr: {
             name: string;
             description?: string;
-            defaultValue?: string;
+            defaultValue?: string | number;
         }[]
     ) {
         argumentArr.forEach((arg) => this.addNewArgument(arg.name, arg.description, arg.defaultValue));
@@ -387,7 +387,7 @@ export class HiveSubCommand extends HiveCommand {
         return this;
     }
 
-    addNewOption(name: string, description = '', defaultValue: boolean | string = false) {
+    addNewOption(name: string, description = '', defaultValue: boolean | string | number = false) {
         const option = new HiveOption(this, name, description, defaultValue);
         this.addOption(option);
         return this;
@@ -397,7 +397,7 @@ export class HiveSubCommand extends HiveCommand {
         optionArr: {
             name: string;
             description?: string;
-            defaultValue?: boolean | string;
+            defaultValue?: boolean | string | number;
         }[]
     ) {
         optionArr.forEach((opt) => this.addNewOption(opt.name, opt.description, opt.defaultValue));
@@ -505,12 +505,12 @@ export class HiveArgument {
     required: boolean;
     value: string;
 
-    constructor(program: HiveCommand, name: string, description = '', defaultValue: string = '') {
+    constructor(program: HiveCommand, name: string, description = '', defaultValue: string | number = '') {
         this.program = program;
         this.baseName = name;
         this.description = description;
-        this.defaultValue = defaultValue;
-        this.value = defaultValue;
+        this.defaultValue = typeof defaultValue == 'number' ? defaultValue.toString() : defaultValue;
+        this.value = this.defaultValue;
         if (!name) throw new HiveCommandError('Invalid argument name');
 
         switch (name[0]) {
@@ -548,12 +548,12 @@ export class HiveOption {
     argument?: HiveArgument;
     value: boolean | string;
 
-    constructor(program: HiveCommand, name: string, description = '', defaultValue: boolean | string = false) {
+    constructor(program: HiveCommand, name: string, description = '', defaultValue: boolean | string | number = false) {
         this.program = program;
         this.baseName = name;
         this.description = description;
-        this.defaultValue = defaultValue;
-        this.value = defaultValue;
+        this.defaultValue = typeof defaultValue == 'number' ? defaultValue.toString() : defaultValue;
+        this.value = this.defaultValue;
         let o = HiveCommand.splitCommandStr(name);
         if (!o) throw new HiveCommandError('Invalid option flag');
         if (o.args) {
