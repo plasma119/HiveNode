@@ -94,7 +94,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
             if (typeof data == 'string' && data[0] == '$') {
                 // force input to local shell
                 //this.terminalShell.stdIO.input(data.slice(1));
-                return new HiveNetPacket({ data: data.slice(1), dest: this.terminalDest, dport: HIVENETPORT.SHELL });
+                return new HiveNetPacket({ data: data.slice(1), dest: HIVENETADDRESS.LOCAL, dport: HIVENETPORT.SHELL });
                 //return StopPropagation;
             }
             // to target shell
@@ -110,7 +110,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.on('sigint', () => {
             if (this.terminalDest != HIVENETADDRESS.LOCAL) {
                 this.terminalDest = HIVENETADDRESS.LOCAL;
-                port.output('Returned to local shell');
+                port.output('Returning to local shell');
             }
         });
         //this.terminalShell.stdIO.on('output', (data, signatures) => dt.stdIO.output(data, signatures));

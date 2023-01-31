@@ -129,8 +129,23 @@ export class HiveProcessNet extends HiveProcess {
         // remote
         program
             .addNewCommand('remote', 'remote terminal to target node via HiveNet')
-            .addNewArgument('<target>', 'target UUID or name')
-            .setAction(async (args, _opts, info) => {
+            .addNewArgument('[target]', 'target UUID or name')
+            .addNewOption('-d', 'disconnect remote terminal')
+            .setAction(async (args, opts, info) => {
+                if (info.rawData instanceof HiveNetPacket && info.rawData.src != this.os.netInterface.UUID) {
+                    return 'Only local terminal can use this command.';
+                } else if (opts['-d']) {
+                    if (this.os.terminalDest != HIVENETADDRESS.LOCAL) {
+                        this.os.terminalDest = HIVENETADDRESS.LOCAL;
+                        return 'Returning to local shell';
+                    } else {
+                        return 'Already in local shell'
+                    }
+                } else if (!args['target']) {
+                    return 'Target not specified.'
+                } else if (args['target'] == this.os.name || args['target'] == this.os.netInterface.UUID) {
+                    return 'Cannot remote terminal to self.';
+                }
                 let uuid = await this.resolveUUID(args['target'], info.reply);
                 if (!uuid) return;
                 let targetInfo = await this.getInfo(uuid, true);
@@ -143,6 +158,7 @@ export class HiveProcessNet extends HiveProcess {
         return program;
     }
 
+    // TODO: resolve fail seems to be stuck
     async resolveUUID(target: string, reply?: (message: any) => void) {
         let uuid = target.startsWith('UUID') ? target : this.nameMap.get(target);
         if (!uuid) {
