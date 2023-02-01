@@ -118,9 +118,9 @@ export default class HiveSocket {
                     .then((info) => {
                         resolve(info);
                     })
-                    .catch(() => {
+                    .catch((status) => {
                         this._handShakeCallback = undefined;
-                        reject('HandShake failed.');
+                        reject(typeof status == 'string' ? status : 'HandShake failed.');
                     });
             };
             socket.on('message', this._recieveHandler.bind(this));
@@ -141,13 +141,14 @@ export default class HiveSocket {
         return new Promise(async (resolve, reject) => {
             const flags: { [key: string]: boolean } = {};
 
-            const shake = async (func: () => () => void, flag: string) => {
-                let echo = func();
+            const shake = async (func: () => [string, any], flag: string) => {
+                let [header, data] = func();
                 let i = 0;
-                while (i++ < 10 && !flags[flag] && !this.targetInfo.handShakeDone) {
-                    echo();
+                do {
+                    //console.log(`shake :[${header}] for [${flag}]`); // DEBUG
+                    this._send(header, data);
                     await sleep(1000);
-                }
+                } while (i++ < 10 && !flags[flag] && !this.targetInfo.handShakeDone);
                 if (!flags[flag] && !this.targetInfo.handShakeDone) {
                     this.stdIO.output(`ERROR: HandShake timeout: flag[${flag}]`);
                     reject(`HandShake timeout: flag[${flag}]`);
@@ -155,78 +156,72 @@ export default class HiveSocket {
             };
 
             // client
-            const buzz = () => {
-                return () => {
-                    this._send(
-                        'buzz',
-                        JSON.stringify({
-                            info: this.info,
-                        })
-                    );
-                };
+            const buzz: () => [string, any] = () => {
+                return [
+                    'buzz',
+                    JSON.stringify({
+                        info: this.info,
+                    }),
+                ];
             };
 
             // server
-            const fuzz = () => {
+            const fuzz: () => [string, any] = () => {
                 this._ss.noise = Encryption.randomData().toString('base64');
-                return () => {
-                    this._send(
-                        'fuzz',
-                        JSON.stringify({
-                            info: this.info,
-                            noise: this._ss.noise,
-                        })
-                    );
-                };
+                return [
+                    'fuzz',
+                    JSON.stringify({
+                        info: this.info,
+                        noise: this._ss.noise,
+                    }),
+                ];
             };
 
             // client
-            const hive = () => {
+            const hive: () => [string, any] = () => {
                 this._ss.noise2 = Encryption.randomData().toString('base64');
                 const proof = Encryption.hash(this._ss.noise);
                 proof.update(this._ss.salt);
                 proof.update(this._ss.secret);
-                return () => {
-                    this._send(
-                        'hive',
-                        JSON.stringify({
-                            proof: proof.digest('base64'),
-                            noise2: this._ss.noise2,
-                        })
-                    );
-                };
+                const proofResult = proof.digest('base64');
+                return [
+                    'hive',
+                    JSON.stringify({
+                        proof: proofResult,
+                        noise2: this._ss.noise2,
+                    }),
+                ];
             };
 
             // server
-            const mind = () => {
+            const mind: () => [string, any] = () => {
                 const proof = Encryption.hash(this._ss.noise2);
                 proof.update(this._ss.salt2);
                 proof.update(this._ss.secret);
-                return () => {
-                    this._send(
-                        'mind',
-                        JSON.stringify({
-                            proof: proof.digest('base64'),
-                        })
-                    );
-                };
+                const proofResult = proof.digest('base64');
+                return [
+                    'mind',
+                    JSON.stringify({
+                        proof: proofResult,
+                    }),
+                ];
             };
 
             // both
-            const ready = () => {
+            const ready: () => [string, any] = () => {
                 const salt = Encryption.hash(this._ss.noise).update(this._ss.noise).digest('base64');
                 this._ss.key = Encryption.genKey(this._ss.secret, salt);
                 this.handShakeDone = true;
-                return () => {
-                    this._send('ready', '');
-                };
+                return ['ready', ''];
             };
 
             this._handShakeCallback = (header, data) => {
                 // this.stdIO.output(`DEBUG: recieved: ${header}`);
+                // console.log(`recieved: [${header}]`); // debug
                 switch (header) {
                     // both
                     case 'ready':
+                        if (flags['ready']) break;
                         flags['ready'] = true;
                         this.targetInfo.handShakeDone = true;
                         this._handShakeCallback = undefined;
@@ -236,6 +231,7 @@ export default class HiveSocket {
                     // client
                     case 'fuzz':
                         {
+                            if (flags['fuzz']) break;
                             let json = this._parseJSON(data, {
                                 info: 'object',
                                 noise: 'string',
@@ -250,6 +246,7 @@ export default class HiveSocket {
 
                     case 'mind':
                         {
+                            if (flags['mind']) break;
                             let json = this._parseJSON(data, {
                                 proof: 'string',
                             });
@@ -267,6 +264,7 @@ export default class HiveSocket {
                     // server
                     case 'buzz':
                         {
+                            if (flags['buzz']) break;
                             let json = this._parseJSON(data, {
                                 info: 'object',
                             });
@@ -279,6 +277,7 @@ export default class HiveSocket {
 
                     case 'hive':
                         {
+                            if (flags['hive']) break;
                             let json = this._parseJSON(data, {
                                 proof: 'string',
                                 noise2: 'string',
