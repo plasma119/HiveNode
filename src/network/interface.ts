@@ -1,6 +1,6 @@
 import HiveComponent from '../lib/component.js';
 import DataIO from './dataIO.js';
-import { HIVENETADDRESS, HiveNetPacket } from './hiveNet.js';
+import { HIVENETADDRESS, HiveNetPacket, HIVENETPORT } from './hiveNet.js';
 import HiveNetSwitch from './switch.js';
 
 /*
@@ -11,7 +11,7 @@ export default class HiveNetInterface extends HiveComponent {
     ports: Map<number, DataIO> = new Map();
     addressTable: Map<string, number> = new Map();
 
-    nextPortNumber: number = 10000;
+    nextPortNumber: number = HIVENETPORT.BASERANDOMPORT;
 
     constructor(name: string) {
         super(name);

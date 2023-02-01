@@ -108,6 +108,7 @@ export const HIVENETPORT = {
     KERNEL: 80,
     TERMINAL: 81,
     HIVENETPORT: 8081,
+    BASERANDOMPORT: 10000,
 };
 
 export function DataSignaturesToString(signatures: DataSignature[]) {
