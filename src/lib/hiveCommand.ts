@@ -132,8 +132,21 @@ export default class HiveCommand extends HiveComponent {
     }
 
     parse(str: string, info: HiveCommandInfo): any {
+        if (str.length == 0 && info.rawInput.length == 0) {
+            // empty input
+            return '';
+        }
         const o = HiveCommand.splitCommandStr(str);
-        if (!o) throw new HiveCommandError('Invalid command');
+        if (!o) {
+            // empty current input, possibly as sub-command
+            if (str.length == 0) {
+                let help = this.findCommand('help');
+                if (help) {
+                    return help.parse('', info);
+                }
+            }
+            throw new HiveCommandError(`Invalid command.`);
+        }
         const cmd = this.findCommand(o.name);
         if (cmd) {
             return cmd.parse(o.args, info);
