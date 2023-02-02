@@ -17,7 +17,7 @@ import HiveNetSwitch from '../../network/switch.js';
 import HiveOS from '../os.js';
 import HiveProcess from '../process.js';
 
-export class HiveProcessNet extends HiveProcess {
+export default class HiveProcessNet extends HiveProcess {
     infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
     nameMap: Map<string, string> = new Map(); // Map<name, UUID>
 
@@ -72,14 +72,14 @@ export class HiveProcessNet extends HiveProcess {
             .addNewCommand('info', 'Get node device info')
             .addNewArgument('[target]', 'target UUID or name')
             .setAction(async (args, _opts, info) => {
-                if (args['target']) {
-                    let uuid = await this.resolveUUID(args['target'], info.reply);
-                    if (!uuid) return;
-                    let targetInfo = await this.getInfo(uuid);
-                    if (targetInfo) return targetInfo;
-                    return 'Failed to get target device info.';
+                if (!args['target']) {
+                    return this.os.getDeviceInfo();
                 }
-                return this.os.getDeviceInfo();
+                let uuid = await this.resolveUUID(args['target'], info.reply);
+                if (!uuid) return;
+                let targetInfo = await this.getInfo(uuid);
+                if (targetInfo) return targetInfo;
+                return 'Failed to get target device info.';
             });
 
         // view
@@ -124,34 +124,6 @@ export class HiveProcessNet extends HiveProcess {
             .setAction((args) => {
                 this.listen(args['port'], true);
                 return;
-            });
-
-        // remote
-        program
-            .addNewCommand('remote', 'remote terminal to target node via HiveNet')
-            .addNewArgument('[target]', 'target UUID or name')
-            .addNewOption('-d', 'disconnect remote terminal')
-            .setAction(async (args, opts, info) => {
-                if (info.rawData instanceof HiveNetPacket && info.rawData.src != this.os.netInterface.UUID) {
-                    return 'Only local terminal can use this command.';
-                } else if (opts['-d']) {
-                    if (this.os.terminalDest != HIVENETADDRESS.LOCAL) {
-                        this.os.terminalDest = HIVENETADDRESS.LOCAL;
-                        return 'Returning to local shell';
-                    } else {
-                        return 'Already in local shell'
-                    }
-                } else if (!args['target']) {
-                    return 'Target not specified.'
-                } else if (args['target'] == this.os.name || args['target'] == this.os.netInterface.UUID) {
-                    return 'Cannot remote terminal to self.';
-                }
-                let uuid = await this.resolveUUID(args['target'], info.reply);
-                if (!uuid) return;
-                let targetInfo = await this.getInfo(uuid, true);
-                if (!targetInfo) return 'Failed to get target node info.';
-                this.os.terminalDest = uuid;
-                return `Connected to target node: ${targetInfo.info.name} [HiveOS: ${targetInfo.info.HiveNodeVersion}]`;
             });
 
         this.os.registerService(program);
