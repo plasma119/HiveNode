@@ -5,30 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "node Test",
-            "request": "launch",
-            "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\node_test.js",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
-        },
-        {
-            "name": "switch Test",
-            "request": "launch",
-            "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\switch_test.js",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
-        },
-        {
             "name": "DataIO Test",
             "request": "launch",
             "type": "node",
@@ -82,19 +58,6 @@
             "type": "node",
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\tests\\exitHelper_test.js",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
-        },
-        {
-            "name": "Terminal Test",
-            "request": "launch",
-            "type": "node",
-            "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\tests\\terminal_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
