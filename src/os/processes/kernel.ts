@@ -7,7 +7,7 @@ import HiveProcess from "../process.js";
 
 export default class HiveProcessKernel extends HiveProcess {
     initProgram(): HiveCommand {
-        const kernel = new HiveCommand('kernel', `[${this.os.name}] HiveOS ${version} kernel shell`);
+        const kernel = new HiveCommand('kernel', `[${this.os.name}] HiveOS ${version} Kernel Shell`);
 
         // void port
         this.os.HTP.listen(HIVENETPORT.DISCARD);

@@ -13,9 +13,9 @@ export default class HiveProcessTerminal extends HiveProcess {
         const program = new HiveCommand('terminal', 'Terminal Controller');
 
         program
-            .addNewCommand('buildTerminal', 'Initialize Terminal')
-            .addNewOption('-headless', 'Disable user input for server node', false)
-            .addNewOption('-debug', 'Enable Terminal debug message', false)
+            .addNewCommand('buildTerminal', 'initialize terminal')
+            .addNewOption('-headless', 'disable user input for server node', false)
+            .addNewOption('-debug', 'enable Terminal debug message', false)
             .setAction((_args, opts) => {
                 this.buildTerminal(!!opts['headless'], !!opts['debug']);
             });

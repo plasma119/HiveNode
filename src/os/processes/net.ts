@@ -27,19 +27,19 @@ export default class HiveProcessNet extends HiveProcess {
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number) {
         super(name, os, pid, ppid);
-        this.switch = new HiveNetSwitch(`${this.os.name}-HiveNetSwitch`);
+        this.switch = new HiveNetSwitch(`HiveNetSwitch[${this.os.name}]`);
         this.os.netInterface.connect(this.switch, 'net');
     }
 
     initProgram() {
-        const program = new HiveCommand('net', 'HiveNet commands');
+        const program = new HiveCommand('net', 'HiveNet Commands');
 
         // message
         this.os.HTP.listen(HIVENETPORT.MESSAGE, (packet, signatures) => {
             this.os.stdIO.output(packet.data, signatures);
         });
         program
-            .addNewCommand('message', 'Message target node')
+            .addNewCommand('message', 'message target node')
             .addNewArgument('<target>', 'target UUID or name')
             .addNewArgument('<text>', 'message to send')
             .setAction(async (args, _opts, info) => {
@@ -55,7 +55,7 @@ export default class HiveProcessNet extends HiveProcess {
             return null;
         });
         program
-            .addNewCommand('ping', 'Ping target node')
+            .addNewCommand('ping', 'ping target node')
             .addNewArgument('<target>', 'target UUID or name')
             .setAction(async (args, _opts, info) => {
                 let uuid = await this.resolveUUID(args['target'], info.reply);
@@ -69,7 +69,7 @@ export default class HiveProcessNet extends HiveProcess {
         // info
         this.os.HTP.listen(HIVENETPORT.INFO, () => this.os.getDeviceInfo());
         program
-            .addNewCommand('info', 'Get node device info')
+            .addNewCommand('info', 'get node device info')
             .addNewArgument('[target]', 'target UUID or name')
             .setAction(async (args, _opts, info) => {
                 if (!args['target']) {
@@ -84,13 +84,13 @@ export default class HiveProcessNet extends HiveProcess {
 
         // view
         program
-            .addNewCommand('view', 'Display current connected hiveNet nodes')
-            .addNewOption('-detail', 'Display data signatures')
+            .addNewCommand('view', 'display current connected hiveNet nodes')
+            .addNewOption('-detail', 'display data signatures')
             .setAction((_, opts) => this.netview(!!opts['-detail']));
 
         // connect
         program
-            .addNewCommand('connect', 'New HiveNet connection')
+            .addNewCommand('connect', 'new HiveNet connection')
             .addNewArgument('<host>', 'host to connect')
             .addNewOption('-port <port>', 'port to connect', HIVENETPORT.HIVENETPORT)
             .setAction((args, opts) => {
@@ -100,7 +100,7 @@ export default class HiveProcessNet extends HiveProcess {
 
         // listen
         program
-            .addNewCommand('listen', 'Enable HiveNet connection')
+            .addNewCommand('listen', 'enable HiveNet connection')
             .addNewOption('-port <port>', 'port to listen', HIVENETPORT.HIVENETPORT)
             .setAction((_args, opts) => {
                 this.listen(typeof opts['-port'] == 'string' ? Number.parseInt(opts['-port']) : HIVENETPORT.HIVENETPORT);
