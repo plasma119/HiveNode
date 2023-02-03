@@ -1,9 +1,9 @@
-import { version } from "../../index.js";
-import exitHelper from "../../lib/exitHelper.js";
-import HiveCommand from "../../lib/hiveCommand.js";
-import { sleep } from "../../lib/lib.js";
-import { HIVENETPORT } from "../../network/hiveNet.js";
-import HiveProcess from "../process.js";
+import { version } from '../../index.js';
+import exitHelper from '../../lib/exitHelper.js';
+import HiveCommand from '../../lib/hiveCommand.js';
+import { sleep } from '../../lib/lib.js';
+import { HIVENETPORT } from '../../network/hiveNet.js';
+import HiveProcess from '../process.js';
 
 export default class HiveProcessKernel extends HiveProcess {
     initProgram(): HiveCommand {
@@ -22,16 +22,22 @@ export default class HiveProcessKernel extends HiveProcess {
             return version;
         });
 
-        kernel.addNewCommand('stop', 'terminate HiveNode process').setAction(async (_args, _opts, info) => {
+        kernel.addNewCommand('stop', 'terminate HiveNode').setAction(async (_args, _opts, info) => {
             info.reply('stopping...');
             await sleep(100);
             exitHelper.exit();
         });
 
-        kernel.addNewCommand('restart', 'restart HiveNode process').setAction(async (_args, _opts, info) => {
+        kernel.addNewCommand('restart', 'restart HiveNode').setAction(async (_args, _opts, info) => {
             info.reply('restarting...');
             await sleep(100);
             exitHelper.restart();
+        });
+
+        kernel.addNewCommand('panic', 'PANIC').setAction(() => {
+            process.nextTick(() => {
+                throw new Error('PANIC');
+            });
         });
 
         return kernel;

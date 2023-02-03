@@ -8,6 +8,7 @@ import HiveNetInterface from '../network/interface.js';
 import HTP from '../network/protocol.js';
 import HiveProcess from './process.js';
 import HiveProcessKernel from './processes/kernel.js';
+import HiveProcessLogger from './processes/logger.js';
 import HiveProcessNet from './processes/net.js';
 import HiveProcessTerminal from './processes/terminal.js';
 
@@ -51,6 +52,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         });
         this.kernel.spawnChild('net', HiveProcessNet);
         this.kernel.spawnChild('terminal', HiveProcessTerminal);
+        this.kernel.spawnChild('logger', HiveProcessLogger);
     }
 
     registerService(service: HiveCommand) {
@@ -86,5 +88,11 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         let p = this.getProcess(HiveProcessTerminal);
         if (!p) throw new Error('[ERROR] BuildTerminal failed, cannot find terminal process');
         p.buildTerminal(headless, debug);
+    }
+
+    log(message: string) {
+        let p = this.getProcess(HiveProcessLogger);
+        if (!p) throw new Error('[ERROR] log failed, cannot find logger process');
+        p.log(message);
     }
 }

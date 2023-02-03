@@ -2,64 +2,78 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 
 import { IgnoreSIGINT, Signal } from './signals.js';
+import Logger from './logger.js';
 
 class ExitHelper {
-    _exiting: number = 0;
+    _exitState: number = 0;
     _restarting: boolean = false;
     cleanUpList: ((exitCode: NodeJS.Signals | Error) => void | Promise<void>)[] = [];
 
     exitCallback?: Function;
     SIGINTCallback?: Function;
 
+    logger?: Logger;
+    crashLogger?: Logger;
+
     constructor() {
+        const handler = this._exitHandler.bind(this);
         //do something when app is closing
         //process.on('exit', exitHandler);
-        process.on('SIGTERM', this._exitHandler);
-        process.on('SIGHUP', this._exitHandler);
+        process.on('SIGTERM', handler);
+        process.on('SIGHUP', handler);
 
         //catches ctrl+c event
         process.on('SIGINT', (exitCode) => {
             if (this.SIGINTCallback) {
-                let r = this.SIGINTCallback(exitCode);
-                if (r === IgnoreSIGINT) return;
+                if (this.SIGINTCallback(exitCode) === IgnoreSIGINT) return;
             }
-            this._exitHandler(exitCode);
+            handler(exitCode);
         });
 
         // catches "kill pid" (for example: nodemon restart)
-        process.on('SIGUSR1', this._exitHandler);
-        process.on('SIGUSR2', this._exitHandler);
+        process.on('SIGUSR1', handler);
+        process.on('SIGUSR2', handler);
 
         //catches uncaught exceptions
-        process.on('uncaughtException', this._exitHandler);
-        process.on('unhandledRejection', this._exitHandler);
+        process.on('uncaughtException', handler);
+        process.on('unhandledRejection', handler);
     }
 
     async _exitHandler(exitCode: NodeJS.Signals | Error) {
-        this._exiting++;
-        if (this._exiting >= 3) process.exit(); // failed very hard
-        if (this._exiting == 2) {
+        this._exitState++;
+        if (this._exitState >= 3) process.exit(); // failed very hard
+        if (this._exitState == 2) {
             // sigint/error during exit handling
             this.cleanUpList = [];
             this.SIGINTCallback = undefined;
             this.exitCallback = undefined;
         }
 
-        // synchronous writes to stdout
+        // !! synchronous writes to stdout
         if (exitCode instanceof Error && exitCode.stack) {
+            // crashing
+            if (this.logger) {
+                await this.logger.log(`Exit logger detected`);
+                if (this.crashLogger) await this.logger.log(`Crash logger detected`);
+            }
             fs.writeSync(1, exitCode.stack + '\n');
+            if (this.logger) await this.logger.log(exitCode.stack);
+            if (this.crashLogger) await this.crashLogger.log(exitCode.stack);
         } else {
+            // normal exiting
             fs.writeSync(1, exitCode.toString() + '\n');
         }
 
         if (this.cleanUpList) {
             fs.writeSync(1, `Cleaning up...\n`);
+            if (this.logger) await this.logger.log(`Cleaning up...\n`);
             //await Promise.allSettled(this.cleanUpList.map(cleanup => cleanup()).filter(notVoid => notVoid));
             for (let i = 0; i < this.cleanUpList.length; i++) {
                 try {
                     await this.cleanUpList[i](exitCode);
-                } catch (e) {
+                } catch (e: any) {
                     console.log(e);
+                    if (this.logger) await this.logger.log(e instanceof Error ? e.stack : e);
                 }
             }
         }
@@ -68,6 +82,7 @@ class ExitHelper {
 
         if (this._restarting) {
             fs.writeSync(1, `Restarting...\n`);
+            if (this.logger) await this.logger.log(`Restarting...\n`);
             process.argv.shift();
             spawn(process.argv0, process.argv, {
                 cwd: process.cwd(),
@@ -77,7 +92,11 @@ class ExitHelper {
             });
         } else {
             fs.writeSync(1, `Exiting...\n`);
+            if (this.logger) await this.logger.log(`Exiting...\n`);
         }
+
+        if (this.logger) await this.logger.end();
+        if (this.crashLogger) await this.crashLogger.end();
 
         process.exit();
     }
@@ -94,13 +113,21 @@ class ExitHelper {
         this.SIGINTCallback = callback;
     }
 
+    setLogger(logger: Logger) {
+        this.logger = logger;
+    }
+
+    setCrashLogger(logger: Logger) {
+        this.crashLogger = logger;
+    }
+
     exit() {
         this._exitHandler('SIGTERM');
     }
 
     restart() {
         this._restarting = true;
-        this.exit();
+        if (this._exitState === 0) this.exit();
     }
 }
 
