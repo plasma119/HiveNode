@@ -24,13 +24,7 @@ export default class Logger extends HiveComponent {
     logFileName: string = '';
     logFilePath: string = '';
     logFileTimestamp: string = '';
-    logFileStream?: fs.WriteStream;
-
-    drainWaiting: boolean = false;
-    queue: {
-        str: string;
-        resolve: (value: void | PromiseLike<void>) => void;
-    }[] = [];
+    logFileHandle?: number;
 
     constructor(options: Options<LoggerOptions> = {}) {
         super(`Logger[${options.name}]` || 'Logger');
@@ -55,55 +49,50 @@ export default class Logger extends HiveComponent {
         }
     }
 
-    log(str: string, mute: boolean = false): Promise<void> {
-        return new Promise((resolve) => {
-            const log = `[${this.getTimeStamp('full')}] ` + (this.options.appendLoggerName ? `[${this.options.name}]: ${str}` : str);
-            if (!mute) {
-                // copy to console/stdIO
-                if (this.options.toConsole) {
-                    console.log(log);
-                } else {
-                    this.stdIO.output(log);
-                }
+    async log(message: string, mute: boolean = false) {
+        const log = this._stamp(message);
+        if (!mute) this._echo(log);
+        if (!this.logFileHandle) {
+            // get log file
+            this._newLogFile();
+            let t = '';
+            if (fs.existsSync(this.logFilePath)) {
+                t = `Reusing log file: ${this.logFileName}`;
+            } else {
+                t = `Generating log file: ${this.logFileName}`;
             }
-            if (!this.logFileStream) {
-                // get log file stream
-                this.logFileStream = this._newLogFile();
-                if (fs.existsSync(this.logFilePath)) {
-                    this.log(`Reusing log file: ${this.logFileName}`);
-                } else {
-                    this.log(`Generating log file: ${this.logFileName}`);
-                }
-            }
-            if (this.drainWaiting) {
-                this.queue.push({
-                    str: str,
-                    resolve: resolve,
-                });
-                return;
-            }
-            // write log
-            if (!this.logFileStream.write(log.endsWith('\n') ? log : log + '\n')) {
-                // waiting for drain
-                this.drainWaiting = true;
-                this.logFileStream.once('drain', () => {
-                    resolve();
-                    this._drainCallback();
-                });
-                this.log(`[Warning] Waiting for log file drain...`);
-            }
-            resolve();
-        });
+            this.logFileHandle = this._newLogFileHandle();
+            this.log(t);
+        }
+        fs.writeSync(this.logFileHandle, log);
+        return;
     }
 
     generateNewLogFile() {
-        this.logFileStream = this._newLogFile();
+        this._newLogFile();
         this.log(`Generating log file: ${this.logFileName}`);
     }
 
-    _updateLogFile() {
-        if (!this.logFileStream) return;
-        if (this.getTimeStamp('date') != this.logFileTimestamp) this._closeLogFile();
+    _stamp(message: string) {
+        return (
+            `[${this.getTimeStamp('full')}] ` +
+            (this.options.appendLoggerName ? `[${this.options.name}]: ${message}` : message) +
+            (message.endsWith('\n') ? '' : '\n')
+        );
+    }
+
+    _echo(log: string) {
+        // copy to console/stdIO
+        if (this.options.toConsole) {
+            console.log(log);
+        } else {
+            this.stdIO.output(log);
+        }
+    }
+
+    _newLogFileHandle() {
+        const handle = fs.openSync(this.logFilePath, 'a');
+        return handle;
     }
 
     _newLogFile() {
@@ -115,24 +104,30 @@ export default class Logger extends HiveComponent {
         this.logFileName = fileName;
         const filePath = path.join(this.options.logFolder, '/', fileName);
         this.logFilePath = filePath;
-        const stream = fs.createWriteStream(filePath, { flags: 'a' });
-        return stream;
     }
 
     _closeLogFile() {
-        if (!this.logFileStream) return;
-        this.logFileStream.destroy();
-        this.logFileStream = undefined;
+        if (!this.logFileName) return false;
         this.logFileName = '';
         this.logFilePath = '';
+        this.logFileTimestamp = '';
+        if (this.logFileHandle) fs.closeSync(this.logFileHandle);
+        this.logFileHandle = undefined;
+        return true;
     }
 
-    _drainCallback() {
-        this.drainWaiting = false;
-        const queue = this.queue;
-        this.queue = [];
-        queue.forEach((data) => this.log(data.str, true).then(() => data.resolve()));
-        this.log(`Log file drain completed.`);
+    _updateLogFile() {
+        if (!this.logFileName) return false;
+        if (this.getTimeStamp('date') != this.logFileTimestamp) return this._closeLogFile();
+        return false;
+    }
+
+    end(): Promise<void> {
+        return new Promise((resolve) => {
+            if (!this.logFileHandle) return resolve();
+            this._closeLogFile();
+            resolve();
+        });
     }
 
     getTimeStamp(format: 'date' | 'time' | 'full', dateSeperator: string = '-', timeSeperator: string = ':', seperator: string = ' ') {
@@ -147,5 +142,82 @@ export default class Logger extends HiveComponent {
             default:
                 return dateFormat(new Date(), `${date}${seperator}${time}`);
         }
+    }
+}
+
+export class LoggerStream extends Logger {
+    logFileStream?: fs.WriteStream;
+
+    drainWaiting: boolean = false;
+    queue: {
+        message: string;
+        resolve: (value: void | PromiseLike<void>) => void;
+    }[] = [];
+
+    log(message: string, mute: boolean = false): Promise<void> {
+        return new Promise((resolve) => {
+            const log = this._stamp(message);
+            if (!mute) this._echo(log);
+            if (!this.logFileStream) {
+                // get log file stream
+                this._newLogFile();
+                let t = '';
+                if (fs.existsSync(this.logFilePath)) {
+                    t = `Reusing log file: ${this.logFileName}`;
+                } else {
+                    t = `Generating log file: ${this.logFileName}`;
+                }
+                this.logFileStream = this._newLogFileStream();
+                this.log(t);
+            }
+            if (this.drainWaiting) {
+                this.queue.push({
+                    message: message,
+                    resolve: resolve,
+                });
+                return;
+            }
+            // write log
+            if (!this.logFileStream.write(log)) {
+                // waiting for drain
+                this.drainWaiting = true;
+                this.logFileStream.once('drain', () => {
+                    resolve();
+                    this._drainCallback();
+                });
+                this.log(`[Warning] Waiting for log file drain...`);
+            }
+            resolve();
+        });
+    }
+
+    _newLogFileStream() {
+        const stream = fs.createWriteStream(this.logFilePath, { flags: 'a' });
+        this.logFileStream = stream;
+        return stream;
+    }
+
+    _closeLogFile() {
+        if (!this.logFileStream) return false;
+        this.logFileStream.end();
+        super._closeLogFile();
+        return true;
+    }
+
+    _drainCallback() {
+        this.drainWaiting = false;
+        const queue = this.queue;
+        this.queue = [];
+        queue.forEach((data) => this.log(data.message, true).then(() => data.resolve()));
+        this.log(`Log file drain completed.`);
+    }
+
+    end(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if (!this.logFileStream) return resolve();
+            this.logFileStream.end();
+            this.logFileStream.on('finish', resolve);
+            this.logFileStream.on('error', reject);
+        });
     }
 }
