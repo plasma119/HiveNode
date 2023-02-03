@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import path from 'path';
 
+import dateFormat from 'dateformat';
+
 import DataIO from '../network/dataIO.js';
 import HiveComponent from './component.js';
 import { Options } from './lib.js';
@@ -8,7 +10,8 @@ import { Options } from './lib.js';
 type LoggerOptions = {
     name: string;
     logFolder: string;
-    timestampPolicy: 'day' | 'full';
+    logFileName: string;
+    logFileTimestamp: 'date' | 'full';
     newFilePerDay: boolean;
     appendLoggerName: boolean;
     toConsole: boolean;
@@ -18,21 +21,25 @@ export default class Logger extends HiveComponent {
     options: LoggerOptions;
     stdIO: DataIO;
 
-    fileTimestamp: string = '';
     logFileName: string = '';
     logFilePath: string = '';
+    logFileTimestamp: string = '';
     logFileStream?: fs.WriteStream;
 
     drainWaiting: boolean = false;
-    queue: string[] = [];
+    queue: {
+        str: string;
+        resolve: (value: void | PromiseLike<void>) => void;
+    }[] = [];
 
     constructor(options: Options<LoggerOptions> = {}) {
-        super(options.name || 'Logger');
+        super(`Logger[${options.name}]` || 'Logger');
         this.options = Object.assign(
             {
                 name: 'Logger',
                 logFolder: './log',
-                timestampPolicy: 'day',
+                logFileName: '',
+                logFileTimestamp: 'date',
                 newFilePerDay: true,
                 appendLoggerName: false,
                 toConsole: true,
@@ -48,49 +55,67 @@ export default class Logger extends HiveComponent {
         }
     }
 
-    log(str: string, mute: boolean = false) {
-        const log = this.options.appendLoggerName? `${this.name}: ${str}`: str;
-        if (!mute) {
-            if (this.options.toConsole) console.log(log);
-            this.stdIO.output(log);
-        }
-        if (!this.logFileStream) {
-            this.logFileStream = this._newLogFile();
-            if (fs.existsSync(this.logFilePath)) {
-                this.log(`Reusing log file: ${this.fileTimestamp}.txt`);
-            } else {
-                this.log(`Generating log file: ${this.fileTimestamp}.txt`);
+    log(str: string, mute: boolean = false): Promise<void> {
+        return new Promise((resolve) => {
+            const log = `[${this.getTimeStamp('full')}] ` + (this.options.appendLoggerName ? `[${this.options.name}]: ${str}` : str);
+            if (!mute) {
+                // copy to console/stdIO
+                if (this.options.toConsole) {
+                    console.log(log);
+                } else {
+                    this.stdIO.output(log);
+                }
             }
-        }
-        if (this.drainWaiting) {
-            this.queue.push(str);
-            return;
-        }
-        if (!this.logFileStream.write(log + '\n')) {
-            this.drainWaiting = true;
-            this.logFileStream.once('drain', this._drainCallback.bind(this));
-            this.log(`[Warning] Waiting for log file drain...`);
-        }
+            if (!this.logFileStream) {
+                // get log file stream
+                this.logFileStream = this._newLogFile();
+                if (fs.existsSync(this.logFilePath)) {
+                    this.log(`Reusing log file: ${this.logFileName}`);
+                } else {
+                    this.log(`Generating log file: ${this.logFileName}`);
+                }
+            }
+            if (this.drainWaiting) {
+                this.queue.push({
+                    str: str,
+                    resolve: resolve,
+                });
+                return;
+            }
+            // write log
+            if (!this.logFileStream.write(log.endsWith('\n') ? log : log + '\n')) {
+                // waiting for drain
+                this.drainWaiting = true;
+                this.logFileStream.once('drain', () => {
+                    resolve();
+                    this._drainCallback();
+                });
+                this.log(`[Warning] Waiting for log file drain...`);
+            }
+            resolve();
+        });
     }
 
     generateNewLogFile() {
         this.logFileStream = this._newLogFile();
-        this.log(`Generating log file: ${this.fileTimestamp}.txt`);
+        this.log(`Generating log file: ${this.logFileName}`);
     }
 
     _updateLogFile() {
         if (!this.logFileStream) return;
-        if (this._getTimeStamp() != this.fileTimestamp) this._closeLogFile();
+        if (this.getTimeStamp('date') != this.logFileTimestamp) this._closeLogFile();
     }
 
     _newLogFile() {
         this._closeLogFile();
-        this.fileTimestamp = this._getTimeStamp();
-        const fileName = `${this.fileTimestamp}.txt`;
+        this.logFileTimestamp = this.getTimeStamp('date');
+        let fileName = '';
+        if (this.options.logFileName) fileName += this.options.logFileName + '_';
+        fileName += `${this.getTimeStamp(this.options.logFileTimestamp, '_', '_', '_')}.txt`;
         this.logFileName = fileName;
-        const file = path.join(this.options.logFolder, '/', fileName);
-        this.logFilePath = file;
-        const stream = fs.createWriteStream(file, { flags: 'a' });
+        const filePath = path.join(this.options.logFolder, '/', fileName);
+        this.logFilePath = filePath;
+        const stream = fs.createWriteStream(filePath, { flags: 'a' });
         return stream;
     }
 
@@ -106,12 +131,21 @@ export default class Logger extends HiveComponent {
         this.drainWaiting = false;
         const queue = this.queue;
         this.queue = [];
-        queue.forEach((q) => this.log(q, true));
+        queue.forEach((data) => this.log(data.str, true).then(() => data.resolve()));
         this.log(`Log file drain completed.`);
     }
 
-    _getTimeStamp() {
-        const time = new Date().toISOString();
-        return this.options.timestampPolicy === 'day' ? time.slice(0, 10) : time;
+    getTimeStamp(format: 'date' | 'time' | 'full', dateSeperator: string = '-', timeSeperator: string = ':', seperator: string = ' ') {
+        let date = `yyyy'${dateSeperator}'mm'${dateSeperator}'dd`;
+        let time = `HH'${timeSeperator}'MM'${timeSeperator}'ss`;
+        switch (format) {
+            case 'date':
+                return dateFormat(new Date(), date);
+            case 'time':
+                return dateFormat(new Date(), time);
+            case 'full':
+            default:
+                return dateFormat(new Date(), `${date}${seperator}${time}`);
+        }
     }
 }

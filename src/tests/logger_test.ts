@@ -3,7 +3,8 @@ import Logger from '../lib/logger.js';
 
 (async () => {
     let logger = new Logger({
-        name: `Logger ${Math.random().toFixed(2)}`
+        appendLoggerName: true,
+        name: `Test`
     });
 
     while (true) {
@@ -12,6 +13,7 @@ import Logger from '../lib/logger.js';
 
         console.log('logging stuff...');
         logger.log('testing');
+        await logger.log('testing await');
         for (let i = 0; i < 3; i++) logger.log(Math.random().toFixed(2));
     }
 })();
