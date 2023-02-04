@@ -6,6 +6,7 @@ import { version } from '../index.js';
 import DataIO from './dataIO.js';
 import HiveCommand from '../lib/hiveCommand.js';
 import { Encryption, sleep, typeCheck } from '../lib/lib.js';
+import HiveComponent from '../lib/component.js';
 
 export type SocketInfo = {
     name: string;
@@ -42,8 +43,7 @@ const DEFAULTSOCKETSECRET: SocketSecret = {
     OSI model layer 3 - network layer
     TODO: decoder program for advance socket control
 */
-export default class HiveSocket {
-    name: string;
+export default class HiveSocket extends HiveComponent {
     stdIO: DataIO;
     dataIO: DataIO;
     info: SocketInfo;
@@ -57,7 +57,7 @@ export default class HiveSocket {
     _handShakeCallback?: (header: string, data: string) => void;
 
     constructor(name: string) {
-        this.name = name;
+        super(name);
         this.stdIO = new DataIO(this, 'HiveSocket-stdIO');
         this.dataIO = new DataIO(this, 'HiveSocket-dataIO');
         this.info = Object.create(DEFAULTSOCKETINFO);

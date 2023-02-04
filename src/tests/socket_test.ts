@@ -4,6 +4,7 @@ import WebSocket from "ws";
 import HiveSocket from "../network/socket.js";
 import DataIO from "../network/dataIO.js";
 import { DataSignature, DataSignaturesToString } from "../network/hiveNet.js";
+import HiveComponent from "../lib/component.js";
 
 function noop(_a: any) {
 
@@ -17,7 +18,7 @@ function log(label: string) {
     }
 }
 
-let io = new DataIO({}, 'client');
+let io = new DataIO(new HiveComponent('test'), 'client');
 io.on('input', log('client'));
 
 let hs = new HiveSocket('client-socket');
@@ -25,7 +26,7 @@ hs.stdIO.connect(io);
 hs.dataIO.on('output', log('client-data'));
 
 
-let io2 = new DataIO({}, 'server');
+let io2 = new DataIO(new HiveComponent('test'), 'server');
 io2.on('input', log('server'));
 
 let hs2 = new HiveSocket('server-socket');

@@ -16,8 +16,7 @@ export type DataIOEvent = {
 };
 
 export default class DataIO extends HiveComponent<DataIOEvent> {
-    owner: any;
-    private _signature: DataSignature;
+    owner: HiveComponent;
 
     connectTable: Map<DataIO, boolean> = new Map();
     passThroughTable: Map<DataIO, DataIO> = new Map();
@@ -25,17 +24,10 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
     inputBind: DataLink;
     outputBind: DataLink;
 
-    constructor(owner: object, name: string) {
+    constructor(owner: HiveComponent, name: string) {
         super(name);
         this.owner = owner;
         this.name = name;
-        this._signature = {
-            by: owner,
-            name: name,
-            timestamp: 0,
-            UUID: this.UUID,
-            event: '',
-        };
         this.inputBind = this.input.bind(this);
         this.outputBind = this.output.bind(this);
     }
@@ -111,31 +103,37 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
     }
 
     getSignature() {
-        return Object.create(this._signature);
+        return {
+            by: this.owner,
+            name: this.name,
+            timestamp: Date.now(),
+            UUID: this.UUID,
+            event: '',
+        };
     }
 
     private _sign(signatures: DataSignature[], event: string) {
-        const signature: DataSignature = Object.create(this._signature);
-        signature.timestamp = Date.now();
+        const signature = this.getSignature();
         signature.event = event;
-        signature.name = this.name;
         signatures.push(signature);
         return signatures;
     }
 }
 
-export class DataTransformer {
+export class DataTransformer extends HiveComponent {
     stdIO: DataIO;
     targetIO: DataIO;
     inputTransform: (data: any, _signatures: DataSignature[]) => any;
     outputTransform: (data: any, _signatures: DataSignature[]) => any;
 
     constructor(targetIO: DataIO) {
-        this.stdIO = new DataIO(targetIO.owner, 'DataTransformer-stdIO');
+        super('DataTransformer');
+        this.stdIO = new DataIO(targetIO.owner, 'stdIO');
         this.targetIO = targetIO;
         this.inputTransform = (data) => data;
         this.outputTransform = (data) => data;
 
+        // !! does not sign data
         this.stdIO.on('input', (data: any, signatures: DataSignature[]) => {
             const result = this.inputTransform(data, signatures);
             if (result === StopPropagation) return;

@@ -1,3 +1,4 @@
+import HiveComponent from '../lib/component.js';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
 
@@ -9,7 +10,7 @@ function log(data: any, signatures: DataSignature[]) {
 };
 
 function newTestIO(label: string) {
-    let io = new DataIO({}, label);
+    let io = new DataIO(new HiveComponent('test'), label);
     io.on('input', log);
     return io;
 }

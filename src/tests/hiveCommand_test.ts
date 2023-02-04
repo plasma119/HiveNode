@@ -1,9 +1,10 @@
 import HiveCommand from '../lib/hiveCommand.js';
 import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
+import HiveComponent from '../lib/component.js';
 
 let program = new HiveCommand();
-let io = new DataIO({}, 'io');
+let io = new DataIO(new HiveComponent('test'), 'io');
 io.connect(program.stdIO);
 io.on('input', (data) => {
     if (data instanceof Error) {
