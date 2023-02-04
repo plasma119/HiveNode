@@ -62,9 +62,10 @@ class ExitHelper {
         } else {
             // normal exiting
             fs.writeSync(1, exitCode.toString() + '\n');
+            if (this.logger) await this.logger.log(exitCode.toString() + '\n');
         }
 
-        if (this.cleanUpList) {
+        if (this.cleanUpList && this.cleanUpList.length > 0) {
             fs.writeSync(1, `Cleaning up...\n`);
             if (this.logger) await this.logger.log(`Cleaning up...\n`);
             //await Promise.allSettled(this.cleanUpList.map(cleanup => cleanup()).filter(notVoid => notVoid));
