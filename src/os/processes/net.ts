@@ -27,7 +27,7 @@ export default class HiveProcessNet extends HiveProcess {
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number) {
         super(name, os, pid, ppid);
-        this.switch = new HiveNetSwitch(`HiveNetSwitch[${this.os.name}]`);
+        this.switch = new HiveNetSwitch(this.os.name);
         this.os.netInterface.connect(this.switch, 'net');
     }
 

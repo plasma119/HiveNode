@@ -12,17 +12,8 @@ export default class HiveNetSwitch extends HiveNetDevice {
     addressTable: Map<string, { io: DataIO; timestamp: number }> = new Map();
     expireTime: number = 300000;
 
-    private _signature: DataSignature;
-
     constructor(name: string) {
         super(name, 'switch');
-        this._signature = {
-            by: this,
-            name: this.name,
-            timestamp: 0,
-            UUID: this.UUID,
-            event: 'route',
-        };
     }
 
     newIO(label = 'SwitchIO') {
@@ -91,8 +82,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
         }
 
         // sign packet
-        const signature: DataSignature = Object.create(this._signature);
-        signature.timestamp = Date.now();
+        const signature = this.getSignature();
         signatures.push(signature);
 
         // routing
@@ -129,5 +119,15 @@ export default class HiveNetSwitch extends HiveNetDevice {
                 flags: flags,
             })
         );
+    }
+
+    getSignature(): DataSignature {
+        return {
+            by: this,
+            name: this.name,
+            timestamp: Date.now(),
+            UUID: this.UUID,
+            event: 'route',
+        };
     }
 }
