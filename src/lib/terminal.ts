@@ -5,61 +5,51 @@ import MuteStream from 'mute-stream';
 
 import DataIO from '../network/dataIO.js';
 import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
+import HiveComponent from './component.js';
+import { Encryption } from './lib.js';
 
-export default class Terminal {
-    stdIO: DataIO;
-    prompt?: TerminalPrompt;
-
-    constructor() {
-        this.stdIO = new DataIO(this, 'Terminal');
-    }
-
-    connectDevice(target: DataIO | NodeJS.Process) {
-        if (target instanceof DataIO) {
-            this.stdIO.connect(target);
-        } else {
-            this.prompt = new TerminalPrompt(target.stdin, target.stdout, '>');
-            this.stdIO.passThrough(this.prompt.stdIO);
-        }
-    }
-}
-
-export class TerminalPrompt {
+export default class Terminal extends HiveComponent {
     stdout: NodeJS.WriteStream;
     stdin: NodeJS.ReadStream;
     muteStream: MuteStream = new MuteStream({
-        replace: '*',
+        replace: '',
     });
     stdIO: DataIO;
     debug: boolean = false;
 
-    _promptString: string;
     interface: ReadLine.Interface;
+    _prompt: string;
     _completions: string[] = [];
 
     _passwordMode: boolean = false;
     _clearNextHistory: boolean = false;
-    private _passwordIV: string = '';
+    _passwordPrompt: string = '';
+    _passwordSalt: string = '';
+    _passwordCallback?: (passwordHash: string, pepper: string) => void;
 
-    constructor(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJS.WriteStream = process.stdout, promptString: string = '>') {
+    constructor(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJS.WriteStream = process.stdout, prompt: string | string[] = '>') {
+        super('Terminal');
         this.stdin = stdin;
         this.stdout = stdout;
-        this.stdIO = new DataIO(this, 'TerminalPrompt');
-        this._promptString = promptString;
+        this.stdIO = new DataIO(this, 'stdIO');
+        this._prompt = typeof prompt == 'string' ? prompt : prompt.join('');
         this.muteStream.pipe(this.stdout, { end: false });
         this.muteStream.unmute();
         this.interface = ReadLine.createInterface({
             input: this.stdin,
             output: this.muteStream,
-            prompt: this._promptString,
+            prompt: this._prompt,
             completer: this._completer.bind(this),
             history: [],
         });
         this.interface.on('history', (history) => {
-            if (this._clearNextHistory) history[0] = '';
+            if (this._clearNextHistory) {
+                history[0] = '';
+                this._clearNextHistory = false;
+            }
         });
         this.interface.on('line', (str: string) => {
-            this.prompt();
+            if (!this._passwordMode) this.prompt();
             this.outputHandler(str);
         });
         this.interface.on('SIGINT', () => process.emit('SIGINT'));
@@ -68,18 +58,18 @@ export class TerminalPrompt {
     }
 
     prompt() {
-        this.stdout.write(this._promptString);
+        this.stdout.write(this._prompt);
     }
 
-    setPrompt(str: string) {
+    setPrompt(prompt: string | string[]) {
         this.redraw(() => {
-            this._promptString = str;
-            this.interface.setPrompt(str);
+            this._prompt = typeof prompt == 'string' ? prompt : prompt.join('');
+            this.interface.setPrompt(this._prompt);
         });
     }
 
     _completer(line: string) {
-        if (line.charAt(0) != '/') return ['', line];
+        //if (line.charAt(0) != '/') return ['', line]; // deprecated, for chibot command
         const hits = this._completions.filter((c) => c.startsWith(line));
         // Show all completions if none found
         return [hits.length ? hits : this._completions, line];
@@ -89,29 +79,31 @@ export class TerminalPrompt {
         this._completions = arr;
     }
 
-    askPassword(iv: string) {
+    getPassword(salt: string, callback: (passwordHash: string, iv: string) => void) {
         this._passwordMode = true;
-        this._passwordIV = iv;
         this._clearNextHistory = true;
+        this._passwordSalt = salt;
+        this._passwordCallback = callback;
+        this._passwordPrompt = this._prompt;
+        this.setPrompt(this._prompt + '[Enter Password]:');
         this.muteStream.mute();
     }
 
     outputHandler(str: string) {
         if (this._passwordMode) {
-            this.stdout.moveCursor(0, -1);
-            ReadLine.clearLine(this.stdout, 0); // clear input
-            // todo: hash password with iv
-            // maybe add datatype class?
-            let data = {
-                type: 'password',
-                iv: this._passwordIV,
-                password: str,
-            };
+            //this.stdout.moveCursor(0, -1);
+            //ReadLine.clearLine(this.stdout, 0); // clear input
+            // hash password with iv
+            const pepper = Encryption.randomData(16).toString('base64');
+            const hash = Encryption.hash(str).update(this._passwordSalt).update(pepper).digest('base64');
+            if (this._passwordCallback) this._passwordCallback(hash, pepper);
             str = '';
-            this._passwordIV = '';
             this._passwordMode = false;
+            this._passwordCallback = undefined;
+            this._passwordSalt = '';
             this.muteStream.unmute();
-            this.stdIO.output(data);
+            //this.stdIO.output(data);
+            this.setPrompt(this._passwordPrompt);
         } else {
             this.stdIO.output(str);
         }
@@ -133,7 +125,7 @@ export class TerminalPrompt {
 
     redraw(f: Function) {
         const p = this.interface.getCursorPos();
-        const l = this._promptString.length;
+        const l = this._prompt.length;
         const rows = Math.floor((l + this.interface.line.length) / this.stdout.columns); // end of input rows
         const cols = (l + this.interface.line.length) % this.stdout.columns; // end of input cols
         ReadLine.cursorTo(this.stdout, 0); // back to col 0

@@ -12,6 +12,10 @@ export default class HiveProcessTerminal extends HiveProcess {
     initProgram() {
         const program = new HiveCommand('terminal', 'Terminal Controller');
 
+        this.os.on('sigint', () => {
+            this.os.stdIO.output(this.remoteDisconnect());
+        });
+
         program
             .addNewCommand('buildTerminal', 'initialize terminal')
             .addNewOption('-headless', 'disable user input for server node', false)
@@ -28,12 +32,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 if (info.rawData instanceof HiveNetPacket && info.rawData.src != this.os.netInterface.UUID) {
                     return 'Only local terminal can use this command.';
                 } else if (opts['-d']) {
-                    if (this.terminalDest != HIVENETADDRESS.LOCAL) {
-                        this.terminalDest = HIVENETADDRESS.LOCAL;
-                        return 'Returning to local shell';
-                    } else {
-                        return 'Already in local shell';
-                    }
+                    return this.remoteDisconnect();
                 } else if (!args['target']) {
                     return 'Target not specified.';
                 } else if (args['target'] == this.os.name || args['target'] == this.os.netInterface.UUID) {
@@ -47,6 +46,23 @@ export default class HiveProcessTerminal extends HiveProcess {
                 if (!targetInfo) return 'Failed to get target node info.';
                 this.terminalDest = uuid;
                 return `Connected to target node: ${targetInfo.info.name} [HiveOS: ${targetInfo.info.HiveNodeVersion}]`;
+            });
+
+        program
+            .addNewCommand('getPassword', 'get password from user')
+            .addNewArgument('<salt>', 'salt for hashing')
+            .setAction((args, _opts, info) => {
+                let invalid = false;
+                if (info.rawData instanceof HiveNetPacket) {
+                    if (this.terminalDest == HIVENETADDRESS.LOCAL) {
+                        invalid = info.rawData.src != this.os.netInterface.UUID;
+                    } else {
+                        invalid = info.rawData.src != this.terminalDest;
+                    }
+                    invalid = invalid || info.rawData.sport != HIVENETPORT.SHELL;
+                }
+                if (invalid) return 'Only current terminal target can ask for password';
+                return this.getPassword(args['salt']);
             });
 
         this.os.registerService(program);
@@ -89,9 +105,42 @@ export default class HiveProcessTerminal extends HiveProcess {
         //this.terminalShell.stdIO.on('output', (data, signatures) => dt.stdIO.output(data, signatures));
         const terminal = new Terminal();
         this.terminal = terminal;
-        terminal.connectDevice(process);
-        terminal.connectDevice(dt.stdIO);
+        terminal.stdIO.connect(dt.stdIO);
         this.os.stdIO.on('output', dt.stdIO.outputBind);
-        if (terminal.prompt && debug) terminal.prompt.debug = debug;
+        if (terminal && debug) terminal.debug = debug;
+    }
+
+    remoteDisconnect() {
+        if (this.terminalDest != HIVENETADDRESS.LOCAL) {
+            this.terminalDest = HIVENETADDRESS.LOCAL;
+            return 'Returning to local shell';
+        } else {
+            return 'Already in local shell';
+        }
+    }
+
+    setPrompt(prompt: string | string[]) {
+        if (!this.terminal) return;
+        this.terminal.setPrompt(prompt);
+    }
+
+    setCompleter(completer: string[]) {
+        if (!this.terminal) return;
+        this.terminal.setCompleter(completer);
+    }
+
+    getPassword(salt: string): Promise<string | { hash: string; pepper: string }> {
+        return new Promise((resolve) => {
+            if (this.terminal) {
+                this.terminal.getPassword(salt, (hash, pepper) => {
+                    resolve({
+                        hash: hash,
+                        pepper: pepper,
+                    });
+                });
+            } else {
+                resolve('Terminal is not avaliable.');
+            }
+        });
     }
 }
