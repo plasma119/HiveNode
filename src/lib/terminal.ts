@@ -8,6 +8,8 @@ import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
 import HiveComponent from './component.js';
 import { Encryption } from './lib.js';
 
+export type completer = (line: string) => PromiseLike<string[]> | string[];
+
 export default class Terminal extends HiveComponent {
     stdout: NodeJS.WriteStream;
     stdin: NodeJS.ReadStream;
@@ -17,9 +19,9 @@ export default class Terminal extends HiveComponent {
     stdIO: DataIO;
     debug: boolean = false;
 
-    interface: ReadLine.Interface;
     _prompt: string;
-    _completions: string[] = [];
+    interface: ReadLine.Interface;
+    completer?: completer;
 
     _passwordMode: boolean = false;
     _clearNextHistory: boolean = false;
@@ -68,15 +70,21 @@ export default class Terminal extends HiveComponent {
         });
     }
 
-    _completer(line: string) {
-        //if (line.charAt(0) != '/') return ['', line]; // deprecated, for chibot command
-        const hits = this._completions.filter((c) => c.startsWith(line));
-        // Show all completions if none found
-        return [hits.length ? hits : this._completions, line];
+    async _completer(line: string, callback: (err?: null | Error, result?: [string[], string]) => void) {
+        try {
+            let completions = this.completer ? await this.completer(line) : [];
+            if (!Array.isArray(completions)) {
+                completions = [];
+                this.stdIO.input('[ERROR] Terminal: Completion error', []);
+            }
+            callback(null, [completions, line]);
+        } catch (e) {
+            callback(e as Error, [[], line]);
+        }
     }
 
-    setCompleter(arr: string[]) {
-        this._completions = arr;
+    setCompleter(completer: completer) {
+        this.completer = completer;
     }
 
     getPassword(salt: string, callback: (passwordHash: string, iv: string) => void) {
@@ -114,7 +122,7 @@ export default class Terminal extends HiveComponent {
             if (this.debug) this.stdout.write(`signatures: ${DataSignaturesToString(signatures)}\n`);
             if (typeof data == 'string') {
                 const c = data.charAt(data.length - 1);
-                this.stdout.write(`${data}${c != '\n' && c != '\r' ? '\n' : ''}`);
+                this.stdout.write(`${data}${c != '\n' && c != '\r' && data != '' ? '\n' : ''}`);
             } else {
                 this.stdout.write(inspect(data, false, 2, true));
                 const p = this.interface.getCursorPos();

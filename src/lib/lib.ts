@@ -78,6 +78,19 @@ export function arrayUnion(array1: any[], array2: any[]) {
     return Array.from(new Set(array1.concat(array2)));
 }
 
+export function commonPrefix(stringArr: string[]) {
+    if (stringArr.length <= 1) return stringArr[0] || '';
+    const sorted = stringArr.sort();
+    const head = sorted[0];
+    const tail = sorted[sorted.length - 1];
+    for (let i = 0; i < head.length; i++) {
+        if (head[i] !== tail[i]) {
+            return head.substring(0, i);
+        }
+    }
+    return head;
+}
+
 export function sleep(ms: number) {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);

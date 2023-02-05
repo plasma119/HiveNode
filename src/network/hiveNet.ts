@@ -19,6 +19,13 @@ export type HiveNetFlags = {
     timeout?: boolean;
 };
 
+export type TerminalControlPacket = {
+    terminalControl: true;
+    request?: 'completer';
+    input?: string;
+    completer?: string[];
+};
+
 export class HiveNetPacket {
     data: any;
     src: string;
@@ -49,7 +56,7 @@ export class HiveNetPacket {
 }
 
 const HiveNetPacketStructure = {
-    data: 'any',
+    // data: 'any',
     src: 'string',
     dest: 'string',
     sport: 'number',

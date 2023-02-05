@@ -5,9 +5,9 @@
 import { parseArgsStringToArgv } from 'string-argv';
 
 import DataIO from '../network/dataIO.js';
-import { DataSignature, HiveNetPacket } from '../network/hiveNet.js';
+import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
 import HiveComponent from './component.js';
-import { formatTab, typeCheck } from './lib.js';
+import { commonPrefix, formatTab, typeCheck } from './lib.js';
 
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: string]: boolean | string }, info: HiveCommandInfo) => any;
 
@@ -16,6 +16,9 @@ export type HiveCommandInfo = {
     rawInput: string;
     signatures: DataSignature[];
     currentProgram: HiveCommand;
+    currentInput: string;
+    programChain: HiveCommand[];
+    terminalControl?: TerminalControlPacket;
     reply: (message: any) => void;
 };
 
@@ -86,15 +89,14 @@ export default class HiveCommand extends HiveComponent {
 
     async _inputHandler(data: any, signatures: DataSignature[]) {
         // unpack data
-        let input = data;
-        if (input instanceof HiveNetPacket) {
-            input = input.data;
-        }
+        let input = data instanceof HiveNetPacket ? data.data : data;
         const info: HiveCommandInfo = {
             rawData: data,
             rawInput: input,
             signatures: signatures,
             currentProgram: this,
+            currentInput: input,
+            programChain: [],
             reply: (message) => {
                 if (message === undefined || message === null) return;
                 if (data instanceof HiveNetPacket) {
@@ -111,10 +113,15 @@ export default class HiveCommand extends HiveComponent {
                 }
             },
         };
-        let result: any = '';
 
+        let result: any = '';
         // execute command
         try {
+            if (typeof input == 'object' && input.terminalControl) {
+                // terminal control packet
+                info.terminalControl = input as TerminalControlPacket;
+                info.rawInput = typeof info.terminalControl.input == 'string' ? info.terminalControl.input : '';
+            }
             if (typeof info.rawInput != 'string') {
                 throw new HiveCommandError('Cannot recognize input data format');
             }
@@ -132,13 +139,19 @@ export default class HiveCommand extends HiveComponent {
     }
 
     parse(str: string, info: HiveCommandInfo): any {
+        info.programChain.push(this);
+        info.currentInput = str;
+
         if (str.length == 0 && info.rawInput.length == 0) {
             // empty input
+            if (info.terminalControl && info.terminalControl.request == 'completer') return this.terminalCompleter(info);
             return '';
         }
+
         const o = HiveCommand.splitCommandStr(str);
         if (!o) {
             // empty current input, possibly as sub-command
+            if (info.terminalControl && info.terminalControl.request == 'completer') return this.terminalCompleter(info);
             if (str.length == 0) {
                 let help = this.findCommand('help');
                 if (help) {
@@ -147,10 +160,12 @@ export default class HiveCommand extends HiveComponent {
             }
             throw new HiveCommandError(`Invalid command.`);
         }
+
         const cmd = this.findCommand(o.name);
         if (cmd) {
             return cmd.parse(o.args, info);
         } else {
+            if (info.terminalControl && info.terminalControl.request == 'completer') return this.terminalCompleter(info);
             throw new HiveCommandError(`Command not found: ${o.name}`);
         }
     }
@@ -219,6 +234,22 @@ export default class HiveCommand extends HiveComponent {
         return result;
     }
 
+    terminalCompleter(info: HiveCommandInfo) {
+        let chain = info.programChain.map((p) => p.name);
+        chain.shift();
+        let base = chain.join(' ');
+        let cmds = Array.from(this.commands).map((i) => i[0]);
+        let hits = cmds.filter((c) => c.startsWith(info.currentInput));
+        if (hits.length == 0) hits = cmds; // no hit
+        let prefix = commonPrefix(hits as string[]);
+        if (prefix) hits = [prefix];
+        return {
+            terminalControl: true,
+            completer: hits.length == 1 ? [(base ? base + ' ' : '') + hits[0]] : hits.sort(),
+            //completer: Array.from(this.commands).map((i) => (base ? base + ' ' : '') + i[0]),
+        };
+    }
+
     static splitCommandStr(command: string) {
         const result = command.match(/([^ ]+) *(.*)/);
         if (!result) return null;
@@ -253,6 +284,9 @@ export class HiveSubCommand extends HiveCommand {
     }
 
     parse(str: string, info: HiveCommandInfo): any {
+        info.programChain.push(this);
+        info.currentInput = str;
+
         // check sub-command
         const o = HiveCommand.splitCommandStr(str);
         if (o) {
@@ -261,6 +295,9 @@ export class HiveSubCommand extends HiveCommand {
                 return cmd.parse(o.args, info);
             }
         }
+
+        // terminal control
+        if (info.terminalControl && info.terminalControl.request == 'completer') return this.terminalCompleter(info);
 
         // initialize
         info.currentProgram = this;
