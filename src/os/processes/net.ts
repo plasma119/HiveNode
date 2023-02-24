@@ -256,10 +256,15 @@ export default class HiveProcessNet extends HiveProcess {
             let sport = this.os.netInterface.newRandomPortNumber();
             this.os.HTP.listen(sport, (data, signatures) => {
                 data.dport = HIVENETPORT.SHELL;
-                socket.stdIO.input(data, signatures);
-            })
-            this.os.stdIO.passThrough(socketDT.stdIO);
+                socketDT.stdIO.input(data, signatures);
+            });
+            socketDT.stdIO.on('output', (data, signatures) => {
+                if (data instanceof HiveNetPacket) data = data.data;
+                this.os.stdIO.output(data, signatures);
+            });
+            //this.os.stdIO.passThrough(socketDT.stdIO);
             terminal.terminalDestPort = sport;
+            terminal.setPrompt(`->${host}:${port}`);
         } else {
             this.switch.connect(socketDT.stdIO);
         }
