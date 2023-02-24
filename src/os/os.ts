@@ -41,15 +41,14 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.debugMode = debugMode;
         this.kernel = this.newProcess('kernel', HiveProcessKernel);
         //this.terminalShell = new HiveCommand(`${name}-terminalShell`);
-        this.startup();
-    }
-
-    startup() {
-        // TODO: this broke keyboard input...
         exitHelper.onSIGINT(() => {
             this.emit('sigint');
             return IgnoreSIGINT;
         });
+        this.startup();
+    }
+
+    startup() {
         this.kernel.spawnChild('net', HiveProcessNet);
         this.kernel.spawnChild('terminal', HiveProcessTerminal);
         this.kernel.spawnChild('logger', HiveProcessLogger);

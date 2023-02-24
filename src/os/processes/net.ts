@@ -16,6 +16,7 @@ import HiveSocket from '../../network/socket.js';
 import HiveNetSwitch from '../../network/switch.js';
 import HiveOS from '../os.js';
 import HiveProcess from '../process.js';
+import HiveProcessTerminal from './terminal.js';
 
 export default class HiveProcessNet extends HiveProcess {
     infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
@@ -138,7 +139,7 @@ export default class HiveProcessNet extends HiveProcess {
             await this.netview();
             uuid = this.nameMap.get(target);
             if (!uuid) {
-                if (reply) 'Target not found.';
+                if (reply) reply('Target not found.');
                 return null;
             }
             if (reply) reply(`Resolved UUID: ${uuid}`);
@@ -249,8 +250,16 @@ export default class HiveProcessNet extends HiveProcess {
 
         if (directSSH) {
             // TODO: fix input routing
+            let terminal = this.os.getProcess(HiveProcessTerminal);
+            if (!terminal) throw new Error('Cannot find Terminal process');
             //if (this.os.stdIOPortIO) this.os.stdIO.unpassThrough(this.os.stdIOPortIO);
+            let sport = this.os.netInterface.newRandomPortNumber();
+            this.os.HTP.listen(sport, (data, signatures) => {
+                data.dport = HIVENETPORT.SHELL;
+                socket.stdIO.input(data, signatures);
+            })
             this.os.stdIO.passThrough(socketDT.stdIO);
+            terminal.terminalDestPort = sport;
         } else {
             this.switch.connect(socketDT.stdIO);
         }

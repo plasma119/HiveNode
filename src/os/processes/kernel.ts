@@ -16,6 +16,7 @@ export default class HiveProcessKernel extends HiveProcess {
         // shell port (temporary)
         this.os.HTP.listen(HIVENETPORT.SHELL).connect(kernel.stdIO);
         // node stdIO to net interface
+        this.os.stdIO.on('input', kernel.stdIO.inputBind); // force direct input to local kernel
         this.os.stdIO.passThrough(this.os.HTP.listen(HIVENETPORT.STDIO));
 
         kernel.addNewCommand('version', 'display HiveNode version').setAction(() => {

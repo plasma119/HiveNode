@@ -8,6 +8,7 @@ import HiveProcessNet from './net.js';
 
 export default class HiveProcessTerminal extends HiveProcess {
     terminalDest: string = HIVENETADDRESS.LOCAL;
+    terminalDestPort: number = HIVENETPORT.SHELL;
     terminal?: Terminal;
 
     completerCallback?: (value: string[] | PromiseLike<string[]>) => void;
@@ -31,8 +32,9 @@ export default class HiveProcessTerminal extends HiveProcess {
                 if (info.rawData instanceof HiveNetPacket && info.rawData.src != this.os.netInterface.UUID) {
                     return 'Only local terminal can use this command.';
                 } else if (opts['-d']) {
-                    if (this.terminalDest != HIVENETADDRESS.LOCAL) {
+                    if (this.terminalDest != HIVENETADDRESS.LOCAL || this.terminalDestPort != HIVENETPORT.SHELL) {
                         this.terminalDest = HIVENETADDRESS.LOCAL;
+                        this.terminalDestPort = HIVENETPORT.SHELL;
                         return 'Returning to local shell';
                     } else {
                         return 'Already in local shell';
@@ -63,7 +65,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                     } else {
                         invalid = info.rawData.src != this.terminalDest;
                     }
-                    invalid = invalid || info.rawData.sport != HIVENETPORT.SHELL;
+                    invalid = invalid || info.rawData.sport != this.terminalDestPort;
                 }
                 if (invalid) return 'Only current terminal target can ask for password';
                 return this.getPassword(args['salt']);
@@ -88,7 +90,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 return new HiveNetPacket({ data: data.slice(1), dest: HIVENETADDRESS.LOCAL, dport: HIVENETPORT.SHELL });
             }
             // to target shell
-            return new HiveNetPacket({ data, dest: this.terminalDest, dport: HIVENETPORT.SHELL });
+            return new HiveNetPacket({ data, dest: this.terminalDest, dport: this.terminalDestPort });
         });
         dt.setOutputTransform((packet) => {
             // os -> terminal
