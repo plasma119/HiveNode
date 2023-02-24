@@ -11,6 +11,8 @@ export default class HiveProcessTerminal extends HiveProcess {
     terminalDestPort: number = HIVENETPORT.SHELL;
     terminal?: Terminal;
 
+    promptBuilder: PromptBuilder = new PromptBuilder();
+
     completerCallback?: (value: string[] | PromiseLike<string[]>) => void;
 
     initProgram() {
@@ -35,6 +37,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                     if (this.terminalDest != HIVENETADDRESS.LOCAL || this.terminalDestPort != HIVENETPORT.SHELL) {
                         this.terminalDest = HIVENETADDRESS.LOCAL;
                         this.terminalDestPort = HIVENETPORT.SHELL;
+                        this.setPrompt('');
                         return 'Returning to local shell';
                     } else {
                         return 'Already in local shell';
@@ -51,6 +54,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 const targetInfo = await net.getInfo(uuid, true);
                 if (!targetInfo) return 'Failed to get target node info.';
                 this.terminalDest = uuid;
+                this.setPrompt(`->[${targetInfo.info.name}]`);
                 return `Connected to target node: ${targetInfo.info.name} [HiveOS: ${targetInfo.info.HiveNodeVersion}]`;
             });
 
@@ -81,6 +85,7 @@ export default class HiveProcessTerminal extends HiveProcess {
             this.os.stdIO.on('output', (data) => console.log(data));
             return;
         }
+
         const port = this.os.HTP.listen(HIVENETPORT.TERMINAL);
         const dt = new DataTransformer(port);
         dt.setInputTransform((data) => {
@@ -95,35 +100,45 @@ export default class HiveProcessTerminal extends HiveProcess {
         dt.setOutputTransform((packet) => {
             // os -> terminal
             const data = packet instanceof HiveNetPacket ? packet.data : packet;
-            if (typeof data == 'object' && data.terminalControl) {
+            if (typeof data == 'object' && data.terminalControl && this.terminal) {
+                // terminal control system
                 const control = data as TerminalControlPacket;
                 if (this.completerCallback && control.completer && Array.isArray(control.completer)) {
                     this.completerCallback(control.completer);
                     this.completerCallback = undefined;
                 }
+                if (typeof control.progressPrompt == 'string') {
+                    this.promptBuilder.progressPrompt = control.progressPrompt;
+                    this.terminal.setPrompt(this.promptBuilder.build());
+                }
                 return StopPropagation;
             }
             return data;
         });
+
         this.os.on('sigint', () => {
             if (this.terminalDest != HIVENETADDRESS.LOCAL) {
                 this.terminalDest = HIVENETADDRESS.LOCAL;
                 port.output('Returning to local shell');
             }
         });
+
         const terminal = new Terminal();
         this.terminal = terminal;
         terminal.stdIO.connect(dt.stdIO);
         // TODO: buffer screen for os.stdIO
         this.os.stdIO.on('output', dt.stdIO.outputBind);
         if (terminal && debug) terminal.debug = debug;
+        this.promptBuilder.basePrompt = `[${this.os.name}]`;
+        terminal.setPrompt(this.promptBuilder.build());
+
         terminal.setCompleter((line) => {
             return new Promise((resolve) => {
                 const packet: TerminalControlPacket = {
                     terminalControl: true,
                     input: line,
-                    request: 'completer'
-                }
+                    request: 'completer',
+                };
                 terminal.stdIO.output(packet);
                 setTimeout(() => {
                     if (this.completerCallback) resolve([]);
@@ -134,9 +149,10 @@ export default class HiveProcessTerminal extends HiveProcess {
         });
     }
 
-    setPrompt(prompt: string | string[]) {
+    setPrompt(prompt: string) {
         if (!this.terminal) return;
-        this.terminal.setPrompt(prompt);
+        this.promptBuilder.prompt = prompt;
+        this.terminal.setPrompt(this.promptBuilder.build());
     }
 
     getPassword(salt: string): Promise<string | { hash: string; pepper: string }> {
@@ -152,5 +168,16 @@ export default class HiveProcessTerminal extends HiveProcess {
                 resolve('Terminal is not avaliable.');
             }
         });
+    }
+}
+
+class PromptBuilder {
+    finalPrompt: string = '>';
+    basePrompt: string = '';
+    prompt: string = '';
+    progressPrompt: string = '';
+
+    build() {
+        return `${this.progressPrompt}${this.progressPrompt ? '\n' : ''}${this.basePrompt}${this.prompt}${this.finalPrompt}`;
     }
 }
