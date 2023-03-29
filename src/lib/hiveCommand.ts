@@ -25,6 +25,7 @@ export type HiveCommandInfo = {
 export type HiveCommandExport = {
     name: string;
     description: string;
+    defaultCommand: string;
     args: {
         name: string;
         description: string;
@@ -42,6 +43,7 @@ export type HiveCommandExport = {
 const HiveCommandStructure = {
     name: 'string',
     description: 'string',
+    defaultCommand: 'string',
     args: [
         {
             name: 'string',
@@ -63,6 +65,7 @@ class HiveCommandError extends Error {}
 
 export default class HiveCommand extends HiveComponent {
     commands: Map<String, HiveCommand> = new Map();
+    defaultCommand?: HiveCommand; // TODO: add this to export
     stdIO: DataIO;
     description: string;
     isHelpCmd: boolean; // for auto-generated help command
@@ -78,12 +81,14 @@ export default class HiveCommand extends HiveComponent {
         }
         if (helpCmd instanceof HiveSubCommand) {
             this.addCommand(helpCmd);
+            this.defaultCommand = helpCmd;
         } else if (helpCmd) {
             // this one is basic help command, so it needs sub-command 'help' for detailed help
             let help = this.addNewCommand('help', 'display help')
                 .addNewArgument('[cmd]', 'display help for specific command')
                 .setAction(this.helpCallback.bind(this));
             help.isHelpCmd = true; // it's help command with 'help' sub-command
+            this.defaultCommand = help;
         }
     }
 
@@ -153,6 +158,9 @@ export default class HiveCommand extends HiveComponent {
             // empty current input, possibly as sub-command
             if (info.terminalControl && info.terminalControl.request == 'completer') return this.terminalCompleter(info);
             if (str.length == 0) {
+                if (this.defaultCommand) {
+                    return this.defaultCommand.parse('', info);
+                }
                 let help = this.findCommand('help');
                 if (help) {
                     return help.parse('', info);
@@ -207,9 +215,14 @@ export default class HiveCommand extends HiveComponent {
         }
     }
 
+    setDefaultCommand(cmd: HiveCommand) {
+        this.defaultCommand = cmd;
+    }
+
     import(data: HiveCommandExport, typeChecked: boolean = false) {
         if (!typeChecked && !typeCheck(data, HiveCommandStructure)) throw new HiveCommandError('Invalid HiveCommandExport data!');
         this.name = data.name;
+        this.description = data.description;
         this.commands.forEach((cmd, key) => {
             if (!cmd.isHelpCmd) this.commands.delete(key);
         });
@@ -218,12 +231,18 @@ export default class HiveCommand extends HiveComponent {
             let cmd = this.addNewCommand(cmdData.name, cmdData.description);
             cmd.import(cmdData);
         });
+        if (data.defaultCommand) {
+            let cmd = this.findCommand(data.defaultCommand);
+            if (!cmd) throw new HiveCommandError(`HiveCommandExport cannot find default Command [${data.defaultCommand}]!`);
+            this.setDefaultCommand(cmd);
+        }
     }
 
     export(includeAction: boolean = false) {
         let result: HiveCommandExport = {
             name: this.name,
             description: '',
+            defaultCommand: this.defaultCommand?.name || '',
             args: [],
             opts: [],
             cmds: [],
