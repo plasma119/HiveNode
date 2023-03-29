@@ -173,7 +173,11 @@ export default class HiveCommand extends HiveComponent {
         if (cmd) {
             return cmd.parse(o.args, info);
         } else {
+            // has arguments, but cannot find corresponding command
             if (info.terminalControl && info.terminalControl.request == 'completer') return this.terminalCompleter(info);
+            if (this.defaultCommand) {
+                return this.defaultCommand.parse(str, info);
+            }
             throw new HiveCommandError(`Command not found: ${o.name}`);
         }
     }
