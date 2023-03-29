@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import path from 'path';
+import { inspect } from 'util';
 
 import dateFormat from 'dateformat';
 
@@ -50,6 +51,7 @@ export default class Logger extends HiveComponent {
     }
 
     async log(message: string, mute: boolean = false) {
+        if (typeof message != 'string') message = inspect(message, false, 2, false);
         const log = this._stamp(message);
         if (!mute) this._echo(log);
         if (!this.logFileHandle) {
@@ -156,6 +158,7 @@ export class LoggerStream extends Logger {
 
     log(message: string, mute: boolean = false): Promise<void> {
         return new Promise((resolve) => {
+            if (typeof message != 'string') message = inspect(message, false, 2, false);
             const log = this._stamp(message);
             if (!mute) this._echo(log);
             if (!this.logFileStream) {
