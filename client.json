@@ -1,0 +1,8 @@
+{
+    "name": "Client",
+    "headless": false,
+    "debug": true,
+    "HiveNodePath": "dist/",
+    "bootLoaderPath": "",
+    "programPath": "dist/tests/client.js"
+}

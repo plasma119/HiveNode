@@ -1,0 +1,8 @@
+{
+    "name": "Server",
+    "headless": false,
+    "debug": true,
+    "HiveNodePath": "dist/",
+    "bootLoaderPath": "",
+    "programPath": "dist/tests/server.js"
+}

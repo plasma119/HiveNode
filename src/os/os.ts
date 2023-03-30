@@ -89,7 +89,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         p.buildTerminal(headless, debug);
     }
 
-    log(message: string) {
+    log(message: any) {
         let p = this.getProcess(HiveProcessLogger);
         if (!p) throw new Error('[ERROR] log failed, cannot find logger process');
         p.log(message);

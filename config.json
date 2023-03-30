@@ -1,0 +1,8 @@
+{
+    "name": "",
+    "headless": false,
+    "debug": false,
+    "HiveNodePath": "dist/",
+    "bootLoaderPath": "",
+    "programPath": ""
+}

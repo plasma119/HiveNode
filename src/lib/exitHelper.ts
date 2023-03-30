@@ -84,13 +84,19 @@ class ExitHelper {
         if (this._restarting) {
             fs.writeSync(1, `Restarting...\n`);
             if (this.logger) await this.logger.log(`Restarting...\n`);
-            process.argv.shift();
-            spawn(process.argv0, process.argv, {
-                cwd: process.cwd(),
-                shell: true,
-                detached: true,
-                stdio: 'inherit',
-            });
+            if (process.send) {
+                // have parent node process with ipc, ask parent to restart this process
+                process.send('restart');
+            } else {
+                // spawn a new one and exit old one, might not work
+                process.argv.shift();
+                spawn(process.argv0, process.argv, {
+                    cwd: process.cwd(),
+                    shell: true,
+                    detached: true,
+                    stdio: 'inherit',
+                });
+            }
         } else {
             fs.writeSync(1, `Exiting...\n`);
             if (this.logger) await this.logger.log(`Exiting...\n`);

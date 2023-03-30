@@ -1,5 +1,5 @@
 import HiveOS from "../os/os.js";
 
-let node = new HiveOS('server');
-node.buildTerminal(false, true);
-node.kernel.program.stdIO.input('net listen');
+export function main(os: HiveOS) {
+    os.kernel.program.stdIO.input('net listen');
+}

@@ -1,2 +1,2 @@
-node dist/tests/server.js
+node dist/os/bios.js server.json
 pause

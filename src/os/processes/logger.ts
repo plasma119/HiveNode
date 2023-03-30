@@ -45,7 +45,7 @@ export default class HiveProcessLogger extends HiveProcess {
         return program;
     }
 
-    log(message: string) {
+    log(message: any) {
         this.logger.log(message);
     }
 }
