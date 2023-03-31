@@ -9,7 +9,7 @@ import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/
 import HiveComponent from './component.js';
 import { commonPrefix, formatTab, typeCheck } from './lib.js';
 
-export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: string]: boolean | string }, info: HiveCommandInfo) => any;
+export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: `-${string}`]: boolean | string }, info: HiveCommandInfo) => any;
 
 export type HiveCommandInfo = {
     rawData: any;
