@@ -293,6 +293,7 @@ export class HiveSubCommand extends HiveCommand {
     arguments: Map<String, HiveArgument> = new Map();
     options: Map<String, HiveOption> = new Map();
     callback?: HiveCommandCallback;
+    hasVariadicArgument: boolean = false;
 
     constructor(program: HiveCommand, name: string, description = '', isHelpCmd = false) {
         super(name, description, program.stdIO, false);
@@ -330,43 +331,45 @@ export class HiveSubCommand extends HiveCommand {
         let argumentArr = Array.from(this.arguments.values());
 
         // parse command
-        while (args.length) {
+        while (args.length > 0) {
             const arg = args.shift();
             if (!arg) continue;
 
             // check option
             if (arg.length > 1 && arg[0] === '-') {
                 const option = this.findOption(arg);
-                if (option) {
-                    if (option.argument) {
-                        // try to get argument for flag
-                        if (option.argument.required) {
-                            const value = args.shift();
-                            if (!value) throw new HiveCommandError(`Missing required argument for option: ${option.name}`);
-                            option.setValue(value);
-                        } else {
-                            if (args.length > 0 && args[0] && !this.findOption(args[0])) {
-                                option.setValue(args[0]);
-                                args.shift();
-                            } else {
-                                // no argument
-                                option.setValue(true);
-                            }
-                        }
+                if (!option) throw new HiveCommandError(`Invalid Option: ${arg}`);
+                if (option.argument) {
+                    // try to get argument for flag
+                    if (option.argument.required) {
+                        const value = args.shift();
+                        if (!value) throw new HiveCommandError(`Missing required argument for option: ${option.name}`);
+                        option.setValue(value);
                     } else {
-                        // boolean flag
-                        option.setValue(true);
+                        if (args.length > 0 && args[0] && !this.findOption(args[0])) {
+                            option.setValue(args[0]);
+                            args.shift();
+                        } else {
+                            // no argument
+                            option.setValue(true);
+                        }
                     }
-                    continue;
                 } else {
-                    throw new HiveCommandError(`Invalid Option: ${arg}`);
+                    // boolean flag
+                    option.setValue(true);
                 }
+                continue;
             }
 
             // not option, so must be argument
             if (argumentCount < this.arguments.size) {
-                argumentArr[argumentCount].setValue(arg);
-                argumentCount++;
+                let currentArgument = argumentArr[argumentCount++];
+                if (currentArgument.variadic) {
+                    currentArgument.setValue(args.join(' '));
+                    break;
+                } else {
+                    currentArgument.setValue(arg);
+                }
                 continue;
             }
 
@@ -433,12 +436,16 @@ export class HiveSubCommand extends HiveCommand {
 
     addArgument(argument: HiveArgument) {
         if (this.commands.has(argument.name)) this.stdIO.output(`[Warning]: Overwriting HiveCommandArgument: ${argument.name}`);
+        if (argument.variadic) {
+            if (this.hasVariadicArgument) throw new HiveCommandError('Already has one variadic argument');
+            this.hasVariadicArgument = true;
+        }
         this.arguments.set(argument.name, argument);
         return this;
     }
 
     addNewArgument(name: string, description = '', defaultValue: string | number = '') {
-        const argument = new HiveArgument(this, name, description, defaultValue);
+        const argument = new HiveArgument(name, description, defaultValue);
         this.addArgument(argument);
         return this;
     }
@@ -461,7 +468,7 @@ export class HiveSubCommand extends HiveCommand {
     }
 
     addNewOption(name: string, description = '', defaultValue: boolean | string | number = false) {
-        const option = new HiveOption(this, name, description, defaultValue);
+        const option = new HiveOption(name, description, defaultValue);
         this.addOption(option);
         return this;
     }
@@ -570,19 +577,21 @@ export class HiveSubCommand extends HiveCommand {
 }
 
 export class HiveArgument {
-    program: HiveCommand;
     name: string;
     baseName: string;
     description: string;
     defaultValue: string;
+
     required: boolean;
+    variadic: boolean;
     value: string;
 
-    constructor(program: HiveCommand, name: string, description = '', defaultValue: string | number = '') {
-        this.program = program;
+    constructor(name: string, description = '', defaultValue: string | number = '') {
         this.baseName = name;
         this.description = description;
         this.defaultValue = typeof defaultValue == 'number' ? defaultValue.toString() : defaultValue;
+        this.required = false;
+        this.variadic = false;
         this.value = this.defaultValue;
         if (!name) throw new HiveCommandError('Invalid argument name');
 
@@ -596,10 +605,17 @@ export class HiveArgument {
                 this.name = name.slice(1, -1);
                 break;
             default:
+                // default to <required>
                 this.required = true;
                 this.name = name;
                 this.baseName = `<${name}>`;
                 break;
+        }
+
+        if (this.name.endsWith('...')) {
+            // variadic argument, e.g. <strings...>
+            this.variadic = true;
+            this.name = name.slice(3);
         }
     }
 
@@ -613,7 +629,6 @@ export class HiveArgument {
 }
 
 export class HiveOption {
-    program: HiveCommand;
     name: string;
     baseName: string;
     description: string;
@@ -621,8 +636,7 @@ export class HiveOption {
     argument?: HiveArgument;
     value: boolean | string;
 
-    constructor(program: HiveCommand, name: string, description = '', defaultValue: boolean | string | number = false) {
-        this.program = program;
+    constructor(name: string, description = '', defaultValue: boolean | string | number = false) {
         this.baseName = name;
         this.description = description;
         this.defaultValue = typeof defaultValue == 'number' ? defaultValue.toString() : defaultValue;
@@ -630,7 +644,7 @@ export class HiveOption {
         let o = HiveCommand.splitCommandStr(name);
         if (!o) throw new HiveCommandError('Invalid option flag');
         if (o.args) {
-            this.argument = new HiveArgument(this.program, o.args);
+            this.argument = new HiveArgument(o.args);
         }
         this.name = o.name;
     }
