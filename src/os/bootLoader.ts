@@ -25,7 +25,7 @@ os.buildTerminal(config.headless, config.debug);
             try {
                 let relativePath = path.relative(__dirname, path.resolve(config.programPath)); // need relative path from this file
                 let program = await import(relativePath.replace('\\', '/')); // stupid path
-                program.main(os);
+                program.main(os, process.argv.slice(3));
             } catch (e) {
                 os.stdIO.output(e);
             }

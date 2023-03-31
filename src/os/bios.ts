@@ -31,7 +31,7 @@ console.log(`[BIOS]: Booting up...`);
 bootup();
 
 function bootup() {
-    const child = fork(config.bootLoaderPath, [configPath], {
+    const child = fork(config.bootLoaderPath, [configPath, ...process.argv.slice(3)], {
         stdio: [0, 1, 2, 'ipc'],
     });
 
