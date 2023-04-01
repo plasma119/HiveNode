@@ -1,8 +1,10 @@
 {
-    "name": "",
+    "name": "HiveNode",
     "headless": false,
     "debug": false,
     "HiveNodePath": "dist/",
-    "bootLoaderPath": "",
-    "programPath": ""
+    "bootLoaderFile": "",
+    "programFile": "",
+    "HiveNetServer": false,
+    "HiveNetIP": ""
 }

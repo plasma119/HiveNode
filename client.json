@@ -3,6 +3,8 @@
     "headless": false,
     "debug": true,
     "HiveNodePath": "dist/",
-    "bootLoaderPath": "",
-    "programPath": "dist/tests/client.js"
+    "bootLoaderFile": "",
+    "programFile": "",
+    "HiveNetServer": false,
+    "HiveNetIP": "127.0.0.1"
 }

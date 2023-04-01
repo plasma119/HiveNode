@@ -71,7 +71,7 @@
             "type": "node",
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\os\\bios.js",
-            "args": ["config.json"],
+            "args": ["-configFile config.json -name OS_Test"],
             "skipFiles": [
                 "<node_internals>/**",
                 "${workspaceFolder}/src/lib/basicEventEmitter.ts",
@@ -89,7 +89,7 @@
             "type": "node",
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\os\\bios.js",
-            "args": ["server.json"],
+            "args": ["-configFile server.json"],
             "skipFiles": [
                 "<node_internals>/**",
                 "${workspaceFolder}/src/lib/basicEventEmitter.ts",
@@ -107,7 +107,7 @@
             "type": "node",
             "console": "integratedTerminal",
             "program": "${workspaceFolder}\\dist\\os\\bios.js",
-            "args": ["client.json"],
+            "args": ["-configFile client.json"],
             "skipFiles": [
                 "<node_internals>/**",
                 "${workspaceFolder}/src/lib/basicEventEmitter.ts",

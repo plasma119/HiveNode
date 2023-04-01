@@ -1,2 +1,2 @@
-node dist/os/bios.js
+node dist/os/bios.js -configFile config.json
 pause

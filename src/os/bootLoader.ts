@@ -8,27 +8,34 @@ const __dirname = path.dirname(__filename);
 import HiveOS from './os.js';
 import { BootConfig } from './bios.js';
 
-const configPath = process.argv[2] || 'config.json';
-const config: BootConfig = JSON.parse(fs.readFileSync(configPath).toString());
+process.on('message', async (message) => {
+    const { config, argv } = message as { config: BootConfig; argv: string[] };
 
-if (!config.HiveNodePath) config.HiveNodePath = '.';
+    const os = new HiveOS(config.name);
+    os.buildTerminal(config.headless, config.debug);
 
-const os = new HiveOS(config.name || 'HiveNode');
-os.buildTerminal(config.headless, config.debug);
+    if (config.HiveNetServer) {
+        os.stdIO.output(`[Boot Loader]: Starting HiveNet server...`);
+        os.kernel.program.stdIO.input('net listen');
+    }
 
-(async () => {
-    if (config.programPath) {
-        os.stdIO.output(`[Boot Loader]: Running main program from [${config.programPath}]...`);
-        if (!fs.existsSync(config.programPath)) {
+    if (config.HiveNetIP) {
+        os.stdIO.output(`[Boot Loader]: Connecting to HiveNet [${config.HiveNetIP}]...`);
+        os.kernel.program.stdIO.input(`net connect ${config.HiveNetIP}`);
+    }
+
+    if (config.programFile) {
+        os.stdIO.output(`[Boot Loader]: Running main program from [${config.programFile}]...`);
+        if (!fs.existsSync(config.programFile)) {
             os.stdIO.output(`[Boot Loader]: ERROR: Cannot find main program file.`);
         } else {
             try {
-                let relativePath = path.relative(__dirname, path.resolve(config.programPath)); // need relative path from this file
+                let relativePath = path.relative(__dirname, path.resolve(config.programFile)); // need relative path from this file
                 let program = await import(relativePath.replace('\\', '/')); // stupid path
-                program.main(os, process.argv.slice(3));
+                program.main(os, argv);
             } catch (e) {
                 os.stdIO.output(e);
             }
         }
     }
-})();
+});
