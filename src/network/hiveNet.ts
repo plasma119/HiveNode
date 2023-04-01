@@ -25,6 +25,7 @@ export type TerminalControlPacket = {
     input?: string;
     completer?: string[];
     progressPrompt?: string;
+    local?: boolean;
 };
 
 export class HiveNetPacket {

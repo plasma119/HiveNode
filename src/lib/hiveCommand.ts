@@ -257,7 +257,7 @@ export default class HiveCommand extends HiveComponent {
         return result;
     }
 
-    terminalCompleter(info: HiveCommandInfo) {
+    terminalCompleter(info: HiveCommandInfo): TerminalControlPacket {
         let chain = info.programChain.map((p) => p.name);
         chain.shift();
         let base = chain.join(' ');
@@ -268,8 +268,9 @@ export default class HiveCommand extends HiveComponent {
         if (prefix) hits = [prefix];
         return {
             terminalControl: true,
-            completer: hits.length == 1 ? [(base ? base + ' ' : '') + hits[0]] : hits.sort(),
+            completer: hits.length == 1 ? [(base ? base + ' ' : '') + hits[0]] : hits.sort() as string[],
             //completer: Array.from(this.commands).map((i) => (base ? base + ' ' : '') + i[0]),
+            local: info.terminalControl?.local,
         };
     }
 

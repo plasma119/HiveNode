@@ -23,7 +23,7 @@ export default class HiveProcessTerminal extends HiveProcess {
             .addNewOption('-headless', 'disable user input for server node', false)
             .addNewOption('-debug', 'enable Terminal debug message', false)
             .setAction((_args, opts) => {
-                this.buildTerminal(!!opts['headless'], !!opts['debug']);
+                this.buildTerminal(opts['-headless'] as boolean, opts['-debug'] as boolean);
             });
 
         program
@@ -94,6 +94,15 @@ export default class HiveProcessTerminal extends HiveProcess {
                 // force input to local shell
                 return new HiveNetPacket({ data: data.slice(1), dest: HIVENETADDRESS.LOCAL, dport: HIVENETPORT.SHELL });
             }
+            if (typeof data == 'object' && data.terminalControl) {
+                // terminal control packet to local shell
+                const control = data as TerminalControlPacket;
+                if (control.input && control.input[0] == '$') {
+                    control.input = control.input.slice(1);
+                    control.local = true;
+                    return new HiveNetPacket({ data: control, dest: HIVENETADDRESS.LOCAL, dport: HIVENETPORT.SHELL });
+                }
+            }
             // to target shell
             return new HiveNetPacket({ data, dest: this.terminalDest, dport: this.terminalDestPort });
         });
@@ -104,6 +113,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 // terminal control system
                 const control = data as TerminalControlPacket;
                 if (this.completerCallback && control.completer && Array.isArray(control.completer)) {
+                    if (control.local) control.completer = control.completer.map((str) => `$${str}`);
                     this.completerCallback(control.completer);
                     this.completerCallback = undefined;
                 }
