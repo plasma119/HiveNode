@@ -72,10 +72,18 @@ export default class Terminal extends HiveComponent {
 
     async _completer(line: string, callback: (err?: null | Error, result?: [string[], string]) => void) {
         try {
+            let finished = false;
+            setTimeout(() => {
+                if (!finished) {
+                    this.stdIO.input('[ERROR] Terminal: Completion timeout');
+                    callback(null, [[], line]);
+                }
+            }, 3000);
             let completions = this.completer ? await this.completer(line) : [];
+            finished = true;
             if (!Array.isArray(completions)) {
                 completions = [];
-                this.stdIO.input('[ERROR] Terminal: Completion error', []);
+                this.stdIO.input('[ERROR] Terminal: Completion error');
             }
             callback(null, [completions, line]);
         } catch (e) {
