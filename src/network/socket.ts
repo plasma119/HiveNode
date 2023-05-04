@@ -21,7 +21,7 @@ const DEFAULTSOCKETINFO: SocketInfo = {
 };
 
 type SocketSecret = {
-    algorithm: string;
+    algorithm: 'aes-256-ctr' | 'aes-256-cbc' | 'aes-256-gcm';
     noise: string;
     noise2: string;
     salt: string;
@@ -30,8 +30,9 @@ type SocketSecret = {
     key?: Buffer;
 };
 
+// TODO: negotiate algorithm to use
 const DEFAULTSOCKETSECRET: SocketSecret = {
-    algorithm: 'aes-256-ctr',
+    algorithm: 'aes-256-gcm',
     noise: '',
     noise2: '',
     salt: 'salt',
@@ -461,10 +462,15 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         const rand2 = HiveSocket._randomPaddingData();
         const encoded = `${rand1.length}${rand2.length}${rand1}${data}${rand2}`;
         //if (this.options.debug) this.stdIO.output(`DEBUG: encoded: ${encoded}`);
-        const [iv, encrypted] = Encryption.encrypt(this._ss.algorithm, this._ss.key, encoded);
-        const hmac = Encryption.hmac(iv, this._ss.secret);
-        hmac.update(encrypted);
-        return `${iv} ${encrypted} ${hmac.digest().toString('base64')}`;
+        if (this._ss.algorithm == 'aes-256-gcm') {
+            const [iv, encrypted, authTag] = Encryption.encryptGCM(this._ss.key, encoded);
+            return `${iv} ${encrypted} ${authTag}`;
+        } else {
+            const [iv, encrypted] = Encryption.encrypt(this._ss.algorithm, this._ss.key, encoded);
+            const hmac = Encryption.hmac(iv, this._ss.secret);
+            hmac.update(encrypted);
+            return `${iv} ${encrypted} ${hmac.digest().toString('base64')}`;
+        }
     }
 
     private _decodeData(data: WebSocket.Data) {
@@ -472,28 +478,43 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         if (!this.targetInfo.handshakeDone) {
             return data.toString();
         }
-        if (!this._ss.key) {
-            this.stdIO.output(`ERROR: Decoding failed. Secret key not ready`);
-            return '';
-        }
-        const tokens = data.toString().split(' ');
         try {
-            if (tokens.length != 3) {
-                this.stdIO.output(`ERROR: Incorrect encoded data format.`);
-                return '';
-            }
-            const hmac = Encryption.hmac(tokens[0], this._ss.secret);
-            hmac.update(tokens[1]);
-            if (hmac.digest().toString('base64') != tokens[2]) {
-                this.stdIO.output(`ERROR: Data corrupted.`);
-                return '';
-            }
-            const decrypted = Encryption.decrypt(this._ss.algorithm, this._ss.key, tokens[0], tokens[1]);
+            const decrypted = this._decodeDataHelper(data.toString());
+            if (decrypted == '') return '';
             const l1 = Number.parseInt(decrypted[0]);
             const l2 = Number.parseInt(decrypted[1]);
             const decoded = decrypted.slice(2 + l1, decrypted.length - l2);
             if (this.options.debug) this.stdIO.output(`DEBUG: decoded data: ${decoded}`);
             return decoded;
+        } catch (e) {
+            this.stdIO.output(`ERROR: Failed to decrypt data.`);
+            this.stdIO.output(e);
+        }
+        return '';
+    }
+
+    private _decodeDataHelper(encrypted: string) {
+        if (!this._ss.key) {
+            this.stdIO.output(`ERROR: Decoding failed. Secret key not ready`);
+            return '';
+        }
+        try {
+            const tokens = encrypted.toString().split(' ');
+            if (tokens.length != 3) {
+                this.stdIO.output(`ERROR: Incorrect encoded data format.`);
+                return '';
+            }
+            if (this._ss.algorithm == 'aes-256-gcm') {
+                return Encryption.decryptGCM(this._ss.key, tokens[0], tokens[1], tokens[2]);
+            } else {
+                const hmac = Encryption.hmac(tokens[0], this._ss.secret);
+                hmac.update(tokens[1]);
+                if (hmac.digest().toString('base64') != tokens[2]) {
+                    this.stdIO.output(`ERROR: Data authentication failed.`);
+                    return '';
+                }
+                return Encryption.decrypt(this._ss.algorithm, this._ss.key, tokens[0], tokens[1]);
+            }
         } catch (e) {
             this.stdIO.output(`ERROR: Failed to decrypt data.`);
             this.stdIO.output(e);

@@ -31,8 +31,9 @@ export class Encryption {
         return Crypto.scryptSync(secret, salt, size);
     }
 
+    // aes-256-ctr + HMAC or aes-256-cbc + HMAC is good
     static encrypt(algorithm: string, key: Buffer, str: string) {
-        const iv = Crypto.randomBytes(16);
+        const iv = Crypto.randomBytes(16); // iv MUST not collide
         const cipher = Crypto.createCipheriv(algorithm, key, iv);
         let encrypted = cipher.update(str, 'utf-8', 'base64');
         encrypted += cipher.final('base64');
@@ -43,6 +44,23 @@ export class Encryption {
         const decipher = Crypto.createDecipheriv(algorithm, key, Buffer.from(iv, 'base64'));
         let decryped = decipher.update(encrypted, 'base64', 'utf-8');
         decryped += decipher.final('utf-8');
+        return decryped;
+    }
+
+    // aes-256-gcm = aes-256-ctr + HMAC
+    static encryptGCM(key: Buffer, str: string) {
+        const iv = Crypto.randomBytes(12); // iv MUST not collide
+        const cipher = Crypto.createCipheriv('aes-256-gcm', key, iv);
+        let encrypted = cipher.update(str, 'utf8', 'base64');
+        encrypted += cipher.final('base64');
+        return [iv.toString('base64'), encrypted, cipher.getAuthTag().toString('base64')];
+    }
+
+    static decryptGCM(key: Buffer, iv: string, encrypted: string, authTag: string) {
+        const decipher = Crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64'));
+        decipher.setAuthTag(Buffer.from(authTag, 'base64'));
+        let decryped = decipher.update(encrypted, 'base64', 'utf8');
+        decryped += decipher.final('utf8');
         return decryped;
     }
 }
