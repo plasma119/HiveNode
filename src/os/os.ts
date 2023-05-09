@@ -39,7 +39,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.processes = new Map();
         this.nextpid = 0;
         this.debugMode = debugMode;
-        this.kernel = this.newProcess('kernel', HiveProcessKernel);
+        this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
         //this.terminalShell = new HiveCommand(`${name}-terminalShell`);
         exitHelper.onSIGINT(() => {
             this.emit('sigint');
@@ -49,18 +49,22 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     }
 
     startup() {
-        this.kernel.spawnChild('net', HiveProcessNet);
-        this.kernel.spawnChild('terminal', HiveProcessTerminal);
-        this.kernel.spawnChild('logger', HiveProcessLogger);
+        this.kernel.spawnChild(HiveProcessNet, 'net');
+        this.kernel.spawnChild(HiveProcessTerminal, 'terminal');
+        this.kernel.spawnChild(HiveProcessLogger, 'logger');
     }
 
     registerService(service: HiveCommand) {
         this.kernel.program.addCommand(service);
     }
 
-    getProcess<C extends Constructor<HiveProcess>>(processConstructor: C, process?: HiveProcess): InstanceType<C> | null {
+    getProcess<C extends Constructor<HiveProcess>>(processConstructor: C, process?: HiveProcess | number): InstanceType<C> | null {
         let result: InstanceType<C> | null = null;
         if (process) {
+            if (typeof process == 'number') {
+                let p = this.processes.get(process);
+                if (p) process = p;
+            }
             if (process instanceof processConstructor) {
                 const p2 = process as InstanceType<C>;
                 result = p2;
@@ -76,11 +80,26 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         return result;
     }
 
-    newProcess<C extends Constructor<HiveProcess>>(name: string, processConstructor: C, parentProcess?: HiveProcess) {
+    newProcess<C extends Constructor<HiveProcess>>(
+        processConstructor: C,
+        parentProcess: HiveProcess | null,
+        name: string,
+        argv: string[]
+    ): InstanceType<C> {
         let p = new processConstructor(name, this, this.nextpid++, parentProcess?.pid || 0);
         this.processes.set(p.pid, p);
         if (parentProcess) parentProcess.childs.set(p.pid, p);
-        return p;
+        p.main(argv);
+        return p as InstanceType<C>;
+    }
+
+    processExitHandle(process: HiveProcess) {
+        const parent = this.getProcess(HiveProcess, process.pid);
+        this.processes.delete(process.pid);
+        if (parent && process != parent) {
+            parent.childs.delete(process.pid);
+            process.childs.forEach((c) => parent.childs.set(c.pid, c));
+        }
     }
 
     buildTerminal(headless: boolean = false, debug: boolean = false) {

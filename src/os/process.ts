@@ -6,7 +6,12 @@ import HiveOS from './os.js';
 /*
     OSI model layer 7 - application layer
 */
-export default class HiveProcess extends HiveComponent {
+
+type HiveProcessEvents = {
+    exit: (error?: any) => void
+}
+
+export default class HiveProcess extends HiveComponent<HiveProcessEvents> {
     os: HiveOS;
     pid: number;
     ppid: number;
@@ -23,14 +28,21 @@ export default class HiveProcess extends HiveComponent {
         this.program = this.initProgram();
     }
 
+    // override by process
     initProgram() {
         // main program shell
         return new HiveCommand(this.name);
     }
 
-    exit() {}
+    // override by process
+    main(_argv: string[]) {}
 
-    spawnChild<C extends Constructor<HiveProcess>>(name: string, processConstructor: C) {
-        return this.os.newProcess(name, processConstructor, this);
+    exit(error?: any) {
+        this.os.processExitHandle(this);
+        this.emit('exit', error);
+    }
+
+    spawnChild<C extends Constructor<HiveProcess>>(processConstructor: C, name: string, argv: string[] = []): InstanceType<C> {
+        return this.os.newProcess(processConstructor, this, name, argv);
     }
 }
