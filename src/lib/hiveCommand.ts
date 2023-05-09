@@ -227,6 +227,7 @@ export default class HiveCommand extends HiveComponent {
         } else {
             let output = this.name;
             if (this.description) output += ` - ${this.description}`;
+            if (this.defaultCommand) output += `Default command: ${this.defaultCommand.name}`;
             output += `\nAvaliable commands:\n`;
             let rows: string[] = [];
             this.commands.forEach((c) => {
