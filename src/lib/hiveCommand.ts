@@ -76,7 +76,7 @@ export default class HiveCommand extends HiveComponent {
         this.description = description;
         this.isHelpCmd = false;
         if (!(this instanceof HiveSubCommand)) {
-            // only the base HiveCommand listen to input from stdIO
+            // only HiveCommand can listen to input from stdIO
             this.stdIO.on('input', this._inputHandler.bind(this));
         }
         if (helpCmd instanceof HiveSubCommand) {
@@ -92,7 +92,17 @@ export default class HiveCommand extends HiveComponent {
         }
     }
 
-    async _inputHandler(data: any, signatures: DataSignature[]) {
+    // direct command execution, bypassing DataIO
+    async execute(input: any, onReply?: (data: any) => void) {
+        const results: any[] = [];
+        await this._inputHandler(input, [], (data) => {
+            results.push(data);
+            if (onReply) onReply(data);
+        });
+        return results;
+    }
+
+    async _inputHandler(data: any, signatures: DataSignature[], replyOverride?: (data: any) => void) {
         // unpack data
         let input = data instanceof HiveNetPacket ? data.data : data;
         const info: HiveCommandInfo = {
@@ -112,9 +122,17 @@ export default class HiveCommand extends HiveComponent {
                         dest: data.src,
                         dport: data.sport,
                     });
-                    this.stdIO.output(packet, signatures);
+                    if (replyOverride) {
+                        replyOverride(packet);
+                    } else {
+                        this.stdIO.output(packet, signatures);
+                    }
                 } else {
-                    this.stdIO.output(message, signatures);
+                    if (replyOverride) {
+                        replyOverride(message);
+                    } else {
+                        this.stdIO.output(message, signatures);
+                    }
                 }
             },
         };
@@ -268,7 +286,7 @@ export default class HiveCommand extends HiveComponent {
         if (prefix) hits = [prefix];
         return {
             terminalControl: true,
-            completer: hits.length == 1 ? [(base ? base + ' ' : '') + hits[0]] : hits.sort() as string[],
+            completer: hits.length == 1 ? [(base ? base + ' ' : '') + hits[0]] : (hits.sort() as string[]),
             //completer: Array.from(this.commands).map((i) => (base ? base + ' ' : '') + i[0]),
             local: info.terminalControl?.local,
         };
