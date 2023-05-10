@@ -7,9 +7,12 @@ const __dirname = path.dirname(__filename);
 
 import HiveOS from './os.js';
 import { BootConfig } from './bios.js';
+import DataIO from '../network/dataIO.js';
 
 process.on('message', async (message) => {
     const { config, argv } = message as { config: BootConfig; argv: string[] };
+
+    if (config.debugDataIO) DataIO.debugMode();
 
     const os = new HiveOS(config.name);
     os.buildTerminal(config.headless, config.debug);

@@ -1,11 +1,13 @@
 import HiveComponent from '../lib/component.js';
 import { StopPropagation } from '../lib/signals.js';
-import { DataSignature } from './hiveNet.js';
+import { DataSignature, DataSignaturesToString } from './hiveNet.js';
 
 /*
     OSI model layer 1 - physical layer
 */
 export type DataLink = (data: any, signatures: DataSignature[]) => void;
+
+let debugMode = false;
 
 export type DataIOEvent = {
     input: DataLink;
@@ -34,12 +36,24 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
 
     // listen to dataIO.on('input') to get data
     input(data: any, signatures: DataSignature[] = []) {
-        if (!this.destroyed) this.emit('input', data, this._sign(signatures.slice(), 'input'));
+        if (!this.destroyed) {
+            if (debugMode) {
+                console.log(data);
+                console.log(DataSignaturesToString(signatures));
+            }
+            this.emit('input', data, this._sign(signatures.slice(), 'input'));
+        }
     }
 
     // write to dataIO.output() to send data
     output(data: any, signatures: DataSignature[] = []) {
-        if (!this.destroyed) this.emit('output', data, this._sign(signatures.slice(), 'output'));
+        if (!this.destroyed) {
+            if (debugMode) {
+                console.log(data);
+                console.log(DataSignaturesToString(signatures));
+            }
+            this.emit('output', data, this._sign(signatures.slice(), 'output'));
+        }
     }
 
     // between objects
@@ -117,6 +131,11 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
         signature.event = event;
         signatures.push(signature);
         return signatures;
+    }
+
+    static debugMode() {
+        debugMode = !debugMode;
+        console.log(`DataIO debug mode: ${debugMode}`);
     }
 }
 

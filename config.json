@@ -2,6 +2,7 @@
     "name": "HiveNode",
     "headless": false,
     "debug": false,
+    "debugDataIO": false,
     "HiveNodePath": "dist/",
     "bootLoaderFile": "",
     "programFile": "",

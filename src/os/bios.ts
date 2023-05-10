@@ -9,6 +9,7 @@ export type BootConfig = {
     name: string;
     headless: boolean;
     debug: boolean;
+    debugDataIO: boolean;
     HiveNodePath: string;
     bootLoaderFile: string;
     programFile: string;
@@ -21,6 +22,7 @@ export const DEFAULTCONFIG: BootConfig = {
     name: 'HiveNode',
     headless: false,
     debug: false,
+    debugDataIO: false,
     HiveNodePath: '',
     bootLoaderFile: '',
     programFile: '',
@@ -31,12 +33,14 @@ export const DEFAULTCONFIG: BootConfig = {
 
 export function parseBIOSConfig(): Promise<{ config: Options<BootConfig>; argv: string }> {
     return new Promise((resolve) => {
+        // TODO: help command
         const program = new HiveCommand('config');
         program
             .addNewCommand('parse', 'parse config from argv')
             .addNewOption('-name <name>', 'OS name')
             .addNewOption('-headless', 'run without user input prompt')
             .addNewOption('-debug', 'set debug flag in OS')
+            .addNewOption('-debugDataIO', 'set debug flag in DataIO')
             .addNewOption('-HiveNodePath <path>', 'path to HiveNode module')
             .addNewOption('-bootLoaderFile <path>', 'path to custom boot loader file')
             .addNewOption('-programFile <path>', 'path to main program file')
@@ -49,6 +53,7 @@ export function parseBIOSConfig(): Promise<{ config: Options<BootConfig>; argv: 
                     name: opts['-name'] as string || undefined,
                     headless: opts['-headless'] as boolean || undefined,
                     debug: opts['-debug'] as boolean || undefined,
+                    debugDataIO: opts['-debugDataIO'] as boolean || undefined,
                     HiveNodePath: opts['-HiveNodePath'] as string || undefined,
                     bootLoaderFile: opts['-bootLoaderFile'] as string || undefined,
                     programFile: opts['-programFile'] as string || undefined,
