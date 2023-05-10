@@ -19,12 +19,14 @@ process.on('message', async (message) => {
 
     if (config.HiveNetServer) {
         os.stdIO.output(`[Boot Loader]: Starting HiveNet server...`);
-        os.kernel.program.stdIO.input('net listen');
+        //os.kernel.program.stdIO.input('net listen');
+        await os.shell.execute('net listen');
     }
 
     if (config.HiveNetIP) {
         os.stdIO.output(`[Boot Loader]: Connecting to HiveNet [${config.HiveNetIP}]...`);
-        os.kernel.program.stdIO.input(`net connect ${config.HiveNetIP}`);
+        //os.kernel.program.stdIO.input(`net connect ${config.HiveNetIP}`);
+        await os.shell.execute(`net connect ${config.HiveNetIP}`);
     }
 
     if (config.programFile) {
