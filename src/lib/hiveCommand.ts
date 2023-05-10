@@ -81,14 +81,14 @@ export default class HiveCommand extends HiveComponent {
         }
         if (helpCmd instanceof HiveSubCommand) {
             this.addCommand(helpCmd);
-            this.defaultCommand = helpCmd;
+            //this.defaultCommand = helpCmd;
         } else if (helpCmd) {
             // this one is basic help command, so it needs sub-command 'help' for detailed help
             let help = this.addNewCommand('help', 'display help')
                 .addNewArgument('[cmd]', 'display help for specific command')
                 .setAction(this.helpCallback.bind(this));
             help.isHelpCmd = true; // it's help command with 'help' sub-command
-            this.defaultCommand = help;
+            //this.defaultCommand = help;
         }
     }
 
@@ -118,7 +118,7 @@ export default class HiveCommand extends HiveComponent {
                     // re-pack data
                     const packet = new HiveNetPacket({
                         data: message,
-                        src: this.UUID,
+                        //src: this.UUID,
                         dest: data.src,
                         dport: data.sport,
                     });

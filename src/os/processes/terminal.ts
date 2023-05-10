@@ -5,8 +5,10 @@ import { DataTransformer } from '../../network/dataIO.js';
 import { HIVENETADDRESS, HiveNetPacket, HIVENETPORT, TerminalControlPacket } from '../../network/hiveNet.js';
 import HiveProcess from '../process.js';
 import HiveProcessNet from './net.js';
+import HiveProcessShellDaemon from './shell.js';
 
 export default class HiveProcessTerminal extends HiveProcess {
+    shellPort: number = HIVENETPORT.SHELL;
     terminalDest: string = HIVENETADDRESS.LOCAL;
     terminalDestPort: number = HIVENETPORT.SHELL;
     terminal?: Terminal;
@@ -34,9 +36,9 @@ export default class HiveProcessTerminal extends HiveProcess {
                 if (info.rawData instanceof HiveNetPacket && info.rawData.src != this.os.netInterface.UUID) {
                     return 'Only local terminal can use this command.';
                 } else if (opts['-d']) {
-                    if (this.terminalDest != HIVENETADDRESS.LOCAL || this.terminalDestPort != HIVENETPORT.SHELL) {
+                    if (this.terminalDest != HIVENETADDRESS.LOCAL || this.terminalDestPort != this.shellPort) {
                         this.terminalDest = HIVENETADDRESS.LOCAL;
-                        this.terminalDestPort = HIVENETPORT.SHELL;
+                        this.terminalDestPort = this.shellPort;
                         this.setPrompt('');
                         return 'Returning to local shell';
                     } else {
@@ -53,6 +55,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 if (!uuid) return;
                 const targetInfo = await net.getInfo(uuid, true);
                 if (!targetInfo) return 'Failed to get target node info.';
+                // TODO: integrate with shellDaemon system
                 this.terminalDest = uuid;
                 this.setPrompt(`->[${targetInfo.info.name}]`);
                 return `Connected to target node: ${targetInfo.info.name} [HiveOS: ${targetInfo.info.HiveNodeVersion}]`;
@@ -75,7 +78,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 return this.getPassword(args['salt']);
             });
 
-        this.os.registerService(program);
+        this.os.registerShellProgram(program);
         return program;
     }
 
@@ -86,13 +89,19 @@ export default class HiveProcessTerminal extends HiveProcess {
             return;
         }
 
+        let shelld = this.os.getProcess(HiveProcessShellDaemon);
+        if (!shelld) throw new Error('[ERROR] Failed to initialize system shell, cannot find shell daemon process');
+        let shell = shelld.spawnShell();
+        this.shellPort = shell.port;
+        this.terminalDestPort = shell.port;
+
         const port = this.os.HTP.listen(HIVENETPORT.TERMINAL);
         const dt = new DataTransformer(port);
         dt.setInputTransform((data) => {
             // terminal -> os
             if (typeof data == 'string' && data[0] == '$') {
                 // force input to local shell
-                return new HiveNetPacket({ data: data.slice(1), dest: HIVENETADDRESS.LOCAL, dport: HIVENETPORT.SHELL });
+                return new HiveNetPacket({ data: data.slice(1), dest: HIVENETADDRESS.LOCAL, dport: this.shellPort });
             }
             if (typeof data == 'object' && data.terminalControl) {
                 // terminal control packet to local shell
@@ -100,7 +109,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 if (control.input && control.input[0] == '$') {
                     control.input = control.input.slice(1);
                     control.local = true;
-                    return new HiveNetPacket({ data: control, dest: HIVENETADDRESS.LOCAL, dport: HIVENETPORT.SHELL });
+                    return new HiveNetPacket({ data: control, dest: HIVENETADDRESS.LOCAL, dport: this.shellPort });
                 }
             }
             // to target shell

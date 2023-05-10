@@ -106,17 +106,17 @@ export const HIVENETADDRESS = {
 };
 
 export const HIVENETPORT = {
-    DISCARD: 10,
-    PING: 11,
-    MESSAGE: 12,
-    INFO: 13,
-    SHELL: 20,
-    STDIO: 21,
-    SSH: 22,
-    HTPSEND: 30,
-    KERNEL: 80,
-    TERMINAL: 81,
-    HIVENETPORT: 8081,
+    DISCARD: 10, // kernel
+    PING: 11, // net
+    MESSAGE: 12, // net
+    INFO: 13, // net, switch
+    SHELL: 20, // kernel, net, terminal
+    STDIO: 21, // kernel
+    SSH: 22, //
+    HTPSEND: 30, // protocol(HTP)
+    KERNEL: 80, //
+    TERMINAL: 81, // terminal
+    HIVENETPORT: 8081, // net !! via WebSocket
     BASERANDOMPORT: 10000,
 };
 

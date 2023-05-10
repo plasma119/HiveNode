@@ -14,7 +14,6 @@ import {
 } from '../../network/hiveNet.js';
 import HiveSocket from '../../network/socket.js';
 import HiveNetSwitch from '../../network/switch.js';
-import HiveOS from '../os.js';
 import HiveProcess from '../process.js';
 import HiveProcessTerminal from './terminal.js';
 
@@ -22,15 +21,9 @@ export default class HiveProcessNet extends HiveProcess {
     infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
     nameMap: Map<string, string> = new Map(); // Map<name, UUID>
 
-    switch: HiveNetSwitch;
+    switch: HiveNetSwitch = new HiveNetSwitch(this.os.name);
     server?: WebSocket.Server;
     sshServer?: WebSocket.Server;
-
-    constructor(name: string, os: HiveOS, pid: number, ppid: number) {
-        super(name, os, pid, ppid);
-        this.switch = new HiveNetSwitch(this.os.name);
-        this.os.netInterface.connect(this.switch, 'net');
-    }
 
     initProgram() {
         const program = new HiveCommand('net', 'HiveNet Commands');
@@ -127,8 +120,12 @@ export default class HiveProcessNet extends HiveProcess {
                 return;
             });
 
-        this.os.registerService(program);
+        this.os.registerShellProgram(program);
         return program;
+    }
+
+    main() {
+        this.os.netInterface.connect(this.switch, 'net');
     }
 
     // TODO: resolve fail seems to be stuck
@@ -234,6 +231,7 @@ export default class HiveProcessNet extends HiveProcess {
         return format(list, ' ');
     }
 
+    // TODO: integrate with shellDaemon system
     async connect(host: string, port: string | number, directSSH: boolean = false) {
         if (typeof port == 'string') port = Number.parseInt(port);
         if (directSSH) {

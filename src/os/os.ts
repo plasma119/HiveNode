@@ -9,7 +9,6 @@ import HTP from '../network/protocol.js';
 import HiveProcess from './process.js';
 import HiveProcessKernel from './processes/kernel.js';
 import HiveProcessLogger from './processes/logger.js';
-import HiveProcessNet from './processes/net.js';
 import HiveProcessTerminal from './processes/terminal.js';
 
 export type HiveOSEvent = {
@@ -24,8 +23,10 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     netInterface: HiveNetInterface;
     HTP: HTP;
 
-    kernel: HiveProcess;
-    drivers = {};
+    kernel: HiveProcessKernel;
+    shell: HiveCommand;
+    drivers = {}; // TODO
+    shellPrograms: HiveCommand[];
 
     processes: Map<number, HiveProcess>;
     nextpid: number;
@@ -39,23 +40,17 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.processes = new Map();
         this.nextpid = 0;
         this.debugMode = debugMode;
-        this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
-        //this.terminalShell = new HiveCommand(`${name}-terminalShell`);
+        this.shellPrograms = [];
         exitHelper.onSIGINT(() => {
             this.emit('sigint');
             return IgnoreSIGINT;
         });
-        this.startup();
+        this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
+        this.shell = this.kernel.getSystemShell();
     }
 
-    startup() {
-        this.kernel.spawnChild(HiveProcessNet, 'net');
-        this.kernel.spawnChild(HiveProcessTerminal, 'terminal');
-        this.kernel.spawnChild(HiveProcessLogger, 'logger');
-    }
-
-    registerService(service: HiveCommand) {
-        this.kernel.program.addCommand(service);
+    registerShellProgram(program: HiveCommand) {
+        this.shellPrograms.push(program);
     }
 
     getProcess<C extends Constructor<HiveProcess>>(processConstructor: C, process?: HiveProcess | number): InstanceType<C> | null {
@@ -90,6 +85,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.processes.set(p.pid, p);
         if (parentProcess) parentProcess.childs.set(p.pid, p);
         p.main(argv);
+        p.emit('ready');
         return p as InstanceType<C>;
     }
 

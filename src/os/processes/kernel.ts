@@ -2,10 +2,17 @@ import { version } from '../../index.js';
 import exitHelper from '../../lib/exitHelper.js';
 import HiveCommand from '../../lib/hiveCommand.js';
 import { sleep } from '../../lib/lib.js';
+import DataIO from '../../network/dataIO.js';
 import { HIVENETPORT } from '../../network/hiveNet.js';
 import HiveProcess from '../process.js';
+import HiveProcessLogger from './logger.js';
+import HiveProcessNet from './net.js';
+import HiveProcessShellDaemon from './shell.js';
+import HiveProcessTerminal from './terminal.js';
 
 export default class HiveProcessKernel extends HiveProcess {
+    systemShell?: HiveCommand;
+
     initProgram(): HiveCommand {
         const kernel = new HiveCommand('kernel', `[${this.os.name}] HiveOS ${version} Kernel Shell`);
 
@@ -13,10 +20,10 @@ export default class HiveProcessKernel extends HiveProcess {
         this.os.HTP.listen(HIVENETPORT.DISCARD);
         // kernel port
         //this.os.HTP.listen(HIVENETPORT.KERNEL).connect(kernel.stdIO);
-        // shell port (temporary)
-        this.os.HTP.listen(HIVENETPORT.SHELL).connect(kernel.stdIO);
+        // shell port (deprecated)
+        //this.os.HTP.listen(HIVENETPORT.SHELL).connect(kernel.stdIO);
         // node stdIO to net interface
-        this.os.stdIO.on('input', kernel.stdIO.inputBind); // force direct input to local kernel
+        //this.os.stdIO.on('input', kernel.stdIO.inputBind); // force direct input to local kernel
         this.os.stdIO.passThrough(this.os.HTP.listen(HIVENETPORT.STDIO));
 
         kernel.addNewCommand('version', 'display HiveNode version').setAction(() => {
@@ -35,12 +42,35 @@ export default class HiveProcessKernel extends HiveProcess {
             exitHelper.restart();
         });
 
+        kernel.addNewCommand('debugDataIO', 'toggle DataIO debug info').setAction(() => DataIO.debugMode());
+
         kernel.addNewCommand('panic', 'PANIC').setAction(() => {
             process.nextTick(() => {
                 throw new Error('PANIC');
             });
         });
 
+        this.os.registerShellProgram(kernel);
         return kernel;
+    }
+
+    main() {
+        this.spawnChild(HiveProcessNet, 'net');
+        this.spawnChild(HiveProcessTerminal, 'terminal');
+        this.spawnChild(HiveProcessLogger, 'logger');
+        const shelld = this.spawnChild(HiveProcessShellDaemon, 'shelld');
+        shelld.spawnShell();
+    }
+
+    getSystemShell() {
+        if (this.systemShell) return this.systemShell;
+        let shelld = this.os.getProcess(HiveProcessShellDaemon);
+        if (!shelld) throw new Error('[ERROR] Failed to initialize system shell, cannot find shell daemon process');
+        let shell = shelld.spawnShell().program;
+        this.os.stdIO.on('input', shell.stdIO.inputBind); // force direct input to system shell
+        // placeholder
+        this.os.HTP.listen(HIVENETPORT.SHELL).connect(shell.stdIO);
+        this.systemShell = shell;
+        return shell;
     }
 }

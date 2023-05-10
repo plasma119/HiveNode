@@ -8,8 +8,9 @@ import HiveOS from './os.js';
 */
 
 type HiveProcessEvents = {
-    exit: (error?: any) => void
-}
+    ready: () => void; // emit after process.main
+    exit: (error?: any) => void;
+};
 
 export default class HiveProcess extends HiveComponent<HiveProcessEvents> {
     os: HiveOS;
