@@ -57,6 +57,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 if (!targetInfo) return 'Failed to get target node info.';
                 // TODO: integrate with shellDaemon system
                 this.terminalDest = uuid;
+                this.terminalDestPort = HIVENETPORT.SHELL;
                 this.setPrompt(`->[${targetInfo.info.name}]`);
                 return `Connected to target node: ${targetInfo.info.name} [HiveOS: ${targetInfo.info.HiveNodeVersion}]`;
             });
