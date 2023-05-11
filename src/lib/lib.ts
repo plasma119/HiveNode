@@ -214,3 +214,114 @@ export type Options<T> = {
 };
 
 export type Constructor<T> = new (...args: any) => T;
+
+/*
+parseArgsStringToArgv: Executed: 2681065, time: 30s, calls/s = 89369
+parseArgv:             Executed: 3087747, time: 30s, calls/s = 102925
+*/
+export function parseArgv(string: string): string[] {
+    let start = 0;
+    let argv: string[] = [];
+    do {
+        let result = findFirstWord(string, start);
+        if (!result) break;
+        argv.push(string.substring(result[0], result[1]));
+        start = result[1] + 1;
+    } while (start < string.length);
+    return argv;
+}
+
+export function findFirstWord(string: string, start: number = 0): number[] | null {
+    let match: '' | ' ' | '"' | "'" = '';
+    let quoteStart = false;
+    for (let i = start; i < string.length; i++) {
+        const char = string[i];
+        if (char == '\\') {
+            // ignore next character
+            i++;
+        } else if (match == '' && char != ' ') {
+            start = i;
+            if (char == "'" || char == '"') {
+                // start of quote
+                quoteStart = true;
+                match = char;
+            } else {
+                // start of word
+                match = ' ';
+            }
+        } else if (match == ' ') {
+            switch (char) {
+                case "'":
+                    // start of quote
+                    match = "'";
+                    break;
+                case '"':
+                    // start of quote
+                    match = '"';
+                    break;
+                case ' ':
+                    // end of word
+                    return [start, i];
+            }
+        } else if (match == char) {
+            // end of quote
+            if (quoteStart) {
+                return [start + 1, i];
+            } else {
+                match = ' ';
+            }
+        }
+    }
+    if (match == ' ') return [start, string.length];
+    if (match != '') {
+        // bad input, cannot find ending quote
+        // try find next complete word's end
+        let result = findFirstWord(string, start + 1);
+        if (!result) return null;
+        result[0] = start;
+        return result;
+    }
+    return null;
+}
+
+export async function performanceTest(f: Function, timeLimitSeconds: number) {
+    let start = Date.now();
+    let i = 0;
+    do {
+        await f();
+        i++;
+    } while (Date.now() - start < timeLimitSeconds * 1000);
+    return {
+        executed: i,
+        totalTime: Date.now() - start,
+    };
+}
+
+export async function performanceTestAdvanced(
+    fs: Function[],
+    timeLimitSecondsPerCycle: number,
+    runs: number,
+    log: (message: string) => void = console.log
+) {
+    let metrics: { executed: number; totalTime: number }[] = [];
+    log(`Running performance test with ${fs.length} functions, ${timeLimitSecondsPerCycle}s per cycle for ${runs} runs...`);
+    for (let r = 0; r < runs; r++) {
+        for (let i = 0; i < fs.length; i++) {
+            log(`Running function ${i + 1}...`);
+            let result = await performanceTest(fs[i], timeLimitSecondsPerCycle);
+            let s = result.totalTime / 1000;
+            log(`Executed: ${result.executed}, time: ${s}s, calls/s = ${Math.round((result.executed / s))}`);
+            if (metrics[i]) {
+                metrics[i].executed += result.executed;
+                metrics[i].totalTime += result.totalTime;
+            } else {
+                metrics[i] = result;
+            }
+        }
+    }
+    log('Test completed.')
+    for (let i = 0; i < fs.length; i++) {
+        let s = metrics[i].totalTime / 1000;
+        log(`Function ${i + 1}: Executed: ${metrics[i].executed}, time: ${s}s, calls/s = ${Math.round((metrics[i].executed / s))}`);
+    }
+}
