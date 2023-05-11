@@ -4,3 +4,4 @@ log
 log/*
 dump
 dump/*
+package-lock.json

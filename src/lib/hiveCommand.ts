@@ -2,12 +2,10 @@
 // argument value persistent bug is the main reason to write this whole thing
 // also it just too messy to work with customizing Commander.js
 
-import { parseArgsStringToArgv } from 'string-argv';
-
 import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
 import HiveComponent from './component.js';
-import { commonPrefix, formatTab, typeCheck } from './lib.js';
+import { commonPrefix, formatTab, parseArgv, typeCheck } from './lib.js';
 
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: `-${string}`]: boolean | string }, info: HiveCommandInfo) => any;
 
@@ -346,7 +344,7 @@ export class HiveSubCommand extends HiveCommand {
         // initialize
         info.currentProgram = this;
         this.reset();
-        const args = parseArgsStringToArgv(str);
+        const args = parseArgv(str);
         let argumentCount = 0;
         let argumentArr = Array.from(this.arguments.values());
 
