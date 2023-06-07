@@ -34,43 +34,43 @@ export const DEFAULTCONFIG: BootConfig = {
     HiveNetIP: '',
 };
 
-export function parseBIOSConfig(processArgvString: string): Promise<{ config: Options<BootConfig>; argv: string }> {
-    return new Promise((resolve) => {
-        // TODO: help command
-        const program = new HiveCommand('config');
-        program
-            .addNewCommand('parse', 'parse config from argv')
-            .addNewOption('-name <name>', 'OS name')
-            .addNewOption('-headless', 'run without user input prompt')
-            .addNewOption('-debug', 'set debug flag in OS')
-            .addNewOption('-debugDataIO', 'set debug flag in DataIO')
-            .addNewOption('-HiveNodePath <path>', 'path to HiveNode module')
-            .addNewOption('-bootLoaderFile <path>', 'path to custom boot loader file')
-            .addNewOption('-programFile <path>', 'path to main program file')
-            .addNewOption('-configFile <path>', 'path to config file (override by arguments)')
-            .addNewOption('-HiveNetServer', 'Auto start HiveNet server')
-            .addNewOption('-HiveNetIP <ip>', 'Auto connect to HiveNet')
-            .addNewArgument('[argv...]', 'arguments pass to main program', '')
-            .setAction((args, opts) => {
-                let config: Options<BootConfig> = {
-                    name: (opts['-name'] as string) || undefined,
-                    headless: (opts['-headless'] as boolean) || undefined,
-                    debug: (opts['-debug'] as boolean) || undefined,
-                    debugDataIO: (opts['-debugDataIO'] as boolean) || undefined,
-                    HiveNodePath: (opts['-HiveNodePath'] as string) || undefined,
-                    bootLoaderFile: (opts['-bootLoaderFile'] as string) || undefined,
-                    programFile: (opts['-programFile'] as string) || undefined,
-                    configFile: (opts['-configFile'] as string) || undefined,
-                    HiveNetServer: (opts['-HiveNetServer'] as boolean) || undefined,
-                    HiveNetIP: (opts['-HiveNetIP'] as string) || undefined,
-                };
-                resolve({
-                    config: config,
-                    argv: args['argv'],
-                });
-            });
-        program.stdIO.input(`parse ${processArgvString}`);
+// TODO: help command
+export const BootConfigParserProgram = new HiveCommand('config');
+BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
+    .addNewOption('-name <name>', 'OS name')
+    .addNewOption('-headless', 'run without user input prompt')
+    .addNewOption('-debug', 'set debug flag in OS')
+    .addNewOption('-debugDataIO', 'set debug flag in DataIO')
+    .addNewOption('-HiveNodePath <path>', 'path to HiveNode module')
+    .addNewOption('-bootLoaderFile <path>', 'path to custom boot loader file')
+    .addNewOption('-programFile <path>', 'path to main program file')
+    .addNewOption('-configFile <path>', 'path to config file (override by arguments)')
+    .addNewOption('-HiveNetServer', 'Auto start HiveNet server')
+    .addNewOption('-HiveNetIP <ip>', 'Auto connect to HiveNet')
+    .addNewArgument('[argv...]', 'arguments pass to main program', '')
+    .setAction((args, opts) => {
+        let config: Options<BootConfig> = {
+            name: (opts['-name'] as string) || undefined,
+            headless: (opts['-headless'] as boolean) || undefined,
+            debug: (opts['-debug'] as boolean) || undefined,
+            debugDataIO: (opts['-debugDataIO'] as boolean) || undefined,
+            HiveNodePath: (opts['-HiveNodePath'] as string) || undefined,
+            bootLoaderFile: (opts['-bootLoaderFile'] as string) || undefined,
+            programFile: (opts['-programFile'] as string) || undefined,
+            configFile: (opts['-configFile'] as string) || undefined,
+            HiveNetServer: (opts['-HiveNetServer'] as boolean) || undefined,
+            HiveNetIP: (opts['-HiveNetIP'] as string) || undefined,
+        };
+        return {
+            config: config,
+            argv: args['argv'],
+        };
     });
+
+export async function parseBIOSConfig(processArgvString: string): Promise<{ config: Options<BootConfig>; argv: string }> {
+    const result = await BootConfigParserProgram.execute(`parse ${processArgvString}`);
+    if (!result[0]) throw new Error('[parseBIOSConfig]: ERROR: Empty result');
+    return result[0];
 }
 
 export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]) {
