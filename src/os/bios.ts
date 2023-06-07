@@ -6,7 +6,7 @@ import HiveCommand from '../lib/hiveCommand.js';
 import { Options } from '../lib/lib.js';
 
 export const BIOSVERSION = 'v1.1';
-export const BIOSVERSIONDATE = '06-06-2023';
+export const BIOSVERSIONBUILD = '06-06-2023';
 
 export type BootConfig = {
     name: string;
@@ -88,7 +88,7 @@ export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]
 }
 
 (async () => {
-    console.log(`[BIOS]: BIOS version ${BIOSVERSION} build ${BIOSVERSIONDATE}`);
+    console.log(`[BIOS]: BIOS version ${BIOSVERSION} build ${BIOSVERSIONBUILD}`);
 
     let processArgvString = process.argv.slice(2).join(' ');
     console.log(`[BIOS]: Parsing argv [${processArgvString}]`);

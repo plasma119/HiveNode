@@ -9,10 +9,18 @@ import HiveOS from './os.js';
 import { BootConfig } from './bios.js';
 import DataIO from '../network/dataIO.js';
 
+export const BOOTLOADERVERSION = 'v1.1';
+export const BOOTLOADERVERSIONBUILD = '06-06-2023';
+
 process.on('message', async (message) => {
+    console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
+
     const { config, argv } = message as { config: BootConfig; argv: string[] };
 
-    if (config.debugDataIO) DataIO.debugMode();
+    if (config.debugDataIO) {
+        console.log(`[Boot Loader]: DataIO debug flag set`);
+        DataIO.debugMode();
+    }
 
     const os = new HiveOS(config.name);
     os.buildTerminal(config.headless, config.debug);
