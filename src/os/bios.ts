@@ -5,6 +5,9 @@ import path from 'path';
 import HiveCommand from '../lib/hiveCommand.js';
 import { Options } from '../lib/lib.js';
 
+export const BIOSVERSION = 'v1.1';
+export const BIOSVERSIONDATE = '06-06-2023';
+
 export type BootConfig = {
     name: string;
     headless: boolean;
@@ -31,7 +34,7 @@ export const DEFAULTCONFIG: BootConfig = {
     HiveNetIP: '',
 };
 
-export function parseBIOSConfig(): Promise<{ config: Options<BootConfig>; argv: string }> {
+export function parseBIOSConfig(processArgvString: string): Promise<{ config: Options<BootConfig>; argv: string }> {
     return new Promise((resolve) => {
         // TODO: help command
         const program = new HiveCommand('config');
@@ -50,33 +53,33 @@ export function parseBIOSConfig(): Promise<{ config: Options<BootConfig>; argv: 
             .addNewArgument('[argv...]', 'arguments pass to main program', '')
             .setAction((args, opts) => {
                 let config: Options<BootConfig> = {
-                    name: opts['-name'] as string || undefined,
-                    headless: opts['-headless'] as boolean || undefined,
-                    debug: opts['-debug'] as boolean || undefined,
-                    debugDataIO: opts['-debugDataIO'] as boolean || undefined,
-                    HiveNodePath: opts['-HiveNodePath'] as string || undefined,
-                    bootLoaderFile: opts['-bootLoaderFile'] as string || undefined,
-                    programFile: opts['-programFile'] as string || undefined,
-                    configFile: opts['-configFile'] as string || undefined,
-                    HiveNetServer: opts['-HiveNetServer'] as boolean || undefined,
-                    HiveNetIP: opts['-HiveNetIP'] as string || undefined,
+                    name: (opts['-name'] as string) || undefined,
+                    headless: (opts['-headless'] as boolean) || undefined,
+                    debug: (opts['-debug'] as boolean) || undefined,
+                    debugDataIO: (opts['-debugDataIO'] as boolean) || undefined,
+                    HiveNodePath: (opts['-HiveNodePath'] as string) || undefined,
+                    bootLoaderFile: (opts['-bootLoaderFile'] as string) || undefined,
+                    programFile: (opts['-programFile'] as string) || undefined,
+                    configFile: (opts['-configFile'] as string) || undefined,
+                    HiveNetServer: (opts['-HiveNetServer'] as boolean) || undefined,
+                    HiveNetIP: (opts['-HiveNetIP'] as string) || undefined,
                 };
                 resolve({
                     config: config,
                     argv: args['argv'],
                 });
             });
-        program.stdIO.input(`parse ${process.argv.slice(2).join(' ')}`);
+        program.stdIO.input(`parse ${processArgvString}`);
     });
 }
 
 export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]) {
-    let config = Object.assign({}, DEFAULTCONFIG)
+    let config = Object.assign({}, DEFAULTCONFIG);
     if (configs.length == 0) return config;
     for (let nextConfig of configs) {
         let keys = Object.keys(nextConfig) as (keyof BootConfig)[];
         for (let key of keys) {
-            let value = nextConfig[key]
+            let value = nextConfig[key];
             // @ts-ignore
             if (value !== undefined && value !== '') config[key] = value;
         }
@@ -85,7 +88,11 @@ export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]
 }
 
 (async () => {
-    let result = await parseBIOSConfig();
+    console.log(`[BIOS]: BIOS version ${BIOSVERSION} build ${BIOSVERSIONDATE}`);
+
+    let processArgvString = process.argv.slice(2).join(' ');
+    console.log(`[BIOS]: Parsing argv [${processArgvString}]`);
+    let result = await parseBIOSConfig(processArgvString);
     let { config: configArgv, argv } = result;
     let config = mergeBIOSConfig(configArgv);
 
