@@ -9,8 +9,8 @@ import HiveOS from './os.js';
 import { BootConfig } from './bios.js';
 import DataIO from '../network/dataIO.js';
 
-export const BOOTLOADERVERSION = 'v1.1';
-export const BOOTLOADERVERSIONBUILD = '06-06-2023';
+export const BOOTLOADERVERSION = 'v1.2';
+export const BOOTLOADERVERSIONBUILD = '06-07-2023';
 
 process.on('message', async (message) => {
     console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
@@ -50,5 +50,9 @@ process.on('message', async (message) => {
                 os.stdIO.output(e);
             }
         }
+    } else {
+        os.stdIO.output(`[Boot Loader]: No main program file specified.`);
     }
+
+    os.stdIO.output(`[Boot Loader]: Finished boot up sequence.`);
 });
