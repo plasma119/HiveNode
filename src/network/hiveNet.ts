@@ -82,7 +82,7 @@ export type HiveNetDeviceInfo = {
     HiveNodeVersion: string;
 };
 
-export class HiveNetDevice<EventList extends ListenerSignature<EventList> = DefaultListener> extends HiveComponent {
+export class HiveNetDevice<EventList extends ListenerSignature<EventList> = DefaultListener> extends HiveComponent<EventList> {
     deviceType: HiveNetDeviceType;
 
     constructor(name: string, deviceType: HiveNetDeviceType) {

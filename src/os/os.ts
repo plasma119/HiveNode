@@ -9,6 +9,7 @@ import HTP from '../network/protocol.js';
 import HiveProcess from './process.js';
 import HiveProcessKernel from './processes/kernel.js';
 import HiveProcessLogger from './processes/logger.js';
+import HiveProcessShellDaemon from './processes/shell.js';
 import HiveProcessTerminal from './processes/terminal.js';
 
 export type HiveOSEvent = {
@@ -26,7 +27,6 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     kernel: HiveProcessKernel;
     shell: HiveCommand;
     drivers = {}; // TODO
-    shellPrograms: HiveCommand[];
 
     processes: Map<number, HiveProcess>;
     nextpid: number;
@@ -40,17 +40,12 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.processes = new Map();
         this.nextpid = 0;
         this.debugMode = debugMode;
-        this.shellPrograms = [];
         exitHelper.onSIGINT(() => {
             this.emit('sigint');
             return IgnoreSIGINT;
         });
         this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
         this.shell = this.kernel.getSystemShell();
-    }
-
-    registerShellProgram(program: HiveCommand) {
-        this.shellPrograms.push(program);
     }
 
     getProcess<C extends Constructor<HiveProcess>>(processConstructor: C, process?: HiveProcess | number): InstanceType<C> | null {
@@ -98,15 +93,22 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         }
     }
 
+    // maybe move these into kernel?
+    registerShellProgram(program: HiveCommand) {
+        let p = this.getProcess(HiveProcessShellDaemon);
+        if (!p) throw new Error('[ERROR] os.registerShellProgram failed, cannot find shelld process');
+        p.registerShellProgram(program);
+    }
+
     buildTerminal(headless: boolean = false, debug: boolean = false) {
         let p = this.getProcess(HiveProcessTerminal);
-        if (!p) throw new Error('[ERROR] BuildTerminal failed, cannot find terminal process');
+        if (!p) throw new Error('[ERROR] os.buildTerminal failed, cannot find terminal process');
         p.buildTerminal(headless, debug);
     }
 
     log(message: any) {
         let p = this.getProcess(HiveProcessLogger);
-        if (!p) throw new Error('[ERROR] log failed, cannot find logger process');
+        if (!p) throw new Error('[ERROR] os.log failed, cannot find logger process');
         p.log(message);
     }
 }

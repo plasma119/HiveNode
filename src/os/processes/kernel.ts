@@ -50,16 +50,16 @@ export default class HiveProcessKernel extends HiveProcess {
             });
         });
 
-        this.os.registerShellProgram(kernel);
         return kernel;
     }
 
     main() {
-        this.spawnChild(HiveProcessNet, 'net');
-        this.spawnChild(HiveProcessTerminal, 'terminal');
-        this.spawnChild(HiveProcessLogger, 'logger');
         const shelld = this.spawnChild(HiveProcessShellDaemon, 'shelld');
-        shelld.spawnShell();
+        shelld.registerShellProgram(this.program);
+        this.spawnChild(HiveProcessLogger, 'logger');
+        this.spawnChild(HiveProcessTerminal, 'terminal');
+        this.spawnChild(HiveProcessNet, 'net');
+        shelld.spawnShell(); // TODO: wait why a shell with nothing here
     }
 
     getSystemShell() {

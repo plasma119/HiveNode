@@ -4,7 +4,7 @@
     "debug": true,
     "HiveNodePath": "dist/",
     "bootLoaderFile": "",
-    "programFile": "",
+    "programFile": "dist/tests/client.js",
     "HiveNetServer": false,
     "HiveNetIP": "127.0.0.1"
 }

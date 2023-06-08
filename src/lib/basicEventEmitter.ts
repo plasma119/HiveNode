@@ -1,13 +1,17 @@
 export type ListenerSignature<EventList> = {
-    [Event in keyof EventList]: (...args: any[]) => any;
+    [k in keyof EventList]: (...args: any) => any;
 };
 
 export type DefaultListener = {
-    [k: string]: (...args: any[]) => any;
+    [k: string | number | symbol]: (...args: any) => any;
 };
 
+// stupid typescript still doesn't support infer on spread generic parameters
+type StupidParameters<T extends (arg1: any, arg2: any) => any> = T extends (arg1: infer P) => any ? P : never;
+type StupidParameters2<T extends (arg1: any, arg2: any) => any> = T extends (arg1: any, args2: infer P) => any ? P : never;
+
 type Handler = {
-    listener: (...args: any[]) => any;
+    listener: (...args: any) => any;
     once: boolean;
     deleted: boolean;
 };
@@ -20,7 +24,7 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
         handlers.push({
             listener,
             once: true,
-            deleted: false
+            deleted: false,
         });
         return this;
     }
@@ -30,7 +34,7 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
         handlers.push({
             listener,
             once: false,
-            deleted: false
+            deleted: false,
         });
         return this;
     }
@@ -47,14 +51,18 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
         return this;
     }
 
-    emit<Event extends keyof EventList>(event: Event, ...args: Parameters<EventList[Event]>): boolean {
+    emit<Event extends keyof EventList>(
+        event: Event,
+        arg1?: StupidParameters<EventList[Event]>,
+        arg2?: StupidParameters2<EventList[Event]>
+    ): boolean {
         const handlers = this._getEvent(event);
         for (let handler of handlers) {
             if (handler.deleted) continue;
-            handler.listener(...args);
+            handler.listener(arg1, arg2);
             if (handler.once) handler.deleted = true;
         }
-        const newHandlers = handlers.filter(handler => !handler.deleted);
+        const newHandlers = handlers.filter((handler) => !handler.deleted);
         this._events.set(event, newHandlers);
         return true;
     }

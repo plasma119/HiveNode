@@ -1,5 +1,7 @@
+import HiveCommand from "../lib/hiveCommand.js";
 import HiveOS from "../os/os.js";
 
 export function main(os: HiveOS) {
-    os.kernel.program.stdIO.input('net connect 127.0.0.1');
+    let p = new HiveCommand('clientProgram');
+    os.registerShellProgram(p);
 }
