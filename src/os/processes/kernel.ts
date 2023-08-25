@@ -65,11 +65,13 @@ export default class HiveProcessKernel extends HiveProcess {
         if (this.systemShell) return this.systemShell;
         let shelld = this.os.getProcess(HiveProcessShellDaemon);
         if (!shelld) throw new Error('[ERROR] Failed to initialize system shell, cannot find shell daemon process');
-        let shell = shelld.spawnShell().program;
-        this.os.stdIO.on('input', shell.stdIO.inputBind); // force direct input to system shell
+        let shell = shelld.spawnShell();
+        shell.rename('systemShell');
+        let shellProgram = shell.program;
+        this.os.stdIO.on('input', shellProgram.stdIO.inputBind); // force direct input to system shell
         // placeholder
-        this.os.HTP.listen(HIVENETPORT.SHELL).connect(shell.stdIO);
-        this.systemShell = shell;
-        return shell;
+        this.os.HTP.listen(HIVENETPORT.SHELL).connect(shellProgram.stdIO);
+        this.systemShell = shellProgram;
+        return shellProgram;
     }
 }
