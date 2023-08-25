@@ -59,7 +59,6 @@ export default class HiveProcessKernel extends HiveProcess {
         this.spawnChild(HiveProcessLogger, 'logger');
         this.spawnChild(HiveProcessTerminal, 'terminal');
         this.spawnChild(HiveProcessNet, 'net');
-        shelld.spawnShell(); // TODO: wait why a shell with nothing here
     }
 
     getSystemShell() {

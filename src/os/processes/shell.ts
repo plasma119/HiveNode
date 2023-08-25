@@ -3,12 +3,15 @@ import HiveProcess from '../process.js';
 
 // TODO: maintain persistent shell interaction history
 
+const VERSION = 'V1.1';
+const BUILD = '2023-8-24';
+
 type HiveProcessShellDaemonEvents = {
     registerShellProgram: (program: HiveCommand) => void;
 };
 
 export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShellDaemonEvents> {
-    shells: HiveProcessShellProcess[] = [];
+    shells: Map<number, HiveProcessShellProcess> = new Map();
     shellPrograms: HiveCommand[] = [];
 
     initProgram() {
@@ -21,6 +24,7 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
         return program;
     }
 
+    // to all shell processes
     registerShellProgram(program: HiveCommand) {
         this.shellPrograms.push(program);
         this.emit('registerShellProgram', program);
@@ -29,6 +33,10 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
     spawnShell() {
         const shellProcess = this.spawnChild(HiveProcessShellProcess, 'shell');
         shellProcess.injectShellDaemon(this);
+        this.shells.set(shellProcess.pid, shellProcess);
+        shellProcess.once('exit', () => {
+            this.shells.delete(shellProcess.pid);
+        });
         return shellProcess;
     }
 }
@@ -39,11 +47,39 @@ export class HiveProcessShellProcess extends HiveProcess {
     registerShellProgramBind?: (program: HiveCommand) => void;
 
     initProgram() {
-        const program = new HiveCommand('shell', `Shell`);
+        const program = new HiveCommand('shell', `Basic HiveOS Shell`);
         const shell = program.addNewCommand('shell', 'Shell command');
 
-        shell.addNewCommand('port', "display current shell's portIO").setAction(() => {
-            return this.port;
+        shell.addNewCommand('info', `display current shell's info`).setAction(() => {
+            let info = `[${this.program.name}] - ${this.program.description}`;
+            info += `\nShell version ${VERSION} build ${BUILD}`;
+            info += `\nPid: ${this.pid}`;
+            info += `\nPort: ${this.port}`;
+            let parent = this.os.getProcess(HiveProcess, this.ppid);
+            info += `\nParent: ${parent ? `[${parent.name}] pid: ${parent.pid}` : 'null'}`;
+            return info;
+        });
+
+        shell
+            .addNewCommand('rename', `rename current shell's name`)
+            .addNewArgument('<name>')
+            .addNewArgument('[description...]')
+            .setAction((args) => {
+                this.rename(args['name'], args['description']);
+            });
+
+        const util = shell.addNewCommand('util', 'For testing purpose');
+
+        util.addNewCommand('ls', 'list all running shells').setAction((_args, _opts, info) => {
+            if (!this.shelld) {
+                return `WHAT? CAN'T FIND SHELLD!`;
+            }
+            this.shelld.shells.forEach((s) => {
+                s.program.execute('shell info').then((data) => {
+                    info.reply(data.join('\n'));
+                });
+            });
+            return null;
         });
 
         return program;
@@ -54,8 +90,15 @@ export class HiveProcessShellProcess extends HiveProcess {
         portIO.connect(this.program.stdIO);
     }
 
+    rename(name: string, description?: string) {
+        this.name = name;
+        this.program.name = name;
+        if (description) this.program.description = description;
+    }
+
     exit() {
         if (this.shelld && this.registerShellProgramBind) this.shelld.off('registerShellProgram', this.registerShellProgramBind);
+        this.os.netInterface.closePort(this.port);
         super.exit();
     }
 
@@ -66,6 +109,7 @@ export class HiveProcessShellProcess extends HiveProcess {
         shelld.on('registerShellProgram', this.registerShellProgramBind);
     }
 
+    // to this shell process only
     registerShellProgram(program: HiveCommand) {
         this.program.addCommand(program);
     }
