@@ -79,8 +79,14 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         let p = new processConstructor(name, this, this.nextpid++, parentProcess?.pid || 0);
         this.processes.set(p.pid, p);
         if (parentProcess) parentProcess.childs.set(p.pid, p);
-        p.main(argv);
-        p.emit('ready');
+        try {
+            p.main(argv); // TODO: async main
+            p.emit('ready');
+        } catch (e) {
+            this.log(`ERROR: Process ${name} crashed on startup.`)
+            this.log(e);
+            throw e; // if inside HiveCommand, this should be 'safe', otherwise cascade upward to parent (unlikely to affect core system)
+        }
         return p as InstanceType<C>;
     }
 
