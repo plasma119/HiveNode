@@ -50,7 +50,7 @@ export default class Logger extends HiveComponent {
         }
     }
 
-    async log(message: string, mute: boolean = false) {
+    async log(message: any, mute: boolean = false) {
         if (typeof message != 'string') message = inspect(message, false, 2, false);
         const log = this._stamp(message);
         if (!mute) this._echo(log);
@@ -156,7 +156,7 @@ export class LoggerStream extends Logger {
         resolve: (value: void | PromiseLike<void>) => void;
     }[] = [];
 
-    log(message: string, mute: boolean = false): Promise<void> {
+    log(message: any, mute: boolean = false): Promise<void> {
         return new Promise((resolve) => {
             if (typeof message != 'string') message = inspect(message, false, 2, false);
             const log = this._stamp(message);
