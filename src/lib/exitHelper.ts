@@ -52,13 +52,15 @@ class ExitHelper {
         // !! synchronous writes to stdout
         if (exitCode instanceof Error && exitCode.stack) {
             // crashing
+            fs.writeSync(1, exitCode.stack + '\n');
+            // must write crash log first, incase normal streamlogger crash on stackoverflow
+            if (this.crashLogger) await this.crashLogger.log(exitCode.stack);
+
             if (this.logger) {
                 await this.logger.log(`Exit logger detected`);
                 if (this.crashLogger) await this.logger.log(`Crash logger detected`);
             }
-            fs.writeSync(1, exitCode.stack + '\n');
             if (this.logger) await this.logger.log(exitCode.stack);
-            if (this.crashLogger) await this.crashLogger.log(exitCode.stack);
         } else {
             // normal exiting
             fs.writeSync(1, exitCode.toString() + '\n');

@@ -14,6 +14,7 @@ import HiveProcessTerminal from './processes/terminal.js';
 
 export type HiveOSEvent = {
     sigint: () => void;
+    consoleLog: (...data: any) => void; // fires after console.log
 };
 
 /*
@@ -46,6 +47,26 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         });
         this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
         this.shell = this.kernel.getSystemShell();
+        // capture console.log
+        // !! do not redirect this to DataIO or any other console.log with debugMode on -> stackoverflow
+        const log = console.log;
+        // Error.stackTraceLimit = 100;
+        console.log = (...data) => {
+            // idk why stackoverflow with DataIO loopback would have a lot of async console.log,
+            // causing multiple throw and hard crash the exit system, just let it crash normally
+            // let stack = new Error().stack;
+            // if (stack) {
+            //     let depth = stack.split('\n').length - 1;
+            //     if (depth > 80) {
+            //         process.stdout.write(stack + '\n');
+            //         process.stdout.write(`[console.log](captured) Possible stackoverflow stopped. Current stack at ${depth}`);
+            //         throw new Error('Stackoverflow');
+            //     }
+            // }
+            log(...data);
+            this.emit('consoleLog', data);
+            // this.stdIO.output(''); // DO NOT DO THIS
+        }
     }
 
     getProcess<C extends Constructor<HiveProcess>>(processConstructor: C, process?: HiveProcess | number): InstanceType<C> | null {

@@ -168,6 +168,8 @@ export default class HiveProcessTerminal extends HiveProcess {
                 this.completerCallback = resolve;
             });
         });
+
+        this.os.on('consoleLog', () => terminal.redraw());
     }
 
     setPrompt(prompt: string) {

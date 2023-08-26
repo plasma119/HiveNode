@@ -44,8 +44,17 @@ export default class HiveProcessKernel extends HiveProcess {
 
         kernel.addNewCommand('debugDataIO', 'toggle DataIO debug info').setAction(() => DataIO.debugMode());
 
-        kernel.addNewCommand('panic', 'PANIC').setAction(() => {
+        kernel.addNewCommand('panic', 'PANIC')
+        .addNewOption('-stack', 'generate stackoverflow')
+        .setAction((_args, opts) => {
             process.nextTick(() => {
+                if (opts['-stack']) {
+                    function stackoverflow() {
+                        stackoverflow();
+                    }
+                    stackoverflow();
+                    return;
+                }
                 throw new Error('PANIC');
             });
         });

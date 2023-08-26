@@ -139,7 +139,7 @@ export default class Terminal extends HiveComponent {
         });
     }
 
-    redraw(f: Function) {
+    redraw(f?: Function) {
         const p = this.interface.getCursorPos();
         const l = this._prompt.length;
         const rows = Math.floor((l + this.interface.line.length) / this.stdout.columns); // end of input rows
@@ -151,7 +151,7 @@ export default class Terminal extends HiveComponent {
             this.stdout.moveCursor(0, -1);
             ReadLine.clearLine(this.stdout, 0);
         }
-        f(); // output function
+        if (f) f(); // output function
         this.prompt(); // print prompt
         this.stdout.write(this.interface.line);
         this.stdout.moveCursor(p.cols - cols, p.rows - rows); // return cursor to previous position
