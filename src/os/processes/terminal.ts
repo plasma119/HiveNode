@@ -169,7 +169,10 @@ export default class HiveProcessTerminal extends HiveProcess {
             });
         });
 
-        this.os.on('consoleLog', () => terminal.redraw());
+        this.os.on('consoleLog', (param) => {
+            param.suppressBubble = true;
+            terminal.redraw(() => param.log(...param.data));
+        });
     }
 
     setPrompt(prompt: string) {

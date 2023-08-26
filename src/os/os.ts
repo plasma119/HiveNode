@@ -14,7 +14,7 @@ import HiveProcessTerminal from './processes/terminal.js';
 
 export type HiveOSEvent = {
     sigint: () => void;
-    consoleLog: (...data: any) => void; // fires after console.log
+    consoleLog: (param: { data: any[]; log: Function; suppressBubble: boolean }) => void; // fires after console.log
 };
 
 /*
@@ -63,10 +63,15 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
             //         throw new Error('Stackoverflow');
             //     }
             // }
-            log(...data);
-            this.emit('consoleLog', data);
+            let param = {
+                data,
+                log,
+                suppressBubble: false,
+            };
+            this.emit('consoleLog', param);
+            if (!param.suppressBubble) log(...data);
             // this.stdIO.output(''); // DO NOT DO THIS
-        }
+        };
     }
 
     getProcess<C extends Constructor<HiveProcess>>(processConstructor: C, process?: HiveProcess | number): InstanceType<C> | null {
@@ -104,7 +109,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
             p.main(argv); // TODO: async main
             p.emit('ready');
         } catch (e) {
-            this.log(`ERROR: Process ${name} crashed on startup.`)
+            this.log(`ERROR: Process ${name} crashed on startup.`);
             this.log(e);
             throw e; // if inside HiveCommand, this should be 'safe', otherwise cascade upward to parent (unlikely to affect core system)
         }

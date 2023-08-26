@@ -278,14 +278,23 @@ export default class HiveCommand extends HiveComponent {
         let chain = info.programChain.map((p) => p.name);
         chain.shift();
         let base = chain.join(' ');
-        let cmds = Array.from(this.commands).map((i) => i[0]);
+        let cmds = Array.from(this.commands).map((i) => i[0]) as string[];
         let hits = cmds.filter((c) => c.startsWith(info.currentInput));
         if (hits.length == 0) hits = cmds; // no hit
-        let prefix = commonPrefix(hits as string[]);
-        if (prefix) hits = [prefix];
+        let prefix = commonPrefix(hits as string[]) || '';
+        if (info.currentInput != '' && info.currentInput != prefix && prefix != '') {
+            hits = [prefix];
+        }
+        if (hits.length == 0) hits = [info.currentInput];
+        hits.sort();
+        if (hits.length == 1) {
+            hits = hits.map((str) => (base ? base + ' ' : '') + str); // reconstruct full command
+        } else {
+            hits.push(' '); // to stop auto prefix trimming
+        }
         return {
             terminalControl: true,
-            completer: hits.length == 1 ? [(base ? base + ' ' : '') + hits[0]] : (hits.sort() as string[]),
+            completer: hits,
             //completer: Array.from(this.commands).map((i) => (base ? base + ' ' : '') + i[0]),
             local: info.terminalControl?.local,
         };

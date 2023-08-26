@@ -30,6 +30,12 @@ export default class HiveProcessKernel extends HiveProcess {
             return version;
         });
 
+        kernel.addNewCommand('status', 'display system status').setAction(() => {
+            const heap = process.memoryUsage().heapUsed / 1024 / 1024;
+            const heapMax = process.memoryUsage().heapTotal / 1024 / 1024;
+            return `This app is currently using ${Math.floor(heap)}/${Math.floor(heapMax)} MB of memory.`;
+        })
+
         kernel.addNewCommand('stop', 'terminate HiveNode').setAction(async (_args, _opts, info) => {
             info.reply('stopping...');
             await sleep(100);
@@ -46,6 +52,7 @@ export default class HiveProcessKernel extends HiveProcess {
 
         kernel.addNewCommand('panic', 'PANIC')
         .addNewOption('-stack', 'generate stackoverflow')
+        .addNewOption('-memory', 'generate memory overflow')
         .setAction((_args, opts) => {
             process.nextTick(() => {
                 if (opts['-stack']) {
@@ -53,6 +60,19 @@ export default class HiveProcessKernel extends HiveProcess {
                         stackoverflow();
                     }
                     stackoverflow();
+                    return;
+                }
+                if (opts['-memory']) {
+                    function memoryOverflow() {
+                        let o = [];
+                        for (let i = 0; i < 100; i++) {
+                            o[i] = new Array(1000000).fill(1);
+                        }
+                        const heap = process.memoryUsage().heapUsed / 1024 / 1024;
+                        console.log(`${Math.floor(heap)} MB`);
+                        memoryOverflow();
+                    }
+                    memoryOverflow();
                     return;
                 }
                 throw new Error('PANIC');
