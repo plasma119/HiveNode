@@ -75,6 +75,11 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
         return this;
     }
 
+    getListenerCount<Event extends keyof EventList>(event: Event): number {
+        const handlers = this._getEvent(event);
+        return handlers.length;
+    }
+
     _getEvent<Event extends keyof EventList>(event: Event): Handler[] {
         let handlers = this._events.get(event);
         if (!handlers) {
