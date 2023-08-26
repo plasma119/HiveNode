@@ -55,16 +55,24 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
         event: Event,
         arg1?: StupidParameters<EventList[Event]>,
         arg2?: StupidParameters2<EventList[Event]>
-    ): boolean {
+    ): this {
         const handlers = this._getEvent(event);
+        let updated = false;
         for (let handler of handlers) {
-            if (handler.deleted) continue;
+            if (handler.deleted) {
+                updated = true;
+                continue;
+            }
             handler.listener(arg1, arg2);
-            if (handler.once) handler.deleted = true;
+            if (handler.once) {
+                handler.deleted = true;
+                updated = true;
+            }
         }
+        if (!updated) return this;
         const newHandlers = handlers.filter((handler) => !handler.deleted);
         this._events.set(event, newHandlers);
-        return true;
+        return this;
     }
 
     _getEvent<Event extends keyof EventList>(event: Event): Handler[] {
