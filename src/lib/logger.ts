@@ -53,7 +53,6 @@ export default class Logger extends HiveComponent {
     async log(message: any, mute: boolean = false) {
         if (typeof message != 'string') message = inspect(message, false, 2, false);
         const log = this._stamp(message);
-        if (!mute) this._echo(log);
         if (!this.logFileHandle) {
             // get log file
             this._newLogFile();
@@ -67,6 +66,7 @@ export default class Logger extends HiveComponent {
             this.log(t);
         }
         fs.writeSync(this.logFileHandle, log);
+        if (!mute) this._echo(log); // finish write first, as _echo might crash during crash logging
         return;
     }
 
