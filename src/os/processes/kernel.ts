@@ -34,7 +34,7 @@ export default class HiveProcessKernel extends HiveProcess {
             const heap = process.memoryUsage().heapUsed / 1024 / 1024;
             const heapMax = process.memoryUsage().heapTotal / 1024 / 1024;
             return `This app is currently using ${Math.floor(heap)}/${Math.floor(heapMax)} MB of memory.`;
-        })
+        });
 
         kernel.addNewCommand('stop', 'terminate HiveNode').setAction(async (_args, _opts, info) => {
             info.reply('stopping...');
@@ -50,34 +50,50 @@ export default class HiveProcessKernel extends HiveProcess {
 
         kernel.addNewCommand('debugDataIO', 'toggle DataIO debug info').setAction(() => DataIO.debugMode());
 
-        kernel.addNewCommand('panic', 'PANIC')
-        .addNewOption('-stack', 'generate stackoverflow')
-        .addNewOption('-memory', 'generate memory overflow')
-        .setAction((_args, opts) => {
-            process.nextTick(() => {
-                if (opts['-stack']) {
-                    function stackoverflow() {
-                        stackoverflow();
-                    }
-                    stackoverflow();
-                    return;
-                }
-                if (opts['-memory']) {
-                    function memoryOverflow() {
-                        let o = [];
-                        for (let i = 0; i < 100; i++) {
-                            o[i] = new Array(1000000).fill(1);
+        kernel
+            .addNewCommand('panic', 'PANIC')
+            .addNewOption('-stack', 'generate stack overflow')
+            .addNewOption('-memory', 'generate memory overflow')
+            .addNewOption('-heap', 'generate heap memory overflow')
+            .setAction((_args, opts) => {
+                // out of HiveCommand's error catching
+                process.nextTick(() => {
+                    if (opts['-stack']) {
+                        // some stack overflow are recoverable, like this one, logger still works properly
+                        function stackoverflow() {
+                            stackoverflow();
                         }
-                        const heap = process.memoryUsage().heapUsed / 1024 / 1024;
-                        console.log(`${Math.floor(heap)} MB`);
-                        memoryOverflow();
+                        stackoverflow();
+                        return;
                     }
-                    memoryOverflow();
-                    return;
-                }
-                throw new Error('PANIC');
+                    if (opts['-memory']) {
+                        // ... seems like node can hug onto a LOT of memory before blowing up
+                        function memoryOverflow() {
+                            let o = [];
+                            for (let i = 0; i < 100; i++) {
+                                o[i] = new Array(1000000).fill(1);
+                            }
+                            const heap = process.memoryUsage().heapUsed / 1024 / 1024;
+                            console.log(`${Math.floor(heap)} MB`);
+                            memoryOverflow();
+                        }
+                        memoryOverflow();
+                        return;
+                    }
+                    if (opts['-heap']) {
+                        // fatal error
+                        function heapMemoryOverflow(_args?: any) {
+                            let a = new Array(10000).fill(1);
+                            const heap = process.memoryUsage().heapUsed / 1024 / 1024;
+                            console.log(`${Math.floor(heap)} MB`);
+                            heapMemoryOverflow(...a);
+                        }
+                        heapMemoryOverflow();
+                        return;
+                    }
+                    throw new Error('PANIC');
+                });
             });
-        });
 
         return kernel;
     }
