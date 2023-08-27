@@ -11,7 +11,7 @@ type HiveProcessShellDaemonEvents = {
 };
 
 export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShellDaemonEvents> {
-    shells: Map<number, HiveProcessShellProcess> = new Map();
+    shells: Map<number, HiveProcessShell> = new Map();
     shellPrograms: HiveCommand[] = [];
 
     initProgram() {
@@ -31,7 +31,7 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
     }
 
     spawnShell() {
-        const shellProcess = this.spawnChild(HiveProcessShellProcess, 'shell');
+        const shellProcess = this.spawnChild(HiveProcessShell, 'shell');
         shellProcess.injectShellDaemon(this);
         this.shells.set(shellProcess.pid, shellProcess);
         shellProcess.once('exit', () => {
@@ -41,7 +41,7 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
     }
 }
 
-export class HiveProcessShellProcess extends HiveProcess {
+export class HiveProcessShell extends HiveProcess {
     port: number = this.os.netInterface.newRandomPortNumber();
     shelld?: HiveProcessShellDaemon;
     registerShellProgramBind?: (program: HiveCommand) => void;
