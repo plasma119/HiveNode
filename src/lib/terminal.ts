@@ -43,6 +43,7 @@ export default class Terminal extends HiveComponent {
             prompt: this._prompt,
             completer: this._completer.bind(this),
             history: [],
+            removeHistoryDuplicates: true,
         });
         this.interface.on('history', (history) => {
             if (this._clearNextHistory) {
@@ -70,6 +71,8 @@ export default class Terminal extends HiveComponent {
         });
     }
 
+    // https://github.com/nodejs/node/blob/b9153af4ccac49ed8a509ac659f10722cbe82ee3/lib/internal/readline/interface.js#L648
+    // !! completer will pause readline until resolved
     async _completer(line: string, callback: (err?: null | Error, result?: [string[], string]) => void) {
         try {
             let finished = false;
@@ -95,7 +98,7 @@ export default class Terminal extends HiveComponent {
         this.completer = completer;
     }
 
-    getPassword(salt: string, callback: (passwordHash: string, iv: string) => void) {
+    getPassword(salt: string, callback: (passwordHash: string, pepper: string) => void) {
         this._passwordMode = true;
         this._clearNextHistory = true;
         this._passwordSalt = salt;
