@@ -8,6 +8,7 @@ import HiveProcess from '../process.js';
 import HiveProcessLogger from './logger.js';
 import HiveProcessNet from './net.js';
 import HiveProcessShellDaemon from './shell.js';
+import HiveProcessSocketDaemon from './socket.js';
 import HiveProcessTerminal from './terminal.js';
 
 export default class HiveProcessKernel extends HiveProcess {
@@ -101,16 +102,24 @@ export default class HiveProcessKernel extends HiveProcess {
     main() {
         const shelld = this.spawnChild(HiveProcessShellDaemon, 'shelld');
         shelld.registerShellProgram(this.program);
-        this.spawnChild(HiveProcessLogger, 'logger');
-        this.spawnChild(HiveProcessTerminal, 'terminal');
-        this.spawnChild(HiveProcessNet, 'net');
+        const logger = this.spawnChild(HiveProcessLogger, 'logger');
+        const socketd = this.spawnChild(HiveProcessSocketDaemon, 'socketd');
+        const terminal = this.spawnChild(HiveProcessTerminal, 'terminal');
+        const net = this.spawnChild(HiveProcessNet, 'net');
+
+        const service = this.program.addNewCommand('service', 'access to service processes');
+        service.addCommand(shelld.program);
+        service.addCommand(logger.program);
+        service.addCommand(socketd.program);
+        service.addCommand(terminal.program);
+        service.addCommand(net.program);
     }
 
     getSystemShell() {
         if (this.systemShell) return this.systemShell;
         let shelld = this.os.getProcess(HiveProcessShellDaemon);
         if (!shelld) throw new Error('[ERROR] Failed to initialize system shell, cannot find shell daemon process');
-        let shell = shelld.spawnShell();
+        let shell = shelld.spawnShell(this);
         shell.rename('systemShell');
         let shellProgram = shell.program;
         this.os.stdIO.on('input', shellProgram.stdIO.inputBind); // force direct input to system shell

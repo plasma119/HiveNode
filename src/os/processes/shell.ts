@@ -17,8 +17,10 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
     initProgram() {
         const program = new HiveCommand('shelld', `Shell Daemon`);
 
+        program.addNewCommand('version', 'display current program version').setAction(() => `version ${VERSION} build ${BUILD}`);
+
         program.addNewCommand('spawn', 'spawn new shell process').setAction(() => {
-            return this.spawnShell().port;
+            return this.spawnShell(this).port;
         });
 
         return program;
@@ -30,8 +32,8 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
         this.emit('registerShellProgram', program);
     }
 
-    spawnShell() {
-        const shellProcess = this.spawnChild(HiveProcessShell, 'shell');
+    spawnShell(parentProcess: HiveProcess) {
+        const shellProcess = parentProcess.spawnChild(HiveProcessShell, 'shell');
         shellProcess.injectShellDaemon(this);
         this.shells.set(shellProcess.pid, shellProcess);
         shellProcess.once('exit', () => {
@@ -86,7 +88,7 @@ export class HiveProcessShell extends HiveProcess {
     }
 
     main() {
-        let portIO = this.os.netInterface.newIO(this.port);
+        const portIO = this.os.netInterface.newIO(this.port);
         portIO.connect(this.program.stdIO);
     }
 
@@ -97,6 +99,7 @@ export class HiveProcessShell extends HiveProcess {
     }
 
     exit() {
+        if (!this.alive) return;
         if (this.shelld && this.registerShellProgramBind) this.shelld.off('registerShellProgram', this.registerShellProgramBind);
         this.os.netInterface.closePort(this.port);
         super.exit();

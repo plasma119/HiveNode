@@ -150,7 +150,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     _disconnect(reason?: string) {
         this.socketReady = false;
         if (!this.ws) return this.stdIO.output(`Socket already disconnected.`);
-        this.ws.close();
+        this.ws.terminate(); // immediately destroys the connection
         this.ws = undefined;
         this.stdIO.output(`Socket disconnected.${reason ? ` Reason: ${reason}` : ''}`);
         // TODO: reconnect
@@ -402,6 +402,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         }
     }
 
+    // seems ws can send binary data directly, if needed just prepend 'JSON' to JSON data and manually seperate the binary data
     send(header: HiveSocketDataHeader, data: any) {
         if (!this.ws) {
             this.stdIO.output(`ERROR: No target.`);

@@ -7,6 +7,11 @@ export class Signal {
     }
 }
 
+// for DataTranformer
 export const StopPropagation = new Signal('StopPropagation');
+
+// for ExitHelper
 export const IgnoreSIGINT = new Signal('IgnoreSIGINT');
 
+// for callback control
+export const StopSignal = new Signal('StopSignal');

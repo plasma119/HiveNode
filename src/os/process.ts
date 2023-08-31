@@ -28,6 +28,7 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     childs: Map<number, HiveProcess>;
 
     program: HiveCommand;
+    alive: boolean = true;
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number) {
         super(name);
@@ -48,10 +49,11 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     main(_argv: string[]) {}
 
     exit(error?: any) {
+        this.emit('exit', error);
+        this.alive = false;
         // I'm fucking done with typescript
         // @ts-ignore
         this.os.processExitHandle(this);
-        this.emit('exit', error);
     }
 
     spawnChild<C extends Constructor<HiveProcess>>(processConstructor: C, name: string, argv: string[] = []): InstanceType<C> {

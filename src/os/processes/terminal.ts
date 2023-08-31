@@ -92,7 +92,7 @@ export default class HiveProcessTerminal extends HiveProcess {
 
         let shelld = this.os.getProcess(HiveProcessShellDaemon);
         if (!shelld) throw new Error('[ERROR] Failed to initialize system shell, cannot find shell daemon process');
-        let shell = shelld.spawnShell();
+        let shell = shelld.spawnShell(this);
         shell.rename('terminal');
         this.shellPort = shell.port;
         this.terminalDestPort = shell.port;

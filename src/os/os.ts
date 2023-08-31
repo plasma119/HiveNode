@@ -120,6 +120,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         const parent = this.getProcess(HiveProcess, process.pid);
         this.processes.delete(process.pid);
         if (parent && process != parent) {
+            // move all child to parent process, TODO: maybe kill all child processes?
             parent.childs.delete(process.pid);
             process.childs.forEach((c) => parent.childs.set(c.pid, c));
         }
