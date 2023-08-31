@@ -30,8 +30,8 @@ export default class HiveProcessTerminal extends HiveProcess {
 
         program
             .addNewCommand('remote', 'remote terminal to target node via HiveNet')
-            .addNewArgument('[target]', 'target UUID or name')
             .addNewOption('-d', 'disconnect remote terminal')
+            .addNewArgument('[target...]', 'target UUID or name')
             .setAction(async (args, opts, info) => {
                 if (info.rawData instanceof HiveNetPacket && info.rawData.src != this.os.netInterface.UUID) {
                     return 'Only local terminal can use this command.';

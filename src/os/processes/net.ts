@@ -220,7 +220,7 @@ export default class HiveProcessNet extends HiveProcess {
             if (detail) {
                 list.push([`${info.name}[${packet.src}]:`, `${info.type}`, `${time}ms`, DataSignaturesToString(signatures)]);
             } else {
-                list.push([`${info.name}:`, `${info.type}`, `${time}ms`]);
+                list.push([`${info.name}:`, `${info.type}`, `${time}ms`, `${info.UUID}`]);
             }
         });
 
