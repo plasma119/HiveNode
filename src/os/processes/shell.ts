@@ -33,7 +33,7 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
     }
 
     spawnShell(parentProcess: HiveProcess, port?: number) {
-        const shellProcess = parentProcess.spawnChild(HiveProcessShell, 'shell', port? [port.toString()] : []);
+        const shellProcess = parentProcess.spawnChild(HiveProcessShell, 'shell', port ? [port.toString()] : []);
         shellProcess.injectShellDaemon(this);
         this.shells.set(shellProcess.pid, shellProcess);
         shellProcess.once('exit', () => {
@@ -82,6 +82,22 @@ export class HiveProcessShell extends HiveProcess {
                 });
             });
             return null;
+        });
+
+        util.addNewCommand('portIO', 'list all portIOs').setAction(() => {
+            let str = '';
+
+            this.os.netInterface.ports.forEach((port, n) => {
+                str += `port[${n}]: ${port.getListenerCount('input')} input ${port.getListenerCount('output')} output\n`;
+                port.connectTable.forEach((_, targetIO) => {
+                    str += `    <-> ${targetIO.name}[${targetIO.owner.name}]]\n`;
+                });
+                port.passThroughTable.forEach((_, targetIO) => {
+                    str += `    <=> ${targetIO.name}[${targetIO.owner.name}]]\n`;
+                });
+            });
+
+            return str;
         });
 
         return program;
