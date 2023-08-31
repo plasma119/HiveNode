@@ -147,7 +147,7 @@ export class DataTransformer extends HiveComponent {
 
     constructor(targetIO: DataIO) {
         super('DataTransformer');
-        this.stdIO = new DataIO(targetIO.owner, 'stdIO');
+        this.stdIO = new DataIO(targetIO.owner, 'DT');
         this.targetIO = targetIO;
         this.inputTransform = (data) => data;
         this.outputTransform = (data) => data;
