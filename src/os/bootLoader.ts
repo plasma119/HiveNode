@@ -9,13 +9,13 @@ import HiveOS from './os.js';
 import { BootConfig } from './bios.js';
 import DataIO from '../network/dataIO.js';
 
-export const BOOTLOADERVERSION = 'v1.2';
-export const BOOTLOADERVERSIONBUILD = '06-07-2023';
+export const BOOTLOADERVERSION = 'v1.21';
+export const BOOTLOADERVERSIONBUILD = '08-30-2023';
 
 process.on('message', async (message) => {
     console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
 
-    const { config, argv } = message as { config: BootConfig; argv: string[] };
+    const { config, argv } = message as { config: BootConfig; argv: string };
 
     if (config.debugDataIO) {
         console.log(`[Boot Loader]: DataIO debug flag set`);
@@ -45,7 +45,7 @@ process.on('message', async (message) => {
             try {
                 let relativePath = path.relative(__dirname, path.resolve(config.programFile)); // need relative path from this file
                 let program = await import(relativePath.replace('\\', '/')); // stupid path
-                program.main(os, argv);
+                program.main(os, argv.split(' '));
             } catch (e) {
                 os.stdIO.output(e);
             }
