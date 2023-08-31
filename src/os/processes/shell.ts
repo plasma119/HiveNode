@@ -32,8 +32,8 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
         this.emit('registerShellProgram', program);
     }
 
-    spawnShell(parentProcess: HiveProcess) {
-        const shellProcess = parentProcess.spawnChild(HiveProcessShell, 'shell');
+    spawnShell(parentProcess: HiveProcess, port?: number) {
+        const shellProcess = parentProcess.spawnChild(HiveProcessShell, 'shell', port? [port.toString()] : []);
         shellProcess.injectShellDaemon(this);
         this.shells.set(shellProcess.pid, shellProcess);
         shellProcess.once('exit', () => {
@@ -87,7 +87,8 @@ export class HiveProcessShell extends HiveProcess {
         return program;
     }
 
-    main() {
+    main(argv: string[]) {
+        if (argv[0]) this.port = Number.parseInt(argv[0]);
         const portIO = this.os.netInterface.newIO(this.port);
         portIO.connect(this.program.stdIO);
     }
