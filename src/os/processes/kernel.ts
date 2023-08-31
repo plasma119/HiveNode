@@ -49,6 +49,8 @@ export default class HiveProcessKernel extends HiveProcess {
             exitHelper.restart();
         });
 
+        kernel.addNewCommand('debug', 'toggle os debug info').setAction(() => (this.os.debugMode = !this.os.debugMode));
+
         kernel.addNewCommand('debugDataIO', 'toggle DataIO debug info').setAction(() => DataIO.debugMode());
 
         kernel
@@ -124,7 +126,8 @@ export default class HiveProcessKernel extends HiveProcess {
         let shellProgram = shell.program;
         this.os.stdIO.on('input', shellProgram.stdIO.inputBind); // force direct input to system shell
         // placeholder
-        this.os.HTP.listen(HIVENETPORT.SHELL).connect(shellProgram.stdIO);
+        let portIO = this.os.HTP.listen(HIVENETPORT.SHELL);
+        portIO.on('input', shellProgram.stdIO.inputBind);
         this.systemShell = shellProgram;
         return shellProgram;
     }
