@@ -76,7 +76,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
     getProcess<C extends Constructor<HiveProcess>>(processConstructor: C, process?: HiveProcess | number): InstanceType<C> | null {
         let result: InstanceType<C> | null = null;
-        if (process) {
+        if (process != undefined) {
             if (typeof process == 'number') {
                 let p = this.processes.get(process);
                 if (p) process = p;
@@ -87,7 +87,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
             }
         } else {
             this.processes.forEach((p) => {
-                if (p instanceof processConstructor) {
+                if (p instanceof processConstructor && result == null) {
                     const p2 = p as InstanceType<C>;
                     result = p2;
                 }
