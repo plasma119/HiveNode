@@ -250,6 +250,8 @@ export default class HiveProcessNet extends HiveProcess {
             // TODO: fix input routing
             let terminal = this.os.getProcess(HiveProcessTerminal);
             if (!terminal) throw new Error('Cannot find Terminal process');
+            let terminalPort = this.os.netInterface.getPort(HIVENETPORT.TERMINAL);
+            if (!terminalPort) throw new Error('Cannot find Terminal port');
             //if (this.os.stdIOPortIO) this.os.stdIO.unpassThrough(this.os.stdIOPortIO);
             let sport = this.os.netInterface.newRandomPortNumber();
             this.os.HTP.listen(sport, (data, signatures) => {
@@ -258,7 +260,8 @@ export default class HiveProcessNet extends HiveProcess {
             });
             socketDT.stdIO.on('output', (data, signatures) => {
                 if (data instanceof HiveNetPacket) data = data.data;
-                this.os.stdIO.output(data, signatures);
+                // @ts-ignore
+                terminalPort.output(data, signatures);
             });
             //this.os.stdIO.passThrough(socketDT.stdIO);
             terminal.terminalDestPort = sport;
@@ -298,6 +301,7 @@ export default class HiveProcessNet extends HiveProcess {
             dt.setInputTransform(DataSerialize);
             dt.setOutputTransform(DataParsing);
 
+            // connect socket to netInterface
             if (directSSH) {
                 let io = this.os.netInterface.newIO(this.os.netInterface.newRandomPortNumber());
                 dt.stdIO.connect(io);
