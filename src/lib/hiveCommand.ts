@@ -392,6 +392,7 @@ export class HiveSubCommand extends HiveCommand {
             if (argumentCount < this.arguments.size) {
                 let currentArgument = argumentArr[argumentCount++];
                 if (currentArgument.variadic) {
+                    args.unshift(arg); // put back current extracted arg
                     currentArgument.setValue(args.join(' '));
                     break;
                 } else {
@@ -642,7 +643,7 @@ export class HiveArgument {
         if (this.name.endsWith('...')) {
             // variadic argument, e.g. <strings...>
             this.variadic = true;
-            this.name = name.slice(3);
+            this.name = this.name.slice(0, -3);
         }
     }
 
