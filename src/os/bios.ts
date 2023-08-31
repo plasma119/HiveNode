@@ -3,10 +3,10 @@ import * as fs from 'fs';
 import path from 'path';
 
 import HiveCommand from '../lib/hiveCommand.js';
-import { Options } from '../lib/lib.js';
+import { Options, sleep } from '../lib/lib.js';
 
-export const BIOSVERSION = 'v1.1';
-export const BIOSVERSIONBUILD = '06-06-2023';
+export const BIOSVERSION = 'v1.2';
+export const BIOSVERSIONBUILD = '08-30-2023';
 
 export type BootConfig = {
     name: string;
@@ -124,20 +124,30 @@ export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]
     console.log(`[BIOS]: Booting up...`);
     bootup();
 
-    function bootup() {
+    async function bootup() {
+        let booted = false;
         const child = fork(config.bootLoaderFile, [config.configFile, argv], {
             stdio: [0, 1, 2, 'ipc'],
         });
 
-        child.on('spawn', () => {
+        const bootFunction = () => {
             child.send({ config, argv });
-        });
+            booted = true;
+        };
+
+        child.on('spawn', bootFunction);
 
         child.on('message', (message) => {
             const data = message.toString();
-            if (data == 'restart') {
-                console.log(`[BIOS]: Recieved restart signal.`);
-                restartFlag = true;
+            switch (data) {
+                case 'restart':
+                    console.log(`[BIOS]: Recieved restart signal.`);
+                    restartFlag = true;
+                    break;
+
+                case 'requestBootConfig':
+                    bootFunction();
+                    break;
             }
         });
 
@@ -151,5 +161,11 @@ export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]
                 });
             }
         });
+
+        await sleep(1000);
+        if (!booted) {
+            console.log(`[BIOS]: Resending data to boot loader...`);
+            bootFunction();
+        }
     }
 })();

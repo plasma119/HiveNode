@@ -8,11 +8,19 @@ const __dirname = path.dirname(__filename);
 import HiveOS from './os.js';
 import { BootConfig } from './bios.js';
 import DataIO from '../network/dataIO.js';
+import { sleep } from '../lib/lib.js';
 
-export const BOOTLOADERVERSION = 'v1.21';
+export const BOOTLOADERVERSION = 'v1.22';
 export const BOOTLOADERVERSIONBUILD = '08-30-2023';
 
+let booted = false;
+sleep(3000).then(() => {
+    if (!booted && process.send) process.send('requestBootConfig');
+})
+
 process.on('message', async (message) => {
+    if (booted) return;
+    booted = true;
     console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
 
     const { config, argv } = message as { config: BootConfig; argv: string };
