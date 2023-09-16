@@ -87,9 +87,9 @@ export default class HiveProcessNet extends HiveProcess {
             .addNewCommand('connect', 'new HiveNet connection')
             .addNewArgument('<host>', 'host to connect')
             .addNewOption('-port <port>', 'port to connect', HIVENETPORT.HIVENETPORT)
-            .setAction((args, opts) => {
-                this.connect(args['host'], typeof opts['-port'] == 'string' ? Number.parseInt(opts['-port']) : HIVENETPORT.HIVENETPORT);
-                return;
+            .setAction(async (args, opts) => {
+                await this.connect(args['host'], typeof opts['-port'] == 'string' ? Number.parseInt(opts['-port']) : HIVENETPORT.HIVENETPORT);
+                return 'Connected.';
             });
 
         // listen

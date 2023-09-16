@@ -7,8 +7,9 @@ export type DefaultListener = {
 };
 
 // stupid typescript still doesn't support infer on spread generic parameters
-type StupidParameters<T extends (arg1: any, arg2: any) => any> = T extends (arg1: infer P) => any ? P : never;
-type StupidParameters2<T extends (arg1: any, arg2: any) => any> = T extends (arg1: any, args2: infer P) => any ? P : never;
+type StupidParameters<T extends (arg1: any, arg2: any, arg3: any) => any> = T extends (arg1: infer P, args2: any, args3: any) => any ? P : never;
+type StupidParameters2<T extends (arg1: any, arg2: any, arg3: any) => any> = T extends (arg1: any, args2: infer P, args3: any) => any ? P : never;
+type StupidParameters3<T extends (arg1: any, arg2: any, arg3: any) => any> = T extends (arg1: any, args2: any, args3: infer P) => any ? P : never;
 
 type Handler = {
     listener: (...args: any) => any;
@@ -54,7 +55,8 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
     emit<Event extends keyof EventList>(
         event: Event,
         arg1?: StupidParameters<EventList[Event]>,
-        arg2?: StupidParameters2<EventList[Event]>
+        arg2?: StupidParameters2<EventList[Event]>,
+        arg3?: StupidParameters3<EventList[Event]>
     ): this {
         const handlers = this._getEvent(event);
         let updated = false;
@@ -63,7 +65,7 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
                 updated = true;
                 continue;
             }
-            handler.listener(arg1, arg2);
+            handler.listener(arg1, arg2, arg3);
             if (handler.once) {
                 handler.deleted = true;
                 updated = true;
