@@ -9,21 +9,36 @@ import HiveOS from './os.js';
 import { BootConfig } from './bios.js';
 import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
+import { getLoader, setLoader } from './loader.js';
 
-export const BOOTLOADERVERSION = 'v1.22';
-export const BOOTLOADERVERSIONBUILD = '08-30-2023';
+export const BOOTLOADERVERSION = 'v1.23';
+export const BOOTLOADERVERSIONBUILD = '09-15-2023';
 
 let booted = false;
+let bootConfig: BootConfig | null = null;
+// TODO: boot like worker to prevent missing boot message
 sleep(3000).then(() => {
     if (!booted && process.send) process.send('requestBootConfig');
-})
+});
 
 process.on('message', async (message) => {
     if (booted) return;
     booted = true;
     console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
 
+    // TODO: argv[]
     const { config, argv } = message as { config: BootConfig; argv: string };
+    bootConfig = config;
+
+    if (getLoader()) {
+        console.log(`[Boot Loader]: ERROR: Loader already set!`);
+        return;
+    }
+    setLoader({
+        type: 'os',
+        argv: argv.split(' '),
+        bootConfig,
+    });
 
     if (config.debugDataIO) {
         console.log(`[Boot Loader]: DataIO debug flag set`);
@@ -64,3 +79,7 @@ process.on('message', async (message) => {
 
     os.stdIO.output(`[Boot Loader]: Finished boot up sequence.`);
 });
+
+export function getBootConfig() {
+    return bootConfig;
+}
