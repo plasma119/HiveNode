@@ -1,0 +1,76 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+import HiveComponent from '../lib/component.js';
+import DataIO from '../network/dataIO.js';
+import { DataParsing, DataSerialize, DataSignature } from '../network/hiveNet.js';
+import { BootConfig } from './bios.js';
+import { WorkerData, WorkerConfig } from './worker.js';
+import { getLoader, setLoader } from './loader.js';
+import { sleep } from '../lib/lib.js';
+
+const component = new HiveComponent('Worker Loader');
+const dataIO = new DataIO(component, 'dataIO');
+dataIO.on('input', (data, signatures) => {
+    send({
+        header: 'data',
+        data: DataSerialize(data, signatures),
+    });
+});
+
+let booted = false;
+let bootConfig: BootConfig | null = null;
+let workerConfig: WorkerConfig | null = null;
+
+(async () => {
+    send({
+        header: 'requestConfig',
+    });
+    await sleep(3000);
+    if (!booted) {
+        send({
+            header: 'requestConfig',
+        });
+        await sleep(3000);
+        throw new Error(`Failed to get worker config.`);
+    }
+})();
+
+process.on('message', (message) => {
+    try {
+        const data: WorkerData = message as WorkerData;
+        switch (data.header) {
+            case 'config':
+                if (booted) return;
+                booted = true;
+                bootConfig = data.bootConfig;
+                workerConfig = data.workerConfig;
+                if (getLoader()) throw new Error(`Loader already set!`);
+                setLoader({
+                    type: 'workerProcess',
+                    bootConfig,
+                    workerConfig,
+                });
+                bootWorker(workerConfig);
+                break;
+            case 'data':
+                let signatures: DataSignature[] = [];
+                let parsed = DataParsing(data.data, []);
+                dataIO.output(parsed, signatures);
+        }
+    } catch (e) {}
+});
+
+export function send(data: WorkerData) {
+    if (!process.send) throw new Error(`Process send failed!`);
+    process.send(data);
+}
+
+async function bootWorker(workerConfig: WorkerConfig) {
+    let relativePath = path.relative(__dirname, path.resolve(workerConfig.workerFile)); // need relative path from this file
+    let program = await import(relativePath.replace('\\', '/')); // stupid path
+    program.worker(dataIO, workerConfig.argv);
+}

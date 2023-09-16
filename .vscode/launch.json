@@ -130,6 +130,24 @@
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ]
+        },
+        {
+            "name": "worker test",
+            "request": "launch",
+            "type": "node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\os\\bios.js",
+            "args": ["-configFile config.json -name OS_Test -programFile dist/tests/worker_test.js"],
+            "skipFiles": [
+                "<node_internals>/**",
+                "${workspaceFolder}/src/lib/basicEventEmitter.ts",
+                "${workspaceFolder}/src/lib/component.ts",
+                "${workspaceFolder}/src/network/dataIO.ts",
+                "${workspaceFolder}/src/network/hiveNet.ts",
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
         }
     ]
 }
