@@ -159,6 +159,7 @@ export function DataParsing(data: string, signatures: DataSignature[]) {
 
 function ObjectParsing(obj: any) {
     if (!obj) return obj;
+    if (typeof obj == 'string') return obj;
     // try to rebuild HiveNet data packets
     if (typeCheck(obj, HiveNetPacketStructure)) {
         obj = new HiveNetPacket(obj);
