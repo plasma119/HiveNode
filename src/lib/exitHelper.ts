@@ -7,6 +7,7 @@ import Logger from './logger.js';
 class ExitHelper {
     _exitState: number = 0;
     _restarting: boolean = false;
+    _silent: boolean = false;
     cleanUpList: ((exitCode: NodeJS.Signals | Error) => void | Promise<void>)[] = [];
 
     exitCallback?: Function;
@@ -63,12 +64,12 @@ class ExitHelper {
             if (this.logger) await this.logger.log(exitCode.stack);
         } else {
             // normal exiting
-            fs.writeSync(1, exitCode.toString() + '\n');
+            if (!this._silent) fs.writeSync(1, exitCode.toString() + '\n');
             if (this.logger) await this.logger.log(exitCode.toString() + '\n');
         }
 
         if (this.cleanUpList && this.cleanUpList.length > 0) {
-            fs.writeSync(1, `Cleaning up...\n`);
+            if (!this._silent) fs.writeSync(1, `Cleaning up...\n`);
             if (this.logger) await this.logger.log(`Cleaning up...\n`);
             //await Promise.allSettled(this.cleanUpList.map(cleanup => cleanup()).filter(notVoid => notVoid));
             for (let i = 0; i < this.cleanUpList.length; i++) {
@@ -84,7 +85,7 @@ class ExitHelper {
         if (this.exitCallback) this.exitCallback(exitCode);
 
         if (this._restarting) {
-            fs.writeSync(1, `Restarting...\n`);
+            if (!this._silent) fs.writeSync(1, `Restarting...\n`);
             if (this.logger) await this.logger.log(`Restarting...\n`);
             if (process.send) {
                 // have parent node process with ipc, ask parent to restart this process
@@ -100,7 +101,7 @@ class ExitHelper {
                 });
             }
         } else {
-            fs.writeSync(1, `Exiting...\n`);
+            if (!this._silent) fs.writeSync(1, `Exiting...\n`);
             if (this.logger) await this.logger.log(`Exiting...\n`);
         }
 
@@ -130,7 +131,8 @@ class ExitHelper {
         this.crashLogger = logger;
     }
 
-    exit() {
+    exit(silent: boolean = false) {
+        if (silent) this._silent = true;
         this._exitHandler('SIGTERM');
     }
 
