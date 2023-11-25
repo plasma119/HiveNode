@@ -98,6 +98,7 @@ export default class Terminal extends HiveComponent {
         this.completer = completer;
     }
 
+    // set terminal into password mode
     getPassword(salt: string, callback: (passwordHash: string, pepper: string) => void) {
         this._passwordMode = true;
         this._clearNextHistory = true;
@@ -108,26 +109,25 @@ export default class Terminal extends HiveComponent {
         this.muteStream.mute();
     }
 
+    // input from terminal(user)
     outputHandler(str: string) {
         if (this._passwordMode) {
-            //this.stdout.moveCursor(0, -1);
-            //ReadLine.clearLine(this.stdout, 0); // clear input
             // hash password with iv
             const pepper = Encryption.randomData(16).toString('base64');
             const hash = Encryption.hash(str).update(this._passwordSalt).update(pepper).digest('base64');
-            if (this._passwordCallback) this._passwordCallback(hash, pepper);
             str = '';
             this._passwordMode = false;
-            this._passwordCallback = undefined;
             this._passwordSalt = '';
             this.muteStream.unmute();
-            //this.stdIO.output(data);
             this.setPrompt(this._passwordPrompt);
+            if (this._passwordCallback) this._passwordCallback(hash, pepper);
+            this._passwordCallback = undefined;
         } else {
             this.stdIO.output(str);
         }
     }
 
+    // write to terminal
     inputHandler(data: any, signatures: DataSignature[]) {
         this.redraw(() => {
             if (this.debug) this.stdout.write(`signatures: ${DataSignaturesToString(signatures)}\n`);
@@ -151,12 +151,12 @@ export default class Terminal extends HiveComponent {
         // clear all input and back to input line row 0
         ReadLine.clearLine(this.stdout, 0);
         for (let i = 0; i < p.rows; i++) {
-            this.stdout.moveCursor(0, -1);
+            this.stdout.moveCursor(0, -1); // will throw error if terminal is not set properly in VScode
             ReadLine.clearLine(this.stdout, 0);
         }
         if (f) f(); // output function
         this.prompt(); // print prompt
-        this.stdout.write(this.interface.line);
+        if (!this._passwordMode) this.stdout.write(this.interface.line); // print user input
         this.stdout.moveCursor(p.cols - cols, p.rows - rows); // return cursor to previous position
     }
 }

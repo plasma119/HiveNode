@@ -25,17 +25,19 @@ let booted = false;
 let bootConfig: BootConfig | null = null;
 let workerConfig: WorkerConfig | null = null;
 
+// main function
 (async () => {
     send({
         header: 'requestConfig',
     });
     await sleep(3000);
     if (!booted) {
+        // request config failed, this will lead to worker sleeping without executing main script
         send({
             header: 'requestConfig',
         });
         await sleep(3000);
-        throw new Error(`Failed to get worker config.`);
+        if (!booted) throw new Error(`Failed to get worker config.`);
     }
 })();
 
@@ -57,13 +59,15 @@ process.on('message', (message) => {
                 bootWorker(workerConfig);
                 break;
             case 'data':
+                // TODO: maybe add stamp here?
                 let signatures: DataSignature[] = [];
-                let parsed = DataParsing(data.data, []);
+                let parsed = DataParsing(data.data, signatures);
                 dataIO.output(parsed, signatures);
         }
     } catch (e) {}
 });
 
+// app should use DataIO instead
 export function send(data: WorkerData) {
     if (!process.send) throw new Error(`Process send failed!`);
     process.send(data);

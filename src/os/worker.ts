@@ -47,7 +47,7 @@ export function CreateNewProcess(workerConfig: WorkerConfig) {
     const loder = getLoader();
     const bootConfig = loder?.bootConfig;
     if (!bootConfig) throw new Error(`[Worker]: Failed to get boot config!`);
-    
+
     workerConfig.depth = 1;
     if (loder.type == 'workerProcess' && loder.workerConfig.depth) workerConfig.depth = loder.workerConfig.depth + 1;
 
@@ -122,5 +122,6 @@ export function CreateNewProcess(workerConfig: WorkerConfig) {
     return {
         infoIO,
         dataIO,
+        worker,
     };
 }
