@@ -1,4 +1,5 @@
 import HiveCommand from '../../lib/hiveCommand.js';
+import { Encryption } from '../../lib/lib.js';
 import { StopPropagation } from '../../lib/signals.js';
 import Terminal from '../../lib/terminal.js';
 import { DataTransformer } from '../../network/dataIO.js';
@@ -62,22 +63,19 @@ export default class HiveProcessTerminal extends HiveProcess {
                 return `Connected to target node: ${targetInfo.info.name} [HiveOS: ${targetInfo.info.HiveNodeVersion}]`;
             });
 
-        program
-            .addNewCommand('getPassword', 'get password from user')
-            .addNewArgument('<salt>', 'salt for hashing')
-            .setAction((args, _opts, info) => {
-                let invalid = false;
-                if (info.rawData instanceof HiveNetPacket) {
-                    if (this.terminalDest == HIVENETADDRESS.LOCAL) {
-                        invalid = info.rawData.src != this.os.netInterface.UUID;
-                    } else {
-                        invalid = info.rawData.src != this.terminalDest;
-                    }
-                    invalid = invalid || info.rawData.sport != this.terminalDestPort;
+        program.addNewCommand('getPassword', 'get password from user').setAction((_args, _opts, info) => {
+            let invalid = false;
+            if (info.rawData instanceof HiveNetPacket) {
+                if (this.terminalDest == HIVENETADDRESS.LOCAL) {
+                    invalid = info.rawData.src != this.os.netInterface.UUID;
+                } else {
+                    invalid = info.rawData.src != this.terminalDest;
                 }
-                if (invalid) return 'Only current terminal target can ask for password';
-                return this.getPassword(args['salt']);
-            });
+                invalid = invalid || info.rawData.sport != this.terminalDestPort;
+            }
+            if (invalid) return 'Only current terminal target can ask for password';
+            return this.getPassword();
+        });
 
         this.os.registerShellProgram(program);
         return program;
@@ -90,6 +88,7 @@ export default class HiveProcessTerminal extends HiveProcess {
             return;
         }
 
+        // user shell
         let shelld = this.os.getProcess(HiveProcessShellDaemon);
         if (!shelld) throw new Error('[ERROR] Failed to initialize system shell, cannot find shell daemon process');
         let shell = shelld.spawnShell(this);
@@ -97,10 +96,11 @@ export default class HiveProcessTerminal extends HiveProcess {
         this.shellPort = shell.port;
         this.terminalDestPort = shell.port;
 
+        // data piping
         const port = this.os.HTP.listen(HIVENETPORT.TERMINAL);
         const dt = new DataTransformer(port);
         dt.setInputTransform((data) => {
-            // terminal -> os
+            // terminal -> os -> shell
             if (typeof data == 'string' && data[0] == '$') {
                 // force input to local shell
                 return new HiveNetPacket({ data: data.slice(1), dest: HIVENETADDRESS.LOCAL, dport: this.shellPort });
@@ -118,7 +118,7 @@ export default class HiveProcessTerminal extends HiveProcess {
             return new HiveNetPacket({ data, dest: this.terminalDest, dport: this.terminalDestPort });
         });
         dt.setOutputTransform((packet) => {
-            // os -> terminal
+            // shell -> os -> terminal
             const data = packet instanceof HiveNetPacket ? packet.data : packet;
             if (typeof data == 'object' && data.terminalControl && this.terminal) {
                 // terminal control system
@@ -144,6 +144,7 @@ export default class HiveProcessTerminal extends HiveProcess {
             }
         });
 
+        // terminal init
         const terminal = new Terminal();
         this.terminal = terminal;
         terminal.stdIO.connect(dt.stdIO);
@@ -153,6 +154,7 @@ export default class HiveProcessTerminal extends HiveProcess {
         this.promptBuilder.basePrompt = `[${this.os.name}]`;
         terminal.setPrompt(this.promptBuilder.build());
 
+        // completer
         terminal.setCompleter((line) => {
             return new Promise((resolve) => {
                 const packet: TerminalControlPacket = {
@@ -169,9 +171,10 @@ export default class HiveProcessTerminal extends HiveProcess {
             });
         });
 
+        // console.log capture
         this.os.on('consoleLog', (param) => {
             param.suppressBubble = true;
-            terminal.redraw(() => param.log(...param.data));
+            terminal.redraw(() => param.log(...param.data)); // -> terminal.redraw(console.log(data))
         });
     }
 
@@ -181,13 +184,15 @@ export default class HiveProcessTerminal extends HiveProcess {
         this.terminal.setPrompt(this.promptBuilder.build());
     }
 
-    getPassword(salt: string): Promise<string | { hash: string; pepper: string }> {
+    // TODO: WIP - testing
+    getPassword(): Promise<string | { iv: string; hash: string }> {
         return new Promise((resolve) => {
             if (this.terminal) {
-                this.terminal.getPassword(salt, (hash, pepper) => {
+                let iv = Encryption.randomData(16).toString('base64');
+                this.terminal.getPassword(iv, (hash) => {
                     resolve({
+                        iv: iv,
                         hash: hash,
-                        pepper: pepper,
                     });
                 });
             } else {
@@ -204,6 +209,7 @@ class PromptBuilder {
     progressPrompt: string = '';
 
     build() {
-        return `${this.progressPrompt}${this.progressPrompt ? '\n' : ''}${this.basePrompt}${this.prompt}${this.finalPrompt}`;
+        let pp = this.progressPrompt;
+        return `${pp}${pp && !(pp.endsWith('\n') || pp.endsWith('\r')) ? '\n' : ''}${this.basePrompt}${this.prompt}${this.finalPrompt}`;
     }
 }

@@ -26,8 +26,8 @@ export default class Terminal extends HiveComponent {
     _passwordMode: boolean = false;
     _clearNextHistory: boolean = false;
     _passwordPrompt: string = '';
-    _passwordSalt: string = '';
-    _passwordCallback?: (passwordHash: string, pepper: string) => void;
+    _passwordIV: string = '';
+    _passwordCallback?: (passwordHash: string) => void;
 
     constructor(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJS.WriteStream = process.stdout, prompt: string | string[] = '>') {
         super('Terminal');
@@ -99,10 +99,10 @@ export default class Terminal extends HiveComponent {
     }
 
     // set terminal into password mode
-    getPassword(salt: string, callback: (passwordHash: string, pepper: string) => void) {
+    getPassword(iv: string, callback: (passwordHash: string) => void) {
         this._passwordMode = true;
         this._clearNextHistory = true;
-        this._passwordSalt = salt;
+        this._passwordIV = iv;
         this._passwordCallback = callback;
         this._passwordPrompt = this._prompt;
         this.setPrompt(this._prompt + '[Enter Password]:');
@@ -113,14 +113,13 @@ export default class Terminal extends HiveComponent {
     outputHandler(str: string) {
         if (this._passwordMode) {
             // hash password with iv
-            const pepper = Encryption.randomData(16).toString('base64');
-            const hash = Encryption.hash(str).update(this._passwordSalt).update(pepper).digest('base64');
+            const hash = Encryption.hash(this._passwordIV).update(str).digest('base64');
             str = '';
             this._passwordMode = false;
-            this._passwordSalt = '';
+            this._passwordIV = '';
             this.muteStream.unmute();
             this.setPrompt(this._passwordPrompt);
-            if (this._passwordCallback) this._passwordCallback(hash, pepper);
+            if (this._passwordCallback) this._passwordCallback(hash);
             this._passwordCallback = undefined;
         } else {
             this.stdIO.output(str);
