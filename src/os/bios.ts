@@ -1,12 +1,16 @@
 import { fork } from 'child_process';
 import * as fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import HiveCommand from '../lib/hiveCommand.js';
 import { Options, sleep } from '../lib/lib.js';
 
-export const BIOSVERSION = 'v1.2';
-export const BIOSVERSIONBUILD = '08-30-2023';
+export const BIOSVERSION = 'v1.21';
+export const BIOSVERSIONBUILD = '11-27-2023';
 
 export type BootConfig = {
     name: string;
@@ -41,7 +45,7 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
     .addNewOption('-headless', 'run without user input prompt')
     .addNewOption('-debug', 'set debug flag in OS')
     .addNewOption('-debugDataIO', 'set debug flag in DataIO')
-    .addNewOption('-HiveNodePath <path>', 'path to HiveNode module')
+    .addNewOption('-HiveNodePath <path>', 'path to HiveNode module (default auto resolve)')
     .addNewOption('-bootLoaderFile <path>', 'path to custom boot loader file')
     .addNewOption('-programFile <path>', 'path to main program file')
     .addNewOption('-configFile <path>', 'path to config file (override by arguments)')
@@ -63,7 +67,7 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
         };
         return {
             config: config,
-            argv: args['argv'],
+            argv: args['argv'].split(' '),
         };
     });
 
@@ -90,12 +94,15 @@ export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]
 (async () => {
     console.log(`[BIOS]: BIOS version ${BIOSVERSION} build ${BIOSVERSIONBUILD}`);
 
+    // extract config from argv
     let processArgvString = process.argv.slice(2).join(' ');
     console.log(`[BIOS]: Parsing argv [${processArgvString}]`);
     let result = await parseBIOSConfig(processArgvString);
+
     let { config: configArgv, argv } = result;
     let config = mergeBIOSConfig(configArgv);
 
+    // extract config from file
     if (config.configFile) {
         console.log(`[BIOS]: Loading config file from [${config.configFile}]...`);
         if (!fs.existsSync(config.configFile)) {
@@ -103,15 +110,22 @@ export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]
             throw new Error();
         }
         let configFile: BootConfig = JSON.parse(fs.readFileSync(config.configFile).toString());
+        // argv has higher priority than config file
         config = mergeBIOSConfig(configFile, configArgv);
+    } else {
+        console.log(`[BIOS]: No config file specified.`);
     }
 
+    // hiveNode folder path
     if (!config.HiveNodePath) {
-        console.log(`[BIOS]: Warning: HiveNodePath not set!`);
-        config.HiveNodePath = '.';
+        config.HiveNodePath = path.relative(process.cwd(), path.join(__dirname, '/..')) + '/';
+        console.log(`[BIOS]: Auto set HiveNodePath to ${config.HiveNodePath}`);
+    } else {
+        console.log(`[BIOS]: Set HiveNodePath to ${config.HiveNodePath}`);
     }
-    const masterBootLoader = path.join(config.HiveNodePath, '/', 'os/bootLoader.js');
 
+    // boot loader
+    const masterBootLoader = path.join(config.HiveNodePath, '/', 'os/bootLoader.js');
     if (!config.bootLoaderFile) config.bootLoaderFile = masterBootLoader;
     console.log(`[BIOS]: Using boot loader from [${config.bootLoaderFile}]`);
 
@@ -120,6 +134,7 @@ export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]
         throw new Error();
     }
 
+    // booting up
     let restartFlag = false;
     console.log(`[BIOS]: Booting up...`);
     bootup();

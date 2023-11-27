@@ -11,8 +11,10 @@ import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
 import { getLoader, setLoader } from './loader.js';
 
-export const BOOTLOADERVERSION = 'v1.23';
-export const BOOTLOADERVERSIONBUILD = '09-15-2023';
+export const BOOTLOADERVERSION = 'v1.24';
+export const BOOTLOADERVERSIONBUILD = '11-27-2023';
+
+console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
 
 let booted = false;
 let bootConfig: BootConfig | null = null;
@@ -24,42 +26,46 @@ sleep(3000).then(() => {
 process.on('message', async (message) => {
     if (booted) return;
     booted = true;
-    console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
-
-    // TODO: argv[]
-    const { config, argv } = message as { config: BootConfig; argv: string };
+    const { config, argv } = message as { config: BootConfig; argv: string[] };
     bootConfig = config;
+    console.log(`[Boot Loader]: Boot config recieved.`);
 
+    // set loader data
     if (getLoader()) {
         console.log(`[Boot Loader]: ERROR: Loader already set!`);
         return;
     }
     setLoader({
         type: 'os',
-        argv: argv.split(' '),
+        argv: argv,
         bootConfig,
     });
 
+    // debug flag
     if (config.debugDataIO) {
         console.log(`[Boot Loader]: DataIO debug flag set`);
         DataIO.debugMode();
     }
 
+    // init HiveOS
     const os = new HiveOS(config.name);
     os.buildTerminal(config.headless, config.debug);
 
+    // start HiveNet server
     if (config.HiveNetServer) {
         os.stdIO.output(`[Boot Loader]: Starting HiveNet server...`);
         //os.kernel.program.stdIO.input('net listen');
         await os.shell.execute('net listen');
     }
 
+    // connect to HiveNet server
     if (config.HiveNetIP) {
         os.stdIO.output(`[Boot Loader]: Connecting to HiveNet [${config.HiveNetIP}]...`);
         //os.kernel.program.stdIO.input(`net connect ${config.HiveNetIP}`);
         await os.shell.execute(`net connect ${config.HiveNetIP}`);
     }
 
+    // execute program
     if (config.programFile) {
         os.stdIO.output(`[Boot Loader]: Running main program from [${config.programFile}]...`);
         if (!fs.existsSync(config.programFile)) {
@@ -68,7 +74,7 @@ process.on('message', async (message) => {
             try {
                 let relativePath = path.relative(__dirname, path.resolve(config.programFile)); // need relative path from this file
                 let program = await import(relativePath.replace('\\', '/')); // stupid path
-                program.main(os, argv.split(' '));
+                program.main(os, argv);
             } catch (e) {
                 os.stdIO.output(e);
             }
@@ -79,7 +85,3 @@ process.on('message', async (message) => {
 
     os.stdIO.output(`[Boot Loader]: Finished boot up sequence.`);
 });
-
-export function getBootConfig() {
-    return bootConfig;
-}
