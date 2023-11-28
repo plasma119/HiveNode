@@ -90,11 +90,26 @@ export class HiveProcessShell extends HiveProcess {
             this.os.netInterface.ports.forEach((port, n) => {
                 str += `port[${n}]: ${port.getListenerCount('input')} input ${port.getListenerCount('output')} output\n`;
                 port.connectTable.forEach((_, targetIO) => {
-                    str += `    <-> ${targetIO.name}[${targetIO.owner.name}]]\n`;
+                    str += `    <-> ${targetIO.name}[${targetIO.owner.name}]\n`;
                 });
-                port.passThroughTable.forEach((_, targetIO) => {
-                    str += `    <=> ${targetIO.name}[${targetIO.owner.name}]]\n`;
+                port.passThroughTable.forEach((baseIO, targetIO) => {
+                    let targetIsBase = baseIO == targetIO;
+                    if (targetIsBase) {
+                        str += `    O<=>I ${targetIO.name}[${targetIO.owner.name}]\n`;
+                    } else {
+                        str += `    I<=>O ${targetIO.name}[${targetIO.owner.name}]\n`;
+                    }
                 });
+                let listeners = port.getListeners('input');
+                for (let listener of listeners) {
+                    let label = listener.label || 'unknown';
+                    str += `    I -> [${label}]\n`;
+                }
+                listeners = port.getListeners('output');
+                for (let listener of listeners) {
+                    let label = listener.label || 'unknown';
+                    str += `    O -> [${label}]\n`;
+                }
             });
 
             return str;

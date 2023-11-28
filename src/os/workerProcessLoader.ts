@@ -19,7 +19,7 @@ dataIO.on('input', (data, signatures) => {
         header: 'data',
         data: DataSerialize(data, signatures),
     });
-});
+}, 'write to parent process');
 
 let booted = false;
 let bootConfig: BootConfig | null = null;

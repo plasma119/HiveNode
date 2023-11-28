@@ -84,7 +84,7 @@ export default class HiveProcessTerminal extends HiveProcess {
     buildTerminal(headless: boolean = false, debug: boolean = false) {
         if (headless) {
             // output only
-            this.os.stdIO.on('output', (data) => console.log(data));
+            this.os.stdIO.on('output', (data) => console.log(data), 'headless output to terminal');
             return;
         }
 
@@ -149,7 +149,7 @@ export default class HiveProcessTerminal extends HiveProcess {
         this.terminal = terminal;
         terminal.stdIO.connect(dt.stdIO);
         // TODO: buffer screen for os.stdIO
-        this.os.stdIO.on('output', dt.stdIO.outputBind);
+        this.os.stdIO.on('output', dt.stdIO.outputBind, 'route os.stdIO to terminal');
         if (terminal && debug) terminal.debug = debug;
         this.promptBuilder.basePrompt = `[${this.os.name}]`;
         terminal.setPrompt(this.promptBuilder.build());

@@ -32,7 +32,7 @@ export default class HiveNetInterface extends HiveComponent {
                 }
             }
             // not via hiveNet, ignore it
-        });
+        }, 'interface netIO input');
     }
 
     connect(target: HiveNetSwitch | DataIO, type: 'net' | 'port', port: number = this.newRandomPortNumber()) {
@@ -68,7 +68,7 @@ export default class HiveNetInterface extends HiveComponent {
                 // send to netIO
                 this.netIO.output(data, signatures);
             }
-        });
+        }, 'portIO input');
         io.on('destroy', () => this.closePort(port));
         return io;
     }

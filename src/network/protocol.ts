@@ -36,7 +36,7 @@ export default class HTP {
                 port.on('output', (data) => {
                     port.destroy();
                     resolve(data);
-                });
+                }, 'HTP - sendAndReceiveOnce');
                 port.input(new HiveNetPacket({ data, dest, dport, flags }));
             } catch (e) {
                 reject(e);
@@ -74,6 +74,6 @@ export default class HTP {
                     portIO.input(new HiveNetPacket({ data: res, dest: data.src, dport: data.sport }));
                 }
             }
-        });
+        }, 'HTP - listening');
     }
 }

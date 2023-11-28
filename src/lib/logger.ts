@@ -42,7 +42,7 @@ export default class Logger extends HiveComponent {
             options
         );
         this.stdIO = new DataIO(this, `${this.options.name}-stdIO`);
-        this.stdIO.on('input', (data) => this.log(data));
+        this.stdIO.on('input', (data) => this.log(data), 'write to logger');
         if (this.options.newFilePerDay) setInterval(() => this._updateLogFile(), 60 * 1000);
         if (!fs.existsSync(this.options.logFolder) || !fs.lstatSync(this.options.logFolder).isDirectory()) {
             fs.mkdirSync(this.options.logFolder, { recursive: true });

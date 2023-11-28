@@ -107,7 +107,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         this.program = new HiveCommand('HiveSocket-Core');
 
         this.stdIO.passThrough(this.program.stdIO);
-        this.dataIO.on('input', (data) => this.sendData(data));
+        this.dataIO.on('input', (data) => this.sendData(data), 'write to socket');
         this._init();
         this.updateInfo();
     }

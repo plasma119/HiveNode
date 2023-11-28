@@ -56,7 +56,7 @@ export default class Terminal extends HiveComponent {
             this.outputHandler(str);
         });
         this.interface.on('SIGINT', () => process.emit('SIGINT'));
-        this.stdIO.on('input', this.inputHandler.bind(this));
+        this.stdIO.on('input', this.inputHandler.bind(this), 'write to terminal');
         this.prompt();
     }
 

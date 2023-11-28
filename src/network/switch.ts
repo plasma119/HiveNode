@@ -19,7 +19,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
     newIO(label = 'SwitchIO') {
         const io = new DataIO(this, label);
         this.IOs.push(io);
-        io.on('input', this.routePacket.bind(this, io));
+        io.on('input', this.routePacket.bind(this, io), 'switch input');
         return io;
     }
 

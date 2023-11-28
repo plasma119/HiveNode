@@ -57,7 +57,7 @@ export class HiveProcessSocket extends HiveProcess {
 
     main() {
         const portIO = this.os.netInterface.newIO(this.port);
-        portIO.on('input', this.program.stdIO.inputBind); // switch to other io after connection
+        portIO.on('input', this.program.stdIO.inputBind, 'socket process program'); // switch to other io after connection
     }
 
     exit() {

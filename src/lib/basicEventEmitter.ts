@@ -15,27 +15,30 @@ type Handler = {
     listener: (...args: any) => any;
     once: boolean;
     deleted: boolean;
+    label?: string;
 };
 
 export default class BasicEventEmitter<EventList extends ListenerSignature<EventList> = DefaultListener> {
     _events: Map<keyof EventList, Handler[]> = new Map();
 
-    once<Event extends keyof EventList>(event: Event, listener: EventList[Event]): this {
+    once<Event extends keyof EventList>(event: Event, listener: EventList[Event], label?: string): this {
         const handlers = this._getEvent(event);
         handlers.push({
             listener,
             once: true,
             deleted: false,
+            label,
         });
         return this;
     }
 
-    on<Event extends keyof EventList>(event: Event, listener: EventList[Event]): this {
+    on<Event extends keyof EventList>(event: Event, listener: EventList[Event], label?: string): this {
         const handlers = this._getEvent(event);
         handlers.push({
             listener,
             once: false,
             deleted: false,
+            label,
         });
         return this;
     }
@@ -80,6 +83,12 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
     getListenerCount<Event extends keyof EventList>(event: Event): number {
         const handlers = this._getEvent(event);
         return handlers.length;
+    }
+
+    getListeners<Event extends keyof EventList>(event: Event): Handler[] {
+        if (!this._events.has(event)) return [];
+        const handlers = this._getEvent(event);
+        return handlers;
     }
 
     _getEvent<Event extends keyof EventList>(event: Event): Handler[] {

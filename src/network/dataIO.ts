@@ -21,7 +21,7 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
     owner: HiveComponent;
 
     connectTable: Map<DataIO, boolean> = new Map();
-    passThroughTable: Map<DataIO, DataIO> = new Map();
+    passThroughTable: Map<DataIO, DataIO> = new Map(); // <targetIO, baseIO>
     destroyed: boolean = false;
     inputBind: DataLink;
     outputBind: DataLink;
@@ -61,8 +61,8 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
         if (this.connectTable.has(target)) return;
         this.connectTable.set(target, true);
         target.connectTable.set(this, true);
-        target.on('output', this.inputBind);
-        this.on('output', target.inputBind);
+        target.on('output', this.inputBind, 'dataIO');
+        this.on('output', target.inputBind, 'dataIO');
         target.emit('connect', this);
         this.emit('connect', target);
     }
@@ -84,8 +84,8 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
         if (this.passThroughTable.has(target)) return;
         this.passThroughTable.set(target, this);
         target.passThroughTable.set(this, this);
-        target.on('output', this.outputBind);
-        this.on('input', target.inputBind);
+        target.on('output', this.outputBind, 'dataIO');
+        this.on('input', target.inputBind, 'dataIO');
     }
 
     // inside object
@@ -123,10 +123,10 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
             timestamp: Date.now(),
             UUID: this.UUID,
             event: '',
-        };
+        } as DataSignature;
     }
 
-    private _sign(signatures: DataSignature[], event: string) {
+    private _sign(signatures: DataSignature[], event: 'input' | 'output') {
         const signature = this.getSignature();
         signature.event = event;
         signatures.push(signature);
@@ -152,17 +152,26 @@ export class DataTransformer extends HiveComponent {
         this.inputTransform = (data) => data;
         this.outputTransform = (data) => data;
 
-        // !! does not sign data
-        this.stdIO.on('input', (data: any, signatures: DataSignature[]) => {
-            const result = this.inputTransform(data, signatures);
-            if (result === StopPropagation) return;
-            this.targetIO.input(result, signatures);
-        });
-        this.targetIO.on('output', (data: any, signatures: DataSignature[]) => {
-            const result = this.outputTransform(data, signatures);
-            if (result === StopPropagation) return;
-            this.stdIO.output(result, signatures);
-        });
+        this.stdIO.on(
+            'input',
+            (data: any, signatures: DataSignature[]) => {
+                this._sign(signatures);
+                const result = this.inputTransform(data, signatures);
+                if (result === StopPropagation) return;
+                this.targetIO.input(result, signatures);
+            },
+            'DT'
+        );
+        this.targetIO.on(
+            'output',
+            (data: any, signatures: DataSignature[]) => {
+                this._sign(signatures);
+                const result = this.outputTransform(data, signatures);
+                if (result === StopPropagation) return;
+                this.stdIO.output(result, signatures);
+            },
+            'DT'
+        );
         this.targetIO.on('destroy', () => this.stdIO.destroy());
     }
 
@@ -172,5 +181,12 @@ export class DataTransformer extends HiveComponent {
 
     setOutputTransform(outputTransform: (data: any, _signatures: DataSignature[]) => any) {
         this.outputTransform = outputTransform;
+    }
+
+    private _sign(signatures: DataSignature[]) {
+        const signature = this.stdIO.getSignature();
+        signature.event = 'DT';
+        signatures.push(signature);
+        return signatures;
     }
 }

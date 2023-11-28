@@ -75,7 +75,7 @@ export default class HiveCommand extends HiveComponent {
         this.isHelpCmd = false;
         if (!(this instanceof HiveSubCommand)) {
             // only HiveCommand can listen to input from stdIO
-            this.stdIO.on('input', this._inputHandler.bind(this));
+            this.stdIO.on('input', this._inputHandler.bind(this), 'hiveCommand input');
         }
         if (helpCmd instanceof HiveSubCommand) {
             this.addCommand(helpCmd);

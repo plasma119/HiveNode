@@ -262,7 +262,7 @@ export default class HiveProcessNet extends HiveProcess {
                 if (data instanceof HiveNetPacket) data = data.data;
                 // @ts-ignore
                 terminalPort.output(data, signatures);
-            });
+            }, 'write to terminal');
             //this.os.stdIO.passThrough(socketDT.stdIO);
             terminal.terminalDestPort = sport;
             terminal.setPrompt(`->${host}:${port}`);
@@ -314,7 +314,7 @@ export default class HiveProcessNet extends HiveProcess {
                 dt.stdIO.on('output', (d, s) => {
                     console.log(DataSignaturesToString(s));
                     console.log(d);
-                });
+                }, 'debug');
 
             client
                 .use(ws)

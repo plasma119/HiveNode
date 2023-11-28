@@ -34,6 +34,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     debugMode: boolean;
 
     constructor(name: string, debugMode: boolean = false) {
+        // TODO: reserve os.name to 'HiveOS' for ease of debugging
         super(name, 'node');
         this.stdIO = new DataIO(this, 'stdIO');
         this.netInterface = new HiveNetInterface(name);

@@ -124,7 +124,7 @@ export default class HiveProcessKernel extends HiveProcess {
         let shell = shelld.spawnShell(this, HIVENETPORT.SHELL); // for now
         shell.rename('systemShell');
         let shellProgram = shell.program;
-        this.os.stdIO.on('input', shellProgram.stdIO.inputBind); // force direct input to system shell
+        this.os.stdIO.on('input', shellProgram.stdIO.inputBind, 'system shell input'); // force direct input to system shell
         // placeholder
         // let portIO = this.os.HTP.listen(HIVENETPORT.SHELL);
         // portIO.on('input', shellProgram.stdIO.inputBind);

@@ -8,7 +8,7 @@ export type DataSignature = {
     name: string;
     timestamp: number;
     UUID: string;
-    event: string;
+    event: 'input' | 'output' | 'DT' | 'route' | '';
 };
 
 export type HiveNetFlags = {
