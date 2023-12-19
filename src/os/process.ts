@@ -2,6 +2,7 @@ import { DefaultListener, ListenerSignature } from '../lib/basicEventEmitter.js'
 import HiveComponent from '../lib/component.js';
 import HiveCommand from '../lib/hiveCommand.js';
 import { Constructor } from '../lib/lib.js';
+import DataIOScreen from '../network/dataIOScreen.js';
 import HiveOS from './os.js';
 
 /*
@@ -29,6 +30,7 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
 
     program: HiveCommand;
     alive: boolean = true;
+    screen: DataIOScreen = new DataIOScreen({ includeSignatures: true });
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number) {
         super(name);
@@ -47,6 +49,12 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
 
     // override by process
     main(_argv: string[]) {}
+
+    // for debugging purpose, captures complete HiveNet packets + signatures
+    enableScreen() {
+        this.program.stdIO.on('input', this.screen.stdIO.inputBind, 'screen');
+        this.program.stdIO.on('output', this.screen.stdIO.inputBind, 'screen');
+    }
 
     exit(error?: any) {
         this.emit('exit', error);

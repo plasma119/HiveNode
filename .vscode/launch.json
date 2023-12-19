@@ -78,6 +78,18 @@
             ]
         },
         {
+            "name": "screen Test",
+            "request": "launch",
+            "type": "node",
+            "program": "${workspaceFolder}\\dist\\tests\\screen_test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
             "name": "Hive OS Test",
             "request": "launch",
             "type": "node",
