@@ -1,19 +1,30 @@
 import WebSocket from 'ws';
 
 import HiveCommand from '../../lib/hiveCommand.js';
-import { DataTransformer } from '../../network/dataIO.js';
+import DataIO, { DataTransformer } from '../../network/dataIO.js';
 import { DataSerialize, DataParsing } from '../../network/hiveNet.js';
-import HiveSocket from '../../network/socket.js';
+import HiveSocket, { DEFAULTHIVESOCKETOPTIONS, HiveSocketOptions } from '../../network/socket.js';
 import HiveProcess from '../process.js';
 
 const VERSION = 'V1.0';
-const BUILD = '2023-8-27';
+const BUILD = '2023-12-18';
+
+let nextSessionID = 0;
+
+export type SocketInfo = {
+    socket: HiveSocket;
+    socketDT: DataTransformer;
+    type: 'reciever' | 'sender';
+    protocol: 'none' | 'HiveNet' | 'direct';
+    options: HiveSocketOptions;
+    sessionID: number;
+};
 
 export default class HiveProcessSocketDaemon extends HiveProcess {
     sockets: Map<number, HiveProcessSocket> = new Map();
 
     initProgram(): HiveCommand {
-        // exposed to kernel->service
+        // kernel->service->socketd
         const program = new HiveCommand('socketd', 'HiveSocket Daemon');
 
         program.addNewCommand('version', 'display current program version').setAction(() => `version ${VERSION} build ${BUILD}`);
@@ -26,38 +37,40 @@ export default class HiveProcessSocketDaemon extends HiveProcess {
     }
 
     spawnSocket(parentProcess: HiveProcess) {
-        const shellProcess = parentProcess.spawnChild(HiveProcessSocket, 'shell');
-        this.sockets.set(shellProcess.pid, shellProcess);
-        shellProcess.once('exit', () => {
-            this.sockets.delete(shellProcess.pid);
+        const process = parentProcess.spawnChild(HiveProcessSocket, 'socket');
+        this.sockets.set(process.pid, process);
+        process.once('exit', () => {
+            this.sockets.delete(process.pid);
         });
-        return shellProcess;
+        return process;
     }
 }
 
 // TODO: relay events from socket
+// TODO: sessionID
 export class HiveProcessSocket extends HiveProcess {
-    port: number = this.os.netInterface.newRandomPortNumber();
-    protocol: 'none' | 'HiveNet' | 'direct' = 'none';
+    port: number = 0;
+    portIO?: DataIO; // API port
+    socketPort: number = 0;
+    socketPortIO?: DataIO; // socket port
 
-    socketInfo?: {
-        socket: HiveSocket;
-        socketDT: DataTransformer;
-        type: 'reciever' | 'sender';
-    };
+    socketInfo?: SocketInfo;
 
     initProgram(): HiveCommand {
-        // exposed to RPort, should not be accessed by user
         const program = new HiveCommand('socket', 'HiveSocket');
 
+        // I forgor what I was doing with this
         program.addNewCommand('pair', 'pair this socket to sender socket').setAction(() => {});
 
         return program;
     }
 
     main() {
-        const portIO = this.os.netInterface.newIO(this.port);
-        portIO.on('input', this.program.stdIO.inputBind, 'socket process program'); // switch to other io after connection
+        this.port = this.os.netInterface.newRandomPortNumber();
+        this.portIO = this.os.netInterface.newIO(this.port);
+        this.portIO.passThrough(this.program.stdIO);
+        this.socketPort = this.os.netInterface.newRandomPortNumber();
+        this.socketPortIO = this.os.netInterface.newIO(this.socketPort);
     }
 
     exit() {
@@ -66,24 +79,24 @@ export class HiveProcessSocket extends HiveProcess {
     }
 
     receiveDirect(ws: WebSocket) {
-        if (this.protocol != 'none') throw new Error('ERROR: Socket Process: Already connected');
-        this.protocol = 'direct';
-
-        const portIO = this.os.netInterface.getPort(this.port);
-        if (!portIO) throw new Error(`ERROR: Socket Process: Unable to get portIO:${this.port}`);
+        if (this.socketInfo) throw new Error('ERROR: Socket Process: Already connected');
+        if (!this.socketPortIO) throw new Error(`ERROR: Socket Process: Unable to get socket portIO:${this.socketPort}`);
 
         const socket = new HiveSocket('reciever');
         const socketDT = new DataTransformer(socket.dataIO);
         socketDT.setInputTransform(DataSerialize);
         socketDT.setOutputTransform(DataParsing);
 
-        portIO.clear();
-        portIO.passThrough(socketDT.stdIO);
+        this.socketPortIO.clear();
+        this.socketPortIO.passThrough(socketDT.stdIO);
 
         this.socketInfo = {
             socket: socket,
             socketDT: socketDT,
             type: 'reciever',
+            protocol: 'direct',
+            sessionID: nextSessionID++,
+            options: DEFAULTHIVESOCKETOPTIONS,
         };
 
         return socket.use(ws);
@@ -93,31 +106,30 @@ export class HiveProcessSocket extends HiveProcess {
     // maybe just send to NIC(portIO) and let client figure out the packet destination?
     connectDirect(host: string, port: string | number) {
         if (typeof port == 'string') port = Number.parseInt(port);
+        if (this.socketInfo) throw new Error('ERROR: Socket Process: Already connected');
+        if (!this.socketPortIO) throw new Error(`ERROR: Socket Process: Unable to get socket portIO:${this.socketPort}`);
 
-        if (this.protocol != 'none') throw new Error('ERROR: Socket Process: Already connected');
-        this.protocol = 'direct';
-
-        const portIO = this.os.netInterface.getPort(this.port);
-        if (!portIO) throw new Error(`ERROR: Socket Process: Unable to get portIO:${this.port}`);
-
-        // TODO: auto reconnect
         const socket = new HiveSocket('sender');
         const socketDT = new DataTransformer(socket.dataIO);
         socketDT.setInputTransform(DataSerialize);
         socketDT.setOutputTransform(DataParsing);
 
-        portIO.clear();
-        portIO.passThrough(socketDT.stdIO);
+        this.socketPortIO.clear();
+        this.socketPortIO.passThrough(socketDT.stdIO);
 
         this.socketInfo = {
             socket: socket,
             socketDT: socketDT,
             type: 'sender',
+            protocol: 'direct',
+            sessionID: nextSessionID++,
+            options: DEFAULTHIVESOCKETOPTIONS,
         };
 
         return socket.new(host, port);
     }
 
+    // virtual socket
     connectHiveNet(_UUID: string) {
         // create and pair to target socket
     }

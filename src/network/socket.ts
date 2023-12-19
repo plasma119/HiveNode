@@ -8,13 +8,13 @@ import HiveCommand from '../lib/hiveCommand.js';
 import { Encryption, Options, sleep, typeCheck } from '../lib/lib.js';
 import HiveComponent from '../lib/component.js';
 
-export type SocketInfo = {
+export type SocketStatus = {
     name: string;
     version: string;
     handshakeDone: boolean;
 };
 
-const DEFAULTSOCKETINFO: SocketInfo = {
+const DEFAULTSOCKETINFO: SocketStatus = {
     name: 'unknown',
     version: 'unknwon',
     handshakeDone: false,
@@ -60,7 +60,7 @@ export type HiveSocketOptions = {
     debug: boolean; // output debug info to stdIO
 };
 
-const DEFAULTHIVESOCKETOPTIONS: HiveSocketOptions = {
+export const DEFAULTHIVESOCKETOPTIONS: HiveSocketOptions = {
     bufferData: true,
     connectTimeout: 20,
     handshakeTimeout: 5,
@@ -81,13 +81,13 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     options: HiveSocketOptions;
     stdIO: DataIO;
     dataIO: DataIO;
-    info: SocketInfo;
+    info: SocketStatus;
     private _ss: SocketSecret;
     program: HiveCommand;
 
     ws?: WebSocket;
     socketReady: boolean = false;
-    targetInfo: SocketInfo;
+    targetInfo: SocketStatus;
     handshakeDone: boolean = false;
     _handshakeCallback?: (header: HiveSocketDataHeader, data: string) => void;
 
@@ -129,14 +129,14 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     }
 
     // client socket
-    new(host: string, port: string | number): Promise<SocketInfo> {
+    new(host: string, port: string | number): Promise<SocketStatus> {
         if (this.ws) this._disconnect();
         this.ws = new WebSocket(`ws://${host}:${port}`);
         return this._connect(this.ws, true);
     }
 
     // server socket
-    use(socket: WebSocket): Promise<SocketInfo> {
+    use(socket: WebSocket): Promise<SocketStatus> {
         if (this.ws) this._disconnect();
         this.ws = socket;
         return this._connect(socket, false);
@@ -156,7 +156,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         // TODO: reconnect
     }
 
-    _connect(socket: WebSocket, isClient: boolean): Promise<SocketInfo> {
+    _connect(socket: WebSocket, isClient: boolean): Promise<SocketStatus> {
         this.updateInfo();
         this._ss.noise = '';
         this._ss.noise2 = '';
@@ -206,7 +206,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         });
     }
 
-    _handshake(isClient: boolean): Promise<SocketInfo> {
+    _handshake(isClient: boolean): Promise<SocketStatus> {
         return new Promise(async (resolve, reject) => {
             const flags: { [key: string]: boolean } = {};
             let failed = false;

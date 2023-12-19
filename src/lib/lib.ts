@@ -65,6 +65,10 @@ export class Encryption {
     }
 }
 
+export function randomInt(range: number = 32768) {
+    return Math.floor(Math.random() * range);
+}
+
 let padding = new Array(80).fill(' ').join('');
 
 // format output columns
@@ -310,7 +314,7 @@ export async function performanceTestAdvanced(
             log(`Running function ${i + 1}...`);
             let result = await performanceTest(fs[i], timeLimitSecondsPerCycle);
             let s = result.totalTime / 1000;
-            log(`Executed: ${result.executed}, time: ${s}s, calls/s = ${Math.round((result.executed / s))}`);
+            log(`Executed: ${result.executed}, time: ${s}s, calls/s = ${Math.round(result.executed / s)}`);
             if (metrics[i]) {
                 metrics[i].executed += result.executed;
                 metrics[i].totalTime += result.totalTime;
@@ -319,9 +323,9 @@ export async function performanceTestAdvanced(
             }
         }
     }
-    log('Test completed.')
+    log('Test completed.');
     for (let i = 0; i < fs.length; i++) {
         let s = metrics[i].totalTime / 1000;
-        log(`Function ${i + 1}: Executed: ${metrics[i].executed}, time: ${s}s, calls/s = ${Math.round((metrics[i].executed / s))}`);
+        log(`Function ${i + 1}: Executed: ${metrics[i].executed}, time: ${s}s, calls/s = ${Math.round(metrics[i].executed / s)}`);
     }
 }
