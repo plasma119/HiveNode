@@ -88,6 +88,9 @@ export default class Terminal extends HiveComponent {
                 completions = [];
                 this.stdIO.input('[ERROR] Terminal: Completion error');
             }
+            if (this.debug) {
+                this.stdIO.input(`[DEBUG] Terminal->_completer: [${completions.join('|')}]`);
+            }
             callback(null, [completions, line]);
         } catch (e) {
             callback(e as Error, [[], line]);
@@ -129,12 +132,12 @@ export default class Terminal extends HiveComponent {
     // write to terminal
     inputHandler(data: any, signatures: DataSignature[]) {
         this.redraw(() => {
-            if (this.debug) this.stdout.write(`signatures: ${DataSignaturesToString(signatures)}\n`);
+            if (this.debug) this.stdout.write(`[DEBUG] signatures: ${DataSignaturesToString(signatures)}\n`);
             if (typeof data == 'string') {
                 const c = data.charAt(data.length - 1);
                 this.stdout.write(`${data}${c != '\n' && c != '\r' && data != '' ? '\n' : ''}`);
             } else {
-                this.stdout.write(inspect(data, false, 2, true));
+                this.stdout.write(inspect(data, false, 4, true));
                 const p = this.interface.getCursorPos();
                 if (p.cols != 0) this.stdout.write('\n');
             }

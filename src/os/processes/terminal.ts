@@ -29,6 +29,15 @@ export default class HiveProcessTerminal extends HiveProcess {
                 this.buildTerminal(opts['-headless'] as boolean, opts['-debug'] as boolean);
             });
 
+        program.addNewCommand('debug', 'toggle debug mode').setAction(() => {
+            if (this.terminal) {
+                this.terminal.debug = !this.terminal.debug;
+                return `Debug = ${this.terminal.debug}`;
+            } else {
+                return 'terminal is not initialized.';
+            }
+        });
+
         program
             .addNewCommand('remote', 'remote terminal to target node via HiveNet')
             .addNewOption('-d', 'disconnect remote terminal')

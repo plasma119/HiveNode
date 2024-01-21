@@ -279,23 +279,31 @@ export default class HiveCommand extends HiveComponent {
         chain.shift();
         let base = chain.join(' ');
         let cmds = Array.from(this.commands).map((i) => i[0]) as string[];
+
+        // find possible commands
         let hits = cmds.filter((c) => c.startsWith(info.currentInput));
-        if (hits.length == 0) hits = cmds; // no hit
-        let prefix = commonPrefix(hits as string[]) || '';
-        if (info.currentInput != '' && info.currentInput != prefix && prefix != '') {
-            hits = [prefix];
-        }
-        if (hits.length == 0) hits = [info.currentInput];
-        hits.sort();
-        if (hits.length == 1) {
+        if (hits. length == 0) {
+            // no hit, set to list of cmds
+            hits = cmds;
+            hits.push(' '); // to stop auto complete
+        } else if (hits.length === 1) {
+            // single hit
             hits = hits.map((str) => (base ? base + ' ' : '') + str); // reconstruct full command
-        } else {
+        } else if (hits.length > 1) {
+            // multiple hits, extract prefix for auto complete
+            let prefix = commonPrefix(hits as string[]) || '';
+            if (info.currentInput != '' && info.currentInput != prefix && prefix != '') {
+                hits = [prefix];
+            }
+            hits.sort();
             hits.push(' '); // to stop auto prefix trimming
         }
+
+        if (hits.length == 0 || hits[0] == ' ') hits = []; // no auto complete result
+
         return {
             terminalControl: true,
             completer: hits,
-            //completer: Array.from(this.commands).map((i) => (base ? base + ' ' : '') + i[0]),
             local: info.terminalControl?.local,
         };
     }
