@@ -3,8 +3,8 @@ import HiveProcess from '../process.js';
 
 // TODO: maintain persistent shell interaction history
 
-const VERSION = 'V1.1';
-const BUILD = '2023-8-24';
+const VERSION = 'V1.2';
+const BUILD = '2023-12-18';
 
 type HiveProcessShellDaemonEvents = {
     registerShellProgram: (program: HiveCommand) => void;
@@ -15,6 +15,7 @@ export default class HiveProcessShellDaemon extends HiveProcess<HiveProcessShell
     shellPrograms: HiveCommand[] = [];
 
     initProgram() {
+        // kernel->service->shelld
         const program = new HiveCommand('shelld', `Shell Daemon`);
 
         program.addNewCommand('version', 'display current program version').setAction(() => `version ${VERSION} build ${BUILD}`);

@@ -10,6 +10,7 @@ import HiveProcessNet from './net.js';
 import HiveProcessShellDaemon from './shell.js';
 import HiveProcessSocketDaemon from './socket.js';
 import HiveProcessTerminal from './terminal.js';
+import HiveProcessUtil from './util.js';
 
 export default class HiveProcessKernel extends HiveProcess {
     systemShell?: HiveCommand;
@@ -104,6 +105,8 @@ export default class HiveProcessKernel extends HiveProcess {
     main() {
         const shelld = this.spawnChild(HiveProcessShellDaemon, 'shelld');
         shelld.registerShellProgram(this.program);
+
+        // services
         const logger = this.spawnChild(HiveProcessLogger, 'logger');
         const socketd = this.spawnChild(HiveProcessSocketDaemon, 'socketd');
         const terminal = this.spawnChild(HiveProcessTerminal, 'terminal');
@@ -115,6 +118,10 @@ export default class HiveProcessKernel extends HiveProcess {
         service.addCommand(socketd.program);
         service.addCommand(terminal.program);
         service.addCommand(net.program);
+
+        // shell programs
+        const util = this.spawnChild(HiveProcessUtil, 'util');
+        shelld.registerShellProgram(util.program);
     }
 
     getSystemShell() {
