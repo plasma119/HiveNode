@@ -4,8 +4,8 @@ import HiveCommand from '../../lib/hiveCommand.js';
 import { format, sleep } from '../../lib/lib.js';
 import { DataTransformer } from '../../network/dataIO.js';
 import {
-    DataParsing,
-    DataSerialize,
+    // DataParsing,
+    // DataSerialize,
     DataSignaturesToString,
     HIVENETADDRESS,
     HiveNetDeviceInfo,
@@ -243,8 +243,8 @@ export default class HiveProcessNet extends HiveProcess {
         // TODO: rework with socket
         const socket = new HiveSocket('remote');
         const socketDT = new DataTransformer(socket.dataIO);
-        socketDT.setInputTransform(DataSerialize);
-        socketDT.setOutputTransform(DataParsing);
+        // socketDT.setInputTransform(DataSerialize);
+        // socketDT.setOutputTransform(DataParsing);
 
         if (directSSH) {
             // TODO: fix input routing
@@ -298,8 +298,8 @@ export default class HiveProcessNet extends HiveProcess {
             // TODO: rework with socket
             const client = new HiveSocket('');
             const dt = new DataTransformer(client.dataIO);
-            dt.setInputTransform(DataSerialize);
-            dt.setOutputTransform(DataParsing);
+            // dt.setInputTransform(DataSerialize);
+            // dt.setOutputTransform(DataParsing);
 
             // connect socket to netInterface
             if (directSSH) {

@@ -2,12 +2,39 @@ import WebSocket from 'ws';
 
 import HiveCommand from '../../lib/hiveCommand.js';
 import DataIO, { DataTransformer } from '../../network/dataIO.js';
-import { DataSerialize, DataParsing } from '../../network/hiveNet.js';
+// import { DataSerialize, DataParsing } from '../../network/hiveNet.js';
 import HiveSocket, { DEFAULTHIVESOCKETOPTIONS, HiveSocketOptions } from '../../network/socket.js';
 import HiveProcess from '../process.js';
 
 const VERSION = 'V1.0';
 const BUILD = '2023-12-18';
+
+/*
+[Socket Service]
+2024-1-20
+description:
+mid-level controller for socket system
+handle both direct socket via ssh / virtual socket via HiveNet
+
+client:
+direct ssh:
+create new HiveSocket
+ask server's socket service for a new session/resume session
+
+virtual socket:
+ask server's socket daemon for a new socket process
+ask server's socket service for a new session/resume session
+
+
+server:
+direch ssh:
+create new HiveSocket
+create/retrieve session
+
+virtual socket:
+create new socket process
+create/retrieve session
+*/
 
 let nextSessionID = 0;
 
@@ -60,6 +87,7 @@ export class HiveProcessSocket extends HiveProcess {
         const program = new HiveCommand('socket', 'HiveSocket');
 
         // I forgor what I was doing with this
+        // I think this was for virtual socket via HiveNet
         program.addNewCommand('pair', 'pair this socket to sender socket').setAction(() => {});
 
         return program;
@@ -84,8 +112,8 @@ export class HiveProcessSocket extends HiveProcess {
 
         const socket = new HiveSocket('reciever');
         const socketDT = new DataTransformer(socket.dataIO);
-        socketDT.setInputTransform(DataSerialize);
-        socketDT.setOutputTransform(DataParsing);
+        // socketDT.setInputTransform(DataSerialize);
+        // socketDT.setOutputTransform(DataParsing);
 
         this.socketPortIO.clear();
         this.socketPortIO.passThrough(socketDT.stdIO);
@@ -111,8 +139,8 @@ export class HiveProcessSocket extends HiveProcess {
 
         const socket = new HiveSocket('sender');
         const socketDT = new DataTransformer(socket.dataIO);
-        socketDT.setInputTransform(DataSerialize);
-        socketDT.setOutputTransform(DataParsing);
+        // socketDT.setInputTransform(DataSerialize);
+        // socketDT.setOutputTransform(DataParsing);
 
         this.socketPortIO.clear();
         this.socketPortIO.passThrough(socketDT.stdIO);

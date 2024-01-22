@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 
-import HiveSocket from '../network/socket.js';
+import HiveSocket, { HiveSocketOptions } from '../network/socket.js';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
 import HiveComponent from '../lib/component.js';
@@ -16,8 +16,9 @@ function logWrapper(label: string) {
     };
 }
 
-const options = {
+const options: HiveSocketOptions = {
     bufferData: true,
+    serialization: true,
     connectTimeout: 20,
     handshakeTimeout: 5,
     handshakeMax: 5,
@@ -47,7 +48,7 @@ let hs2 = new HiveSocket('server-socket', options);
 hs2.stdIO.connect(io2);
 hs2.dataIO.on('output', log2);
 
-let port = 8090;
+let port = 8099;
 let wss = new WebSocket.Server({
     port: port,
 });
