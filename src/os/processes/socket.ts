@@ -5,6 +5,7 @@ import DataIO, { DataTransformer } from '../../network/dataIO.js';
 // import { DataSerialize, DataParsing } from '../../network/hiveNet.js';
 import HiveSocket, { DEFAULTHIVESOCKETOPTIONS, HiveSocketOptions } from '../../network/socket.js';
 import HiveProcess from '../process.js';
+import { HIVENETPORT } from '../../network/hiveNet.js';
 
 const VERSION = 'V1.0';
 const BUILD = '2023-12-18';
@@ -61,6 +62,10 @@ export default class HiveProcessSocketDaemon extends HiveProcess {
         });
 
         return program;
+    }
+
+    main(_argv: string[]): void {
+        this.program.stdIO.connect(this.os.HTP.listen(HIVENETPORT.SOCKET));
     }
 
     spawnSocket(parentProcess: HiveProcess) {

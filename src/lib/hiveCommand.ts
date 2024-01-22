@@ -282,7 +282,7 @@ export default class HiveCommand extends HiveComponent {
 
         // find possible commands
         let hits = cmds.filter((c) => c.startsWith(info.currentInput));
-        if (hits. length == 0) {
+        if (hits.length == 0) {
             // no hit, set to list of cmds
             hits = cmds;
             hits.push(' '); // to stop auto complete
@@ -306,6 +306,20 @@ export default class HiveCommand extends HiveComponent {
             completer: hits,
             local: info.terminalControl?.local,
         };
+    }
+
+    toString(input: boolean | string) {
+        if (typeof input == 'boolean') return '';
+        return input;
+    }
+
+    toBoolean(input: boolean | string) {
+        return !!input;
+    }
+
+    toInt(input: boolean | string) {
+        if (typeof input == 'boolean') return 0;
+        return Number.parseInt(input);
     }
 
     static splitCommandStr(command: string) {

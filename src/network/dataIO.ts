@@ -1,6 +1,6 @@
 import HiveComponent from '../lib/component.js';
 import { StopPropagation } from '../lib/signals.js';
-import { DataSignature, DataSignaturesToString } from './hiveNet.js';
+import { DataSignature, DataSignaturesToString, HiveNetPacket } from './hiveNet.js';
 
 /*
     OSI model layer 1 - physical layer
@@ -41,6 +41,10 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
                 console.log(data);
                 console.log(DataSignaturesToString(signatures));
             }
+            if (data instanceof HiveNetPacket && data.flags.log) {
+                console.log(data);
+                console.log(DataSignaturesToString(signatures));
+            }
             this.emit('input', data, this._sign(signatures.slice(), 'input'));
         }
     }
@@ -49,6 +53,10 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
     output(data: any, signatures: DataSignature[] = []) {
         if (!this.destroyed) {
             if (debugMode) {
+                console.log(data);
+                console.log(DataSignaturesToString(signatures));
+            }
+            if (data instanceof HiveNetPacket && data.flags.log) {
                 console.log(data);
                 console.log(DataSignaturesToString(signatures));
             }

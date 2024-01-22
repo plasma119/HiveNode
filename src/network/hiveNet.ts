@@ -16,6 +16,7 @@ export type HiveNetFlags = {
     pong?: boolean;
     ack?: boolean;
     nak?: boolean;
+    log?: boolean;
     timeout?: boolean;
 };
 
@@ -49,6 +50,7 @@ export class HiveNetPacket {
             pong: false,
             ack: false,
             nak: false,
+            log: false,
             timeout: false,
         };
         if (o.flags) {
@@ -113,6 +115,7 @@ export const HIVENETPORT = {
     SHELL: 20, // kernel, net, terminal
     STDIO: 21, // kernel
     SSH: 22, //
+    SOCKET: 23, // socketd
     HTPSEND: 30, // protocol(HTP)
     KERNEL: 80, //
     TERMINAL: 81, // terminal

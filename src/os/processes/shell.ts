@@ -1,4 +1,5 @@
 import HiveCommand from '../../lib/hiveCommand.js';
+import { HIVENETADDRESS, HiveNetPacket } from '../../network/hiveNet.js';
 import HiveProcess from '../process.js';
 
 // TODO: maintain persistent shell interaction history
@@ -115,6 +116,29 @@ export class HiveProcessShell extends HiveProcess {
 
             return str;
         });
+
+        util.addNewCommand('packet', 'send a HiveNetPacket')
+            .addNewOption('-dest <dest>', 'destination address')
+            .addNewOption('-dport <dport>', 'destination port')
+            .addNewOption('-log', 'enable packet tracing (experimental)')
+            .addNewOption('-full', 'display full packet content')
+            .addNewArgument('[data...]')
+            .setAction(async (args, opts) => {
+                let packet = new HiveNetPacket({
+                    data: args['data'],
+                    // src: opts['-src'],
+                    dest: program.toString(opts['-dest']) || HIVENETADDRESS.LOCAL,
+                    // sport: opts['-sport'],
+                    dport: program.toInt(opts['-dport']),
+                    // ttl: opts['-ttl'],
+                    flags: {
+                        log: !!opts['-log'],
+                    },
+                });
+                let result = await this.os.HTP.sendAndReceiveOnce(packet.data, packet.dest, packet.dport, packet.flags);
+                if (opts['-full']) return result;
+                return result.data;
+            });
 
         return program;
     }
