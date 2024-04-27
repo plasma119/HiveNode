@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 
 import HiveCommand from '../../lib/hiveCommand.js';
-import DataIO, { DataTransformer } from '../../network/dataIO.js';
+import DataIO from '../../network/dataIO.js';
 // import { DataSerialize, DataParsing } from '../../network/hiveNet.js';
 import HiveSocket, { DEFAULTHIVESOCKETOPTIONS, HiveSocketOptions } from '../../network/socket.js';
 import HiveProcess from '../process.js';
@@ -40,12 +40,16 @@ create/retrieve session
 let nextSessionID = 0;
 
 export type SocketInfo = {
-    socket: HiveSocket;
-    socketDT: DataTransformer;
+    protocol: 'HiveNet';
     type: 'reciever' | 'sender';
-    protocol: 'none' | 'HiveNet' | 'direct';
-    options: HiveSocketOptions;
     sessionID: number;
+    options: HiveSocketOptions;
+} | {
+    protocol: 'ws';
+    type: 'reciever' | 'sender';
+    sessionID: number;
+    options: HiveSocketOptions;
+    socket: HiveSocket;
 };
 
 export default class HiveProcessSocketDaemon extends HiveProcess {
@@ -66,6 +70,7 @@ export default class HiveProcessSocketDaemon extends HiveProcess {
 
     main(_argv: string[]): void {
         this.program.stdIO.connect(this.os.HTP.listen(HIVENETPORT.SOCKET));
+        DEFAULTHIVESOCKETOPTIONS.HiveNodeName = this.os.name;
     }
 
     spawnSocket(parentProcess: HiveProcess) {
@@ -80,11 +85,14 @@ export default class HiveProcessSocketDaemon extends HiveProcess {
 
 // TODO: relay events from socket
 // TODO: sessionID
+// TODO: actually using this
 export class HiveProcessSocket extends HiveProcess {
     port: number = 0;
     portIO?: DataIO; // API port
     socketPort: number = 0;
     socketPortIO?: DataIO; // socket port
+
+    // dataIO: TODO
 
     socketInfo?: SocketInfo;
 
@@ -99,6 +107,7 @@ export class HiveProcessSocket extends HiveProcess {
     }
 
     main() {
+        // init portIO
         this.port = this.os.netInterface.newRandomPortNumber();
         this.portIO = this.os.netInterface.newIO(this.port);
         this.portIO.passThrough(this.program.stdIO);
@@ -116,21 +125,21 @@ export class HiveProcessSocket extends HiveProcess {
         if (!this.socketPortIO) throw new Error(`ERROR: Socket Process: Unable to get socket portIO:${this.socketPort}`);
 
         const socket = new HiveSocket('reciever');
-        const socketDT = new DataTransformer(socket.dataIO);
-        // socketDT.setInputTransform(DataSerialize);
-        // socketDT.setOutputTransform(DataParsing);
 
         this.socketPortIO.clear();
-        this.socketPortIO.passThrough(socketDT.stdIO);
+        this.socketPortIO.passThrough(socket.dataIO);
 
         this.socketInfo = {
-            socket: socket,
-            socketDT: socketDT,
+            protocol: 'ws',
             type: 'reciever',
-            protocol: 'direct',
-            sessionID: nextSessionID++,
+            sessionID: 0,
             options: DEFAULTHIVESOCKETOPTIONS,
+            socket: socket,
         };
+
+        socket.on('ready', () => {
+            // TODO: request sessionID here
+        });
 
         return socket.use(ws);
     }
@@ -143,21 +152,24 @@ export class HiveProcessSocket extends HiveProcess {
         if (!this.socketPortIO) throw new Error(`ERROR: Socket Process: Unable to get socket portIO:${this.socketPort}`);
 
         const socket = new HiveSocket('sender');
-        const socketDT = new DataTransformer(socket.dataIO);
-        // socketDT.setInputTransform(DataSerialize);
-        // socketDT.setOutputTransform(DataParsing);
 
         this.socketPortIO.clear();
-        this.socketPortIO.passThrough(socketDT.stdIO);
+        this.socketPortIO.passThrough(socket.dataIO);
 
         this.socketInfo = {
-            socket: socket,
-            socketDT: socketDT,
+            protocol: 'ws',
             type: 'sender',
-            protocol: 'direct',
             sessionID: nextSessionID++,
             options: DEFAULTHIVESOCKETOPTIONS,
+            socket: socket,
         };
+
+        socket.on('ready', () => {
+            // TODO: send sessionID here
+        });
+
+        // TODO: save socket.stdIO output to main logging system(TODO)
+        // TODO: setSecret
 
         return socket.new(host, port);
     }

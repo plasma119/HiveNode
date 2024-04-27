@@ -4,6 +4,7 @@ import HiveSocket, { HiveSocketOptions } from '../network/socket.js';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
 import HiveComponent from '../lib/component.js';
+import { Options } from '../lib/lib.js';
 
 function noop(_a: any) {}
 function logWrapper(label: string) {
@@ -16,7 +17,7 @@ function logWrapper(label: string) {
     };
 }
 
-const options: HiveSocketOptions = {
+const options: Options<HiveSocketOptions> = {
     bufferData: true,
     serialization: true,
     connectTimeout: 20,
@@ -25,8 +26,6 @@ const options: HiveSocketOptions = {
     pingInterval: 5,
     pingTimeout: 10,
     pingMax: 5,
-    reconnectInterval: 20,
-    reconnectMax: 5,
     debug: true,
 };
 

@@ -9,15 +9,15 @@ import { Encryption, Options, sleep, typeCheck } from '../lib/lib.js';
 import HiveComponent from '../lib/component.js';
 import { DataParsing, DataSerialize, DataSignature } from './hiveNet.js';
 
-const VERSION = 'V1.0';
-const BUILD = '2024-01-21';
+const VERSION = 'V1.1';
+const BUILD = '2024-04-26';
 const PEPPER = '458f4a35dd57';
 
 export type SocketStatus = {
     HiveNodeName: string;
     socketName: string;
     HiveNodeVersion: string;
-    SocketVersion: string;
+    socketVersion: string;
     handshakeDone: boolean;
 };
 
@@ -25,7 +25,7 @@ const DEFAULTSOCKETINFO: SocketStatus = {
     HiveNodeName: 'unknown',
     socketName: 'unknown',
     HiveNodeVersion: 'unknwon',
-    SocketVersion: 'unknown',
+    socketVersion: 'unknown',
     handshakeDone: false,
 };
 
@@ -55,26 +55,23 @@ type HiveSocketDataHeader = 'data' | 'buzz' | 'fuzz' | 'hive' | 'mind' | 'ready'
 type HiveSocketReason = 'timeout' | 'handshake' | 'ping' | 'closed' | 'restart' | 'unknown' | 'error';
 
 type HiveSocketEvent = {
-    socketReady: () => void; // TODO
-    socketReconnect: () => void; // TODO
-    socketDisconnect: (reason: HiveSocketReason, reconnecting: boolean) => void; // TODO
-    socketClosed: () => void;
-    socketEnded: (reason: HiveSocketReason) => void; // TODO
+    ready: (targetInfo: SocketStatus) => void;
+    disconnect: (reason: HiveSocketReason) => void;
 };
 
-// TODO: auto reconnect, buffer data
+// TODO: ~auto reconnect~, buffer data
+// TODO: move reconnect stuff back up to controller to handle
 export type HiveSocketOptions = {
     bufferData: boolean; // buffer data packets if socket not ready - TODO
     serialization: boolean; // serialize data for HiveNetPacket
-    connectTimeout: number; // seconds to wait for timeout for connect attempts - TODO
-    handshakeTimeout: number;
-    handshakeMax: number;
+    connectTimeout: number; // seconds to wait for timeout for connect attempts
+    handshakeTimeout: number; // handshake step time
+    handshakeMax: number; // handshake max retries per step
     pingInterval: number; // seconds between ping
     pingTimeout: number; // seconds to wait for timeout for ping
     pingMax: number; // numbers of failed pings before closing socket
-    reconnectInterval: number; // seconds to wait between reconnect attempts
-    reconnectMax: number; // numbers of reconnect attempts before timeout, reset after success
     debug: boolean; // output debug info to stdIO
+    HiveNodeName: string;
 };
 
 export const DEFAULTHIVESOCKETOPTIONS: HiveSocketOptions = {
@@ -83,12 +80,11 @@ export const DEFAULTHIVESOCKETOPTIONS: HiveSocketOptions = {
     connectTimeout: 20,
     handshakeTimeout: 5,
     handshakeMax: 5,
-    pingInterval: 300,
-    pingTimeout: 10,
+    pingInterval: 60,
+    pingTimeout: 5,
     pingMax: 5,
-    reconnectInterval: 20,
-    reconnectMax: 5,
     debug: false,
+    HiveNodeName: 'null',
 };
 
 /*
@@ -112,8 +108,6 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
     pingCount: number = 0;
     pingReceived: boolean = false;
-    reconnectCount: number = 0;
-    reconnect: boolean = true;
 
     constructor(name: string, options?: Options<HiveSocketOptions>) {
         super(name);
@@ -135,20 +129,21 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
             'write to socket'
         );
         this._init();
-        this.updateInfo();
+        this._updateInfo();
     }
 
     _init() {
         // const p = this.program;
     }
 
-    updateInfo() {
-        this.info.HiveNodeName = 'TODO: HiveNode name';
+    _updateInfo() {
+        this.info.HiveNodeName = this.options.HiveNodeName || 'null';
         this.info.socketName = this.name;
         this.info.HiveNodeVersion = version;
-        this.info.SocketVersion = `version ${VERSION} build ${BUILD}`;
+        this.info.socketVersion = `version ${VERSION} build ${BUILD}`;
     }
 
+    // TODO: use this
     setSecret(secret: string, salt: string, salt2: string) {
         this._ss.secret = Encryption.hash(secret).update(PEPPER).digest('base64');
         this._ss.salt = Encryption.hash(salt).update(PEPPER).digest('base64');
@@ -157,7 +152,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
     // client socket
     new(host: string, port: number): Promise<SocketStatus> {
-        if (this.ws) this._disconnect();
+        if (this.ws) this.disconnect();
         this.socketHost = { host, port };
         this.ws = new WebSocket(`ws://${host}:${port}`);
         return this._connect(this.ws, true);
@@ -165,27 +160,23 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
     // server socket
     use(socket: WebSocket): Promise<SocketStatus> {
-        if (this.ws) this._disconnect();
+        if (this.ws) this.disconnect();
         this.ws = socket;
         return this._connect(socket, false);
     }
 
+    // TODO: send reason to target?
     disconnect(reason?: HiveSocketReason) {
-        this.reconnect = false;
-        this._disconnect(reason);
-    }
-
-    _disconnect(reason?: HiveSocketReason) {
         this.socketReady = false;
-        if (!this.ws) return this.stdIO.output(`Socket already disconnected.`);
+        if (!this.ws) return this.stdIO.output(`[Info]: Socket already disconnected.`);
         this.ws.terminate(); // immediately destroys the connection
         this.ws = undefined;
-        this.stdIO.output(`Socket disconnected.${reason ? ` Reason: ${reason}` : ''}`);
-        // TODO: reconnect
+        this.stdIO.output(`[Info]: Socket disconnected.${reason ? ` Reason: ${reason}` : ''}`);
+        this.emit('disconnect', reason);
     }
 
     _connect(socket: WebSocket, isClient: boolean): Promise<SocketStatus> {
-        this.updateInfo();
+        this._updateInfo();
         this._ss.noise = '';
         this._ss.noise2 = '';
         this.targetInfo = Object.assign({}, DEFAULTSOCKETINFO);
@@ -193,30 +184,38 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         this.handshakeDone = false;
 
         return new Promise(async (resolve, reject) => {
+            // connect timeout handler
             if (this.options.connectTimeout > 0) {
                 setTimeout(() => {
                     if (!this.socketReady) {
-                        this._disconnect('timeout');
+                        this.disconnect('timeout');
                         reject('Socket timeout.');
                     }
                 }, this.options.connectTimeout * 1000);
             }
+
             let onReady = async () => {
+                // socket connected, to handshake phase
                 this.socketReady = true;
-                this.stdIO.output(`WebSocket connected. Now exchanging secret key...`);
+                this.stdIO.output(`[Info]: WebSocket connected. Now exchanging secret key...`);
                 this._handshake(isClient)
                     .then((info) => {
+                        // handshake done
                         this._pingHandler();
+                        this.emit('ready', info);
                         resolve(info);
                     })
                     .catch((status) => {
+                        // handshake failed
+                        // TODO: relay status/error back to controller
                         this._handshakeCallback = undefined;
-                        if (status instanceof Error) this.stdIO.output(status);
+                        if (status instanceof Error) this.stdIO.output('[ERROR]: ' + status);
                         let reason = typeof status == 'string' ? status : 'handshake failed.';
-                        this._disconnect('handshake');
+                        this.disconnect('handshake');
                         reject(reason);
                     });
             };
+
             if (isClient) {
                 socket.on('open', onReady);
             } else {
@@ -224,12 +223,9 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
             }
             socket.on('message', this._recieveHandler.bind(this));
             socket.on('error', (e) => {
-                this.stdIO.output(e.message);
-                this._disconnect('error');
+                this.stdIO.output('[ERROR]: ' + e.message);
+                this.disconnect('error');
                 reject(e);
-            });
-            socket.on('close', () => {
-                this.emit('socketClosed');
             });
         });
     }
@@ -243,7 +239,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
                 let [header, data] = func();
                 let i = 0;
                 do {
-                    if (this.options.debug) this.stdIO.output(`[DEBUG] HiveSocket->shake: [${header}] for [${flag}]`);
+                    if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->shake: [${header}] for [${flag}]`);
                     this.send(header, data);
                     await sleep(this.options.handshakeTimeout * 1000);
                 } while (i++ < this.options.handshakeMax && !flags[flag] && !this.targetInfo.handshakeDone && !failed);
@@ -316,7 +312,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
             // state machine mess
             this._handshakeCallback = (header, data) => {
-                if (this.options.debug) this.stdIO.output(`[DEBUG] HiveSocket->handshakeCallback: recieved [${header}]`);
+                if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->handshakeCallback: recieved [${header}]`);
                 switch (header) {
                     // both
                     case 'ready':
@@ -401,6 +397,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         });
     }
 
+    // for _handshake only
     _parseJSON(data: string, structure: any) {
         try {
             if (data.length > 10000) return null; // no point to parse junk data
@@ -427,7 +424,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
             }
         } while ((this.pingCount < this.options.pingMax || this.options.pingMax <= 0) && this.ws);
         if (this.ws) {
-            this._disconnect('ping');
+            this.disconnect('ping');
         }
     }
 
@@ -485,7 +482,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     }
 
     private _encodeData(data: string) {
-        if (this.options.debug) this.stdIO.output(`[DEBUG] HiveSocket->_encodeData: ${data}`);
+        if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->_encodeData: ${data}`);
         if (!this.targetInfo.handshakeDone) {
             return data;
         }
@@ -496,7 +493,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         const rand1 = HiveSocket._randomPaddingData();
         const rand2 = HiveSocket._randomPaddingData();
         const encoded = `${rand1.length}${rand2.length}${rand1}${data}${rand2}`;
-        //if (this.options.debug) this.stdIO.output(`DEBUG: encoded: ${encoded}`);
+        //if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->_encodeData: partially encoded data: ${encoded}`);
         if (this._ss.algorithm == 'aes-256-gcm') {
             const [iv, encrypted, authTag] = Encryption.encryptGCM(this._ss.key, encoded);
             return `${iv} ${encrypted} ${authTag}`;
@@ -509,7 +506,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     }
 
     private _decodeData(data: WebSocket.Data) {
-        if (this.options.debug) this.stdIO.output(`[DEBUG] HiveSocket->_decodeData: ${data}`);
+        if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->_decodeData: ${data}`);
         if (!this.targetInfo.handshakeDone) {
             return data.toString();
         }
@@ -519,7 +516,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
             const l1 = Number.parseInt(decrypted[0]);
             const l2 = Number.parseInt(decrypted[1]);
             const decoded = decrypted.slice(2 + l1, decrypted.length - l2);
-            if (this.options.debug) this.stdIO.output(`[DEBUG] HiveSocket->_decodeData: decoded data: ${decoded}`);
+            if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->_decodeData: decoded data: ${decoded}`);
             return decoded;
         } catch (e) {
             this.stdIO.output(`[ERROR]: Failed to decrypt data.`);
