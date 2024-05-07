@@ -97,11 +97,12 @@ export function CreateNewProcess(workerConfig: WorkerConfig) {
             const data: WorkerData = message as WorkerData;
             switch (data.header) {
                 case 'requestConfig':
+                    // TODO: set worker ready state, return event
                     workerSend({ header: 'config', bootConfig, workerConfig });
                     break;
                 case 'data':
                     let signatures: DataSignature[] = [];
-                    let parsed = DataParsing(data.data, []);
+                    let parsed = DataParsing(data.data, signatures);
                     dataIO.output(parsed, signatures);
                     break;
                 case 'info':
