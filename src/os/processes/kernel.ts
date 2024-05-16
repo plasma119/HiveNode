@@ -103,20 +103,29 @@ export default class HiveProcessKernel extends HiveProcess {
     }
 
     main() {
+        const logger = this.spawnChild(HiveProcessLogger, 'logger');
+        this.os.registerCoreService('logger', logger);
+
         const shelld = this.spawnChild(HiveProcessShellDaemon, 'shelld');
+        this.os.registerCoreService('shelld', shelld);
         shelld.registerShellProgram(this.program);
+        shelld.registerShellProgram(logger.program);
+
+        const terminal = this.spawnChild(HiveProcessTerminal, 'terminal');
+        this.os.registerCoreService('terminal', terminal);
+
+        const socketd = this.spawnChild(HiveProcessSocketDaemon, 'socketd');
+        this.os.registerCoreService('socketd', socketd);
+
+        const net = this.spawnChild(HiveProcessNet, 'net');
+        this.os.registerCoreService('net', net);
 
         // services
-        const logger = this.spawnChild(HiveProcessLogger, 'logger');
-        const socketd = this.spawnChild(HiveProcessSocketDaemon, 'socketd');
-        const terminal = this.spawnChild(HiveProcessTerminal, 'terminal');
-        const net = this.spawnChild(HiveProcessNet, 'net');
-
         const service = this.program.addNewCommand('service', 'access to service processes');
-        service.addCommand(shelld.program);
         service.addCommand(logger.program);
-        service.addCommand(socketd.program);
+        service.addCommand(shelld.program);
         service.addCommand(terminal.program);
+        service.addCommand(socketd.program);
         service.addCommand(net.program);
 
         // shell programs

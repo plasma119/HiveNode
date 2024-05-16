@@ -1,6 +1,7 @@
+import { detectWakeup } from '../lib/detectWakeup.js';
 import exitHelper from '../lib/exitHelper.js';
 import HiveCommand from '../lib/hiveCommand.js';
-import { Constructor } from '../lib/lib.js';
+import { Constructor, Options } from '../lib/lib.js';
 import { IgnoreSIGINT } from '../lib/signals.js';
 import DataIO from '../network/dataIO.js';
 import { HiveNetDevice } from '../network/hiveNet.js';
@@ -9,12 +10,24 @@ import HTP from '../network/protocol.js';
 import HiveProcess from './process.js';
 import HiveProcessKernel from './processes/kernel.js';
 import HiveProcessLogger from './processes/logger.js';
+import HiveProcessNet from './processes/net.js';
 import HiveProcessShellDaemon from './processes/shell.js';
+import HiveProcessSocketDaemon from './processes/socket.js';
 import HiveProcessTerminal from './processes/terminal.js';
 
 export type HiveOSEvent = {
     sigint: () => void;
+    wakeup: (timePassed: number) => void;
     consoleLog: (param: { data: any[]; log: Function; suppressBubble: boolean }) => void; // fires after console.log
+    kernelReady: () => void
+};
+
+type CoreServices = {
+    logger: HiveProcessLogger;
+    shelld: HiveProcessShellDaemon;
+    terminal: HiveProcessTerminal;
+    socketd: HiveProcessSocketDaemon;
+    net: HiveProcessNet;
 };
 
 /*
@@ -27,7 +40,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
     kernel: HiveProcessKernel;
     shell: HiveCommand;
-    drivers = {}; // TODO
+    coreServices: Options<CoreServices> = {};
 
     processes: Map<number, HiveProcess>;
     nextpid: number;
@@ -42,12 +55,16 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.processes = new Map();
         this.nextpid = 0;
         this.debugMode = debugMode;
+
+        // SIGINT capture
         exitHelper.onSIGINT(() => {
             this.emit('sigint');
             return IgnoreSIGINT;
         });
-        this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
-        this.shell = this.kernel.getSystemShell();
+
+        // sleep detector
+        detectWakeup.on('wakeup', (timePassed) => this.emit('wakeup', timePassed));
+
         // capture console.log
         // !! do not redirect this to DataIO or any other console.log with debugMode on -> stackoverflow
         const log = console.log;
@@ -73,20 +90,30 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
             if (!param.suppressBubble) log(...data);
             // this.stdIO.output(''); // DO NOT DO THIS
         };
+
+        // init system processes
+        this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
+        this.shell = this.kernel.getSystemShell();
+        this.emit('kernelReady');
     }
 
+    // casting type / search for process
+    // return null if fails
     getProcess<C extends Constructor<HiveProcess>>(processConstructor: C, process?: HiveProcess | number): InstanceType<C> | null {
         let result: InstanceType<C> | null = null;
         if (process != undefined) {
             if (typeof process == 'number') {
+                // PID
                 let p = this.processes.get(process);
                 if (p) process = p;
             }
             if (process instanceof processConstructor) {
+                // process instance
                 const p2 = process as InstanceType<C>;
                 result = p2;
             }
         } else {
+            // didn't specify any process, search for first match
             this.processes.forEach((p) => {
                 if (p instanceof processConstructor && result == null) {
                     const p2 = p as InstanceType<C>;
@@ -127,22 +154,26 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         }
     }
 
+    registerCoreService<K extends keyof CoreServices>(service: K, process: CoreServices[K]) {
+        this.coreServices[service] = process;
+    }
+
+    getCoreService<K extends keyof CoreServices>(service: K): CoreServices[K] {
+        let process = this.coreServices[service];
+        if (!process) throw new Error(`[ERROR] os.getCoreService failed, cannot find [${service}] process`);
+        return process;
+    }
+
     // maybe move these into kernel?
     registerShellProgram(program: HiveCommand) {
-        let p = this.getProcess(HiveProcessShellDaemon);
-        if (!p) throw new Error('[ERROR] os.registerShellProgram failed, cannot find shelld process');
-        p.registerShellProgram(program);
+        this.getCoreService('shelld').registerShellProgram(program);
     }
 
     buildTerminal(headless: boolean = false, debug: boolean = false) {
-        let p = this.getProcess(HiveProcessTerminal);
-        if (!p) throw new Error('[ERROR] os.buildTerminal failed, cannot find terminal process');
-        p.buildTerminal(headless, debug);
+        this.getCoreService('terminal').buildTerminal(headless, debug);
     }
 
     log(message: any) {
-        let p = this.getProcess(HiveProcessLogger);
-        if (!p) throw new Error('[ERROR] os.log failed, cannot find logger process');
-        p.log(message);
+        this.getCoreService('logger').log(message);
     }
 }
