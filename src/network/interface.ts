@@ -43,15 +43,15 @@ export default class HiveNetInterface extends HiveComponent {
                 break;
             case 'port':
             default:
-                io = this.newIO(port);
+                io = this.newIO(port, this);
                 break;
         }
         target.connect(io);
     }
 
-    newIO(port: number) {
+    newIO(port: number, owner: HiveComponent) {
         if (this.ports.has(port)) throw new Error(`HiveNetInterface: port ${port} is in use already`);
-        const io = new DataIO(this, `portIO:${port}`);
+        const io = new DataIO(owner, `portIO:${port}`);
         this.ports.set(port, io);
         io.on('input', (data, signatures) => {
             // ignore invalid packet

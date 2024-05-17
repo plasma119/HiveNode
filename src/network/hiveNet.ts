@@ -4,7 +4,7 @@ import HiveComponent from '../lib/component.js';
 import { typeCheck } from '../lib/lib.js';
 
 export type DataSignature = {
-    by: object;
+    by: HiveComponent;
     name: string;
     timestamp: number;
     UUID: string;
@@ -107,7 +107,7 @@ export const HIVENETADDRESS = {
     LOCAL: 'HiveNet-address-Local',
 };
 
-export const HIVENETPORT = {
+export const HIVENETPORT: { [key: string]: number } = {
     DISCARD: 10, // kernel
     PING: 11, // net
     MESSAGE: 12, // net
@@ -122,6 +122,11 @@ export const HIVENETPORT = {
     HIVENETPORT: 8081, // net !! via WebSocket
     BASERANDOMPORT: 10000,
 };
+
+export const HIVENETPORTREVERSEMAP: Map<number, string> = new Map();
+for (let key in HIVENETPORT) {
+    HIVENETPORTREVERSEMAP.set(HIVENETPORT[key], key);
+}
 
 export function DataSignaturesToString(signatures: DataSignature[]) {
     // @ts-ignore

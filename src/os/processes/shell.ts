@@ -1,5 +1,5 @@
 import HiveCommand from '../../lib/hiveCommand.js';
-import { HIVENETADDRESS, HiveNetPacket } from '../../network/hiveNet.js';
+import { HIVENETADDRESS, HIVENETPORTREVERSEMAP, HiveNetPacket } from '../../network/hiveNet.js';
 import HiveProcess from '../process.js';
 
 // TODO: maintain persistent shell interaction history
@@ -86,11 +86,14 @@ export class HiveProcessShell extends HiveProcess {
             return null;
         });
 
+        // very wacky way to extract info from portIO system
         util.addNewCommand('portIO', 'list all portIOs').setAction(() => {
             let str = '';
 
             this.os.netInterface.ports.forEach((port, n) => {
-                str += `port[${n}]: ${port.getListenerCount('input')} input ${port.getListenerCount('output')} output\n`;
+                let sign = port.getSignature();
+                str += `port[${n}]: [${sign.by.name}] ${port.getListenerCount('input')}I ${port.getListenerCount('output')}O\n`;
+                if (HIVENETPORTREVERSEMAP.has(n)) str += `    [${HIVENETPORTREVERSEMAP.get(n)}]\n`;
                 port.connectTable.forEach((_, targetIO) => {
                     str += `    <-> ${targetIO.name}[${targetIO.owner.name}]\n`;
                 });
@@ -145,7 +148,7 @@ export class HiveProcessShell extends HiveProcess {
 
     main(argv: string[]) {
         if (argv[0]) this.port = Number.parseInt(argv[0]);
-        const portIO = this.os.netInterface.newIO(this.port);
+        const portIO = this.os.netInterface.newIO(this.port, this);
         portIO.connect(this.program.stdIO);
     }
 

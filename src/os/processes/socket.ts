@@ -109,10 +109,10 @@ export class HiveProcessSocket extends HiveProcess {
     main() {
         // init portIO
         this.port = this.os.netInterface.newRandomPortNumber();
-        this.portIO = this.os.netInterface.newIO(this.port);
+        this.portIO = this.os.netInterface.newIO(this.port, this);
         this.portIO.passThrough(this.program.stdIO);
         this.socketPort = this.os.netInterface.newRandomPortNumber();
-        this.socketPortIO = this.os.netInterface.newIO(this.socketPort);
+        this.socketPortIO = this.os.netInterface.newIO(this.socketPort, this);
     }
 
     exit() {

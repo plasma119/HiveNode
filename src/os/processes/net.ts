@@ -303,7 +303,7 @@ export default class HiveProcessNet extends HiveProcess {
 
             // connect socket to netInterface
             if (directSSH) {
-                let io = this.os.netInterface.newIO(this.os.netInterface.newRandomPortNumber());
+                let io = this.os.netInterface.newIO(this.os.netInterface.newRandomPortNumber(), this);
                 dt.stdIO.connect(io);
             } else {
                 this.switch.connect(dt.stdIO);
