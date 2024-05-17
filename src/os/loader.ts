@@ -1,3 +1,5 @@
+import path from 'path';
+
 import { BootConfig } from './bios.js';
 import { WorkerConfig } from './worker.js';
 
@@ -23,4 +25,10 @@ export function setLoader(loader: Loader) {
 
 export function getLoader() {
     return currentLoader;
+}
+
+// for normal path
+export function resolveFilePath(file: string) {
+    if (!currentLoader) throw new Error('Cannot resolve file path without loader!');
+    return path.join(currentLoader.bootConfig.HiveNodePath, '/', file);
 }

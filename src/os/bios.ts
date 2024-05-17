@@ -103,6 +103,7 @@ export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]
     let config = mergeBIOSConfig(configArgv);
 
     // extract config from file
+    // TODO: reload this file on reboot?
     if (config.configFile) {
         console.log(`[BIOS]: Loading config file from [${config.configFile}]...`);
         if (!fs.existsSync(config.configFile)) {

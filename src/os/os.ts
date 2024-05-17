@@ -63,6 +63,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         });
 
         // sleep detector
+        detectWakeup.init();
         detectWakeup.on('wakeup', (timePassed) => this.emit('wakeup', timePassed));
 
         // capture console.log
