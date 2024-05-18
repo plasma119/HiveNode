@@ -78,7 +78,7 @@ export default class HiveProcessLogger extends HiveProcess {
             .addNewOption('-set <set>', 'set to new log level')
             .setAction((_args, opts) => {
                 if (opts['-set']) {
-                    let parsed = this.parseLogLevelNumberFromOption(typeof opts['-set']);
+                    let parsed = this.parseLogLevelNumberFromOption(opts['-set']);
                     if (!parsed) throw new Error(`Invalid log level [${opts['-level']}]`);
                     this.logLevel = parsed;
                     return;
