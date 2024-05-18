@@ -9,7 +9,7 @@ import HiveNetInterface from '../network/interface.js';
 import HTP from '../network/protocol.js';
 import HiveProcess from './process.js';
 import HiveProcessKernel from './processes/kernel.js';
-import HiveProcessLogger from './processes/logger.js';
+import HiveProcessLogger, { logLevel } from './processes/logger.js';
 import HiveProcessNet from './processes/net.js';
 import HiveProcessShellDaemon from './processes/shell.js';
 import HiveProcessSocketDaemon from './processes/socket.js';
@@ -138,8 +138,8 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
             p.main(argv); // TODO: async main
             p.emit('ready');
         } catch (e) {
-            this.log(`ERROR: Process ${name} crashed on startup.`);
-            this.log(e);
+            this.log(`ERROR: Process ${name} crashed on startup.`, 'error');
+            this.log(e, 'error');
             throw e; // if inside HiveCommand, this should be 'safe', otherwise cascade upward to parent (unlikely to affect core system)
         }
         return p as InstanceType<C>;
@@ -174,7 +174,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.getCoreService('terminal').buildTerminal(headless, debug);
     }
 
-    log(message: any) {
-        this.getCoreService('logger').log(message);
+    log(message: any, level: keyof typeof logLevel) {
+        this.getCoreService('logger').log(message, level);
     }
 }
