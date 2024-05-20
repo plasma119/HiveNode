@@ -15,6 +15,25 @@ import HiveProcessShellDaemon from './processes/shell.js';
 import HiveProcessSocketDaemon from './processes/socket.js';
 import HiveProcessTerminal from './processes/terminal.js';
 
+// TODO: finish new shell system
+// TODO: database system
+// TODO: dataIO connection to HiveOS for worker
+
+// TODO: add log to all core/important steps for debugging
+// TODO: standardize error emit/handling
+// TODO: actually use DataIOScreen
+// TODO: implement processManager
+// TODO: portIO actually be extending dataIO? to bundle port ID directly
+
+// TODO: re-visit HTP protocol system
+// TODO: net command refining
+// TODO: seperate terminal control to it's own special shell
+// TODO: cleanup that ugly script import path stuff
+
+// TODO: figure out ways to auto timestamp component build time
+// TODO: central server control system - hiveMind
+// TODO: update system
+
 export type HiveOSEvent = {
     sigint: () => void;
     wakeup: (timePassed: number) => void;

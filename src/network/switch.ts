@@ -108,7 +108,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
         });
     }
 
-    _returnPacket(sender: DataIO, packet: HiveNetPacket, data: any, flags: HiveNetFlags) {
+    _returnPacket(sender: DataIO, packet: HiveNetPacket, data: any, flags: Partial<HiveNetFlags>) {
         sender.output(
             new HiveNetPacket({
                 data: data,

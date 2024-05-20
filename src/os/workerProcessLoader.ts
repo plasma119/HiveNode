@@ -11,17 +11,23 @@ import { BootConfig } from './bios.js';
 import { WorkerData, WorkerConfig } from './worker.js';
 import { getLoader, setLoader } from './loader.js';
 import { sleep } from '../lib/lib.js';
+import HiveNetInterface from '../network/interface.js';
 
 const component = new HiveComponent('Worker Loader');
 const dataIO = new DataIO(component, 'dataIO');
-dataIO.on('input', (data, signatures) => {
-    send({
-        header: 'data',
-        data: DataSerialize(data, signatures),
-    });
-}, 'write to parent process');
+dataIO.on(
+    'input',
+    (data, signatures) => {
+        send({
+            header: 'data',
+            data: DataSerialize(data, signatures),
+        });
+    },
+    'to parent process'
+);
 
 let booted = false;
+let waitHiveOS = false;
 let bootConfig: BootConfig | null = null;
 let workerConfig: WorkerConfig | null = null;
 
@@ -47,22 +53,27 @@ process.on('message', (message) => {
         switch (data.header) {
             case 'config':
                 if (booted) return;
-                booted = true;
                 bootConfig = data.bootConfig;
                 workerConfig = data.workerConfig;
+                waitHiveOS = workerConfig.hiveOS || false;
                 if (getLoader()) throw new Error(`Loader already set!`);
                 setLoader({
                     type: 'workerProcess',
                     bootConfig,
                     workerConfig,
                 });
-                bootWorker(workerConfig);
+                if (!waitHiveOS) bootWorker(workerConfig);
                 break;
             case 'data':
                 // TODO: maybe add stamp here?
                 let signatures: DataSignature[] = [];
                 let parsed = DataParsing(data.data, signatures);
                 dataIO.output(parsed, signatures);
+                break;
+            case 'HiveOS':
+                if (!workerConfig) throw new Error(`Worker config not set before HiveOS connection!`);
+                bootWorker(workerConfig);
+                break;
         }
     } catch (e) {}
 });
@@ -74,7 +85,18 @@ export function send(data: WorkerData) {
 }
 
 async function bootWorker(workerConfig: WorkerConfig) {
+    if (booted) return;
+    booted = true;
     let relativePath = path.relative(__dirname, path.resolve(workerConfig.workerFile)); // need relative path from this file
     let program = await import(relativePath.replace('\\', '/')); // stupid path
-    program.worker(dataIO, workerConfig.argv);
+
+    // TODO: setup netInterface and dataIO routing stuff for HiveOS
+    if (workerConfig.hiveOS) {
+        let netInterface = new HiveNetInterface('worker');
+        netInterface.connect(dataIO, 'net');
+        netInterface.setNATMode(true);
+        program.worker(dataIO, workerConfig.argv, netInterface);
+    } else {
+        program.worker(dataIO, workerConfig.argv);
+    }
 }

@@ -1,7 +1,7 @@
 import { ListenerSignature, DefaultListener } from '../lib/basicEventEmitter.js';
 import { version } from '../index.js';
 import HiveComponent from '../lib/component.js';
-import { typeCheck } from '../lib/lib.js';
+import { reverseMapObj, typeCheck } from '../lib/lib.js';
 
 export type DataSignature = {
     by: HiveComponent;
@@ -12,12 +12,13 @@ export type DataSignature = {
 };
 
 export type HiveNetFlags = {
-    ping?: boolean;
-    pong?: boolean;
-    ack?: boolean;
-    nak?: boolean;
-    log?: boolean;
-    timeout?: boolean;
+    ping: boolean;
+    pong: boolean;
+    ack: boolean;
+    nak: boolean;
+    log: boolean;
+    timeout: boolean;
+    nat: boolean;
 };
 
 export type TerminalControlPacket = {
@@ -38,7 +39,7 @@ export class HiveNetPacket {
     ttl: number;
     flags: HiveNetFlags;
 
-    constructor(o: { data: any; src?: string; dest?: string; sport?: number; dport?: number; ttl?: number; flags?: HiveNetFlags }) {
+    constructor(o: { data: any; src?: string; dest?: string; sport?: number; dport?: number; ttl?: number; flags?: Partial<HiveNetFlags> }) {
         this.data = o.data;
         this.sport = o.sport || 0;
         this.dport = o.dport || 0;
@@ -52,6 +53,7 @@ export class HiveNetPacket {
             nak: false,
             log: false,
             timeout: false,
+            nat: false,
         };
         if (o.flags) {
             this.flags = Object.assign(this.flags, o.flags);
@@ -105,9 +107,10 @@ export class HiveNetDevice<EventList extends ListenerSignature<EventList> = Defa
 export const HIVENETADDRESS = {
     BROADCAST: 'HiveNet-address-Broadcast',
     LOCAL: 'HiveNet-address-Local',
+    NET: 'HiveNet-address-Net',
 };
 
-export const HIVENETPORT: { [key: string]: number } = {
+export const HIVENETPORT = {
     DISCARD: 10, // kernel
     PING: 11, // net
     MESSAGE: 12, // net
@@ -122,11 +125,7 @@ export const HIVENETPORT: { [key: string]: number } = {
     HIVENETPORT: 8081, // net !! via WebSocket
     BASERANDOMPORT: 10000,
 };
-
-export const HIVENETPORTREVERSEMAP: Map<number, string> = new Map();
-for (let key in HIVENETPORT) {
-    HIVENETPORTREVERSEMAP.set(HIVENETPORT[key], key);
-}
+export const HIVENETPORTREVERSEMAP = reverseMapObj(HIVENETPORT);
 
 export function DataSignaturesToString(signatures: DataSignature[]) {
     // @ts-ignore

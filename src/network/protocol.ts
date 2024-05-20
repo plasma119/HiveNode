@@ -20,7 +20,7 @@ export default class HTP extends HiveComponent {
         this.netInterface = netInterface;
     }
 
-    send(data: any, dest: string, dport: number, flags?: HiveNetFlags) {
+    send(data: any, dest: string, dport: number, flags?: Partial<HiveNetFlags>) {
         let port = this.netInterface.getPort(HIVENETPORT.HTPSEND);
         if (!port) port = this.netInterface.newIO(HIVENETPORT.HTPSEND, this);
         port.input(new HiveNetPacket({ data, dest, dport, flags }));
@@ -30,7 +30,7 @@ export default class HTP extends HiveComponent {
         data: any,
         dest: string,
         dport: number,
-        flags?: HiveNetFlags,
+        flags?: Partial<HiveNetFlags>,
         sport = this.netInterface.newRandomPortNumber()
     ): Promise<HiveNetPacket> {
         return new Promise((resolve, reject) => {

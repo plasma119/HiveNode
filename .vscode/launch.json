@@ -154,7 +154,6 @@
                 "<node_internals>/**",
                 "${workspaceFolder}/src/lib/basicEventEmitter.ts",
                 "${workspaceFolder}/src/lib/component.ts",
-                "${workspaceFolder}/src/network/dataIO.ts",
                 "${workspaceFolder}/src/network/hiveNet.ts",
             ],
             "outFiles": [

@@ -224,6 +224,18 @@ export function debounce(func: Function, timeout: number = 300) {
     };
 }
 
+export function reverseMap<K, V>(map: Map<K, V>): Map<V, K> {
+    const map2: Map<V, K> = new Map();
+    for (let [key, value] of map) map2.set(value, key);
+    return map2;
+}
+
+export function reverseMapObj<K extends string | number | symbol, V>(obj: Record<K, V>): Map<V, K> {
+    const map: Map<V, K> = new Map();
+    for (let key in obj) map.set(obj[key], key);
+    return map;
+}
+
 // for multiple inheritence
 // https://codeburst.io/multiple-inheritance-with-typescript-mixins-d92d01198907
 // https://www.typescriptlang.org/docs/handbook/mixins.html
