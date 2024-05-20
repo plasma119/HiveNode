@@ -33,9 +33,15 @@ export default class HiveProcessKernel extends HiveProcess {
         });
 
         kernel.addNewCommand('status', 'display system status').setAction(() => {
-            const heap = process.memoryUsage().heapUsed / 1024 / 1024;
-            const heapMax = process.memoryUsage().heapTotal / 1024 / 1024;
-            return `This app is currently using ${Math.floor(heap)}/${Math.floor(heapMax)} MB of memory.`;
+            let str = '';
+            const usage = process.memoryUsage();
+            const rss = usage.rss / 1024 / 1024;
+            const heap = usage.heapUsed / 1024 / 1024;
+            const heapMax = usage.heapTotal / 1024 / 1024;
+            str += `Platform: ${process.platform}\n`;
+            str += `Node release: ${process.release.sourceUrl? process.release.sourceUrl: 'unknown'}\n`
+            str += `Totoal RSS: ${Math.floor(rss)} MB, Heap: ${Math.floor(heap)}/${Math.floor(heapMax)} MB\n`;
+            return str;
         });
 
         kernel.addNewCommand('stop', 'terminate HiveNode').setAction(async (_args, _opts, info) => {

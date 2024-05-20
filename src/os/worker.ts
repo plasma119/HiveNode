@@ -7,7 +7,7 @@ import HiveComponent from '../lib/component.js';
 import { DataParsing, DataSerialize, DataSignature } from '../network/hiveNet.js';
 import { BootConfig } from './bios.js';
 import { getLoader } from './loader.js';
-import HiveNetInterface from '../network/interface.js';
+import HiveNetInterface, { PortIO } from '../network/interface.js';
 
 // TODO: make this into HiveProcess
 // !! do not import HiveOS here
@@ -106,8 +106,7 @@ export class workerWrapper extends HiveComponent<workerWrapperEvents> {
     workerConfig: WorkerConfig;
     bootConfig: BootConfig;
 
-    port?: number;
-    portIO?: DataIO;
+    portIO?: PortIO;
 
     constructor(type: 'workerThread' | 'process', worker: ChildProcess, workerConfig: WorkerConfig, bootConfig: BootConfig) {
         super('worker');
@@ -192,9 +191,9 @@ export class workerWrapper extends HiveComponent<workerWrapperEvents> {
     }
 
     _exposeToHiveOSCallback(netInterface: HiveNetInterface) {
-        this.port = netInterface.newRandomPortNumber();
-        this.portIO = netInterface.newIO(this.port, this);
+        this.portIO = netInterface.newRandomIO(this);
         this.portIO.connect(this.dataIO);
+        // TODO: inject HiveOS interface UUID to worker?
         this.sendData({
             header: 'HiveOS',
         });

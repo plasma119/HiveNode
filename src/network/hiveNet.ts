@@ -111,18 +111,33 @@ export const HIVENETADDRESS = {
 };
 
 export const HIVENETPORT = {
+    // basic system
     DISCARD: 10, // kernel
     PING: 11, // net
     MESSAGE: 12, // net
     INFO: 13, // net, switch
+
+    // shell related
     SHELL: 20, // kernel, net, terminal
     STDIO: 21, // kernel
     SSH: 22, //
     SOCKET: 23, // socketd
+
+    // protocol core
     HTPSEND: 30, // protocol(HTP)
-    KERNEL: 80, //
+
+    // kernel
+    KERNEL: 80, // reserved?
     TERMINAL: 81, // terminal
+
+    // app related
+    APP: 100, // reserved
+    APPMANAGER: 101,
+
+    // not hiveNet
     HIVENETPORT: 8081, // net !! via WebSocket
+
+    // dynamic ports
     BASERANDOMPORT: 10000,
 };
 export const HIVENETPORTREVERSEMAP = reverseMapObj(HIVENETPORT);

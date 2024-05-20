@@ -90,7 +90,6 @@ async function bootWorker(workerConfig: WorkerConfig) {
     let relativePath = path.relative(__dirname, path.resolve(workerConfig.workerFile)); // need relative path from this file
     let program = await import(relativePath.replace('\\', '/')); // stupid path
 
-    // TODO: setup netInterface and dataIO routing stuff for HiveOS
     if (workerConfig.hiveOS) {
         let netInterface = new HiveNetInterface('worker');
         netInterface.connect(dataIO, 'net');

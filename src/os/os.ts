@@ -17,7 +17,8 @@ import HiveProcessTerminal from './processes/terminal.js';
 
 // TODO: finish new shell system
 // TODO: database system
-// TODO: dataIO connection to HiveOS for worker
+// TODO: worker HiveProcess
+// TODO: job scheduler
 
 // TODO: add log to all core/important steps for debugging
 // TODO: standardize error emit/handling
@@ -29,10 +30,16 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: net command refining
 // TODO: seperate terminal control to it's own special shell
 // TODO: cleanup that ugly script import path stuff
+// TODO: util -> tool to compare integrity of files against NAS version (to repair CM3D2)
 
 // TODO: figure out ways to auto timestamp component build time
 // TODO: central server control system - hiveMind
 // TODO: update system
+
+// TODO: dataIO connection to HiveOS for worker - done, but multi-layer is not supported yet
+
+// NAT might cause boradcast storm if reaching to inter-OS HiveNet, need to investigate further
+// worker/main script entry point could be specified as option
 
 export type HiveOSEvent = {
     sigint: () => void;
@@ -70,7 +77,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         super(name, 'node');
         this.stdIO = new DataIO(this, 'stdIO');
         this.netInterface = new HiveNetInterface(name);
-        this.HTP = new HTP(this.netInterface);
+        this.HTP = this.netInterface.HTP;
         this.processes = new Map();
         this.nextpid = 0;
         this.debugMode = debugMode;

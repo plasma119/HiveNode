@@ -4,12 +4,21 @@ import { HIVENETADDRESS, HiveNetPacket, HIVENETPORT } from './hiveNet.js';
 import HTP from './protocol.js';
 import HiveNetSwitch from './switch.js';
 
+export class PortIO extends DataIO {
+    portID: number;
+
+    constructor(owner: HiveComponent, name: string, portID: number) {
+        super(owner, name);
+        this.portID = portID;
+    }
+}
+
 /*
     OSI model layer 4 - transport layer
 */
 export default class HiveNetInterface extends HiveComponent {
     netIO: DataIO = new DataIO(this, 'netIO');
-    ports: Map<number, DataIO> = new Map();
+    ports: Map<number, PortIO> = new Map();
     addressTable: Map<string, number> = new Map();
 
     nextPortNumber: number = HIVENETPORT.BASERANDOMPORT;
@@ -72,7 +81,7 @@ export default class HiveNetInterface extends HiveComponent {
 
     newIO(port: number, owner: HiveComponent) {
         if (this.ports.has(port)) throw new Error(`HiveNetInterface: port ${port} is in use already`);
-        const io = new DataIO(owner, `portIO:${port}`);
+        const io = new PortIO(owner, `portIO:${port}`, port);
         this.ports.set(port, io);
         io.on(
             'input',
@@ -114,6 +123,10 @@ export default class HiveNetInterface extends HiveComponent {
         return io;
     }
 
+    newRandomIO(owner: HiveComponent) {
+        return this.newIO(this.newRandomPortNumber(), owner);
+    }
+
     newRandomPortNumber() {
         let port = this.nextPortNumber++;
         if (this.ports.has(port)) throw new Error('HiveNetInterface: failed to generate new port number');
@@ -124,7 +137,8 @@ export default class HiveNetInterface extends HiveComponent {
         return this.ports.get(port);
     }
 
-    closePort(port: number) {
+    closePort(port: number | PortIO) {
+        if (port instanceof PortIO) port = port.portID;
         const io = this.ports.get(port);
         if (io && !io.destroyed) io.destroy();
         return this.ports.delete(port);

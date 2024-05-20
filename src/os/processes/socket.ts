@@ -1,11 +1,10 @@
 import WebSocket from 'ws';
 
 import HiveCommand from '../../lib/hiveCommand.js';
-import DataIO from '../../network/dataIO.js';
-// import { DataSerialize, DataParsing } from '../../network/hiveNet.js';
 import HiveSocket, { DEFAULTHIVESOCKETOPTIONS, HiveSocketOptions } from '../../network/socket.js';
 import HiveProcess from '../process.js';
 import { HIVENETPORT } from '../../network/hiveNet.js';
+import { PortIO } from '../../network/interface.js';
 
 const VERSION = 'V1.0';
 const BUILD = '2023-12-18';
@@ -39,18 +38,20 @@ create/retrieve session
 
 let nextSessionID = 0;
 
-export type SocketInfo = {
-    protocol: 'HiveNet';
-    type: 'reciever' | 'sender';
-    sessionID: number;
-    options: HiveSocketOptions;
-} | {
-    protocol: 'ws';
-    type: 'reciever' | 'sender';
-    sessionID: number;
-    options: HiveSocketOptions;
-    socket: HiveSocket;
-};
+export type SocketInfo =
+    | {
+          protocol: 'HiveNet';
+          type: 'reciever' | 'sender';
+          sessionID: number;
+          options: HiveSocketOptions;
+      }
+    | {
+          protocol: 'ws';
+          type: 'reciever' | 'sender';
+          sessionID: number;
+          options: HiveSocketOptions;
+          socket: HiveSocket;
+      };
 
 export default class HiveProcessSocketDaemon extends HiveProcess {
     sockets: Map<number, HiveProcessSocket> = new Map();
@@ -62,7 +63,12 @@ export default class HiveProcessSocketDaemon extends HiveProcess {
         program.addNewCommand('version', 'display current program version').setAction(() => `version ${VERSION} build ${BUILD}`);
 
         program.addNewCommand('spawn', 'spawn new socket process').setAction(() => {
-            return this.spawnSocket(this).port;
+            return new Promise((resolve) => {
+                const process = this.spawnSocket(this);
+                process.on('ready', () => {
+                    resolve(process.portIO?.portID);
+                });
+            });
         });
 
         return program;
@@ -87,10 +93,8 @@ export default class HiveProcessSocketDaemon extends HiveProcess {
 // TODO: sessionID
 // TODO: actually using this
 export class HiveProcessSocket extends HiveProcess {
-    port: number = 0;
-    portIO?: DataIO; // API port
-    socketPort: number = 0;
-    socketPortIO?: DataIO; // socket port
+    portIO?: PortIO; // API port
+    socketPortIO?: PortIO; // socket port
 
     // dataIO: TODO
 
@@ -108,21 +112,20 @@ export class HiveProcessSocket extends HiveProcess {
 
     main() {
         // init portIO
-        this.port = this.os.netInterface.newRandomPortNumber();
-        this.portIO = this.os.netInterface.newIO(this.port, this);
+        this.portIO = this.os.netInterface.newRandomIO(this);
         this.portIO.passThrough(this.program.stdIO);
-        this.socketPort = this.os.netInterface.newRandomPortNumber();
-        this.socketPortIO = this.os.netInterface.newIO(this.socketPort, this);
+        this.socketPortIO = this.os.netInterface.newRandomIO(this);
     }
 
     exit() {
-        this.os.netInterface.closePort(this.port);
+        if (this.portIO) this.os.netInterface.closePort(this.portIO);
+        if (this.socketPortIO) this.os.netInterface.closePort(this.socketPortIO);
         super.exit();
     }
 
     receiveDirect(ws: WebSocket) {
         if (this.socketInfo) throw new Error('ERROR: Socket Process: Already connected');
-        if (!this.socketPortIO) throw new Error(`ERROR: Socket Process: Unable to get socket portIO:${this.socketPort}`);
+        if (!this.socketPortIO) throw new Error(`ERROR: Socket Process: Unable to get socket portIO`);
 
         const socket = new HiveSocket('reciever');
 
@@ -149,7 +152,7 @@ export class HiveProcessSocket extends HiveProcess {
     connectDirect(host: string, port: string | number) {
         if (typeof port == 'string') port = Number.parseInt(port);
         if (this.socketInfo) throw new Error('ERROR: Socket Process: Already connected');
-        if (!this.socketPortIO) throw new Error(`ERROR: Socket Process: Unable to get socket portIO:${this.socketPort}`);
+        if (!this.socketPortIO) throw new Error(`ERROR: Socket Process: Unable to get socket portIO`);
 
         const socket = new HiveSocket('sender');
 
