@@ -5,7 +5,7 @@ import WebSocket from 'ws';
 import { version } from '../index.js';
 import DataIO from './dataIO.js';
 import HiveCommand from '../lib/hiveCommand.js';
-import { Encryption, Options, sleep, typeCheck } from '../lib/lib.js';
+import { Encryption, sleep, typeCheck } from '../lib/lib.js';
 import HiveComponent from '../lib/component.js';
 import { DataParsing, DataSerialize, DataSignature } from './hiveNet.js';
 
@@ -109,7 +109,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     pingCount: number = 0;
     pingReceived: boolean = false;
 
-    constructor(name: string, options?: Options<HiveSocketOptions>) {
+    constructor(name: string, options?: Partial<HiveSocketOptions>) {
         super(name);
         this.options = Object.assign({}, DEFAULTHIVESOCKETOPTIONS, options);
         this.stdIO = new DataIO(this, 'HiveSocket-stdIO');
@@ -172,7 +172,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         this.ws.terminate(); // immediately destroys the connection
         this.ws = undefined;
         this.stdIO.output(`[Info]: Socket disconnected.${reason ? ` Reason: ${reason}` : ''}`);
-        this.emit('disconnect', reason);
+        this.emit('disconnect', reason || 'unknown');
     }
 
     _connect(socket: WebSocket, isClient: boolean): Promise<SocketStatus> {

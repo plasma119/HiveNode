@@ -1,7 +1,7 @@
 import { detectWakeup } from '../lib/detectWakeup.js';
 import exitHelper from '../lib/exitHelper.js';
 import HiveCommand from '../lib/hiveCommand.js';
-import { Constructor, Options } from '../lib/lib.js';
+import { Constructor, timeFormat } from '../lib/lib.js';
 import { IgnoreSIGINT } from '../lib/signals.js';
 import DataIO from '../network/dataIO.js';
 import { HiveNetDevice } from '../network/hiveNet.js';
@@ -19,7 +19,7 @@ export type HiveOSEvent = {
     sigint: () => void;
     wakeup: (timePassed: number) => void;
     consoleLog: (param: { data: any[]; log: Function; suppressBubble: boolean }) => void; // fires after console.log
-    kernelReady: () => void
+    kernelReady: () => void;
 };
 
 type CoreServices = {
@@ -40,7 +40,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
     kernel: HiveProcessKernel;
     shell: HiveCommand;
-    coreServices: Options<CoreServices> = {};
+    coreServices: Partial<CoreServices> = {};
 
     processes: Map<number, HiveProcess>;
     nextpid: number;
@@ -58,13 +58,17 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
         // SIGINT capture
         exitHelper.onSIGINT(() => {
+            this.log('[OS] SIGINT intercepted', 'debug');
             this.emit('sigint');
             return IgnoreSIGINT;
         });
 
         // sleep detector
         detectWakeup.init();
-        detectWakeup.on('wakeup', (timePassed) => this.emit('wakeup', timePassed));
+        detectWakeup.on('wakeup', (timePassed) => {
+            this.log(`[OS] Wakeup detected, last timestamp at ${timeFormat('full', '-', ':', ' ', Date.now() - timePassed)}`, 'info');
+            this.emit('wakeup', timePassed);
+        });
 
         // capture console.log
         // !! do not redirect this to DataIO or any other console.log with debugMode on -> stackoverflow

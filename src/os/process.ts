@@ -16,12 +16,14 @@ export type HiveProcessEvents = {
 
 // problem here: DefaultListener is a generic type, so join<> returns a generic type too which fucks up Parameters<T> only for this class
 // all due to stupid typescript still doesn't support infer on spread generic parameters
-type join<a, b> = {
-    [k in keyof a | keyof b]: k extends keyof a ? a[k] : k extends keyof b ? b[k] : never;
-};
+// type join<a, b> = {
+//     [k in keyof a | keyof b]: k extends keyof a ? a[k] : k extends keyof b ? b[k] : never;
+// };
+// either use the stupidParameters in basicEventEmitter and have maximum paramters, plus that stupid error below
+// or just accept that only HiveProcess cannot have typescript check on event arguments
 
 export default class HiveProcess<EventList extends ListenerSignature<EventList> = DefaultListener> extends HiveComponent<
-    join<HiveProcessEvents, EventList>
+    HiveProcessEvents & EventList
 > {
     os: HiveOS;
     pid: number;

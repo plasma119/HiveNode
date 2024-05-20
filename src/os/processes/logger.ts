@@ -44,7 +44,7 @@ export default class HiveProcessLogger extends HiveProcess {
             logFileName: '',
             logFileTimestamp: 'date',
             newFilePerDay: false,
-            appendLoggerName: true,
+            appendLoggerName: false,
             toConsole: false,
         });
         this.crashLogger = new Logger({
@@ -81,7 +81,6 @@ export default class HiveProcessLogger extends HiveProcess {
                     let parsed = this.parseLogLevelNumberFromOption(opts['-set']);
                     if (!parsed) throw new Error(`Invalid log level [${opts['-level']}]`);
                     this.logLevel = parsed;
-                    return;
                 }
                 return this.logLevel;
             });
@@ -92,8 +91,15 @@ export default class HiveProcessLogger extends HiveProcess {
     log(message: any, level: keyof typeof logLevel) {
         let levelNumber = this.parseLogLevelNumber(level);
         if (!levelNumber) throw new Error(`Invalid log level [${level}]`);
-        if (levelNumber == 1) this.crashLogger.log(message); // fatal
-        if (levelNumber <= this.logLevel) this.logger.log(message);
+        if (levelNumber == 1) this.crashLogger.log(message); // fatal, crash logger is synchronous direct write
+        if (levelNumber <= this.logLevel) {
+            if (typeof message == 'string') {
+                this.logger.log(`[${level}] ${message}`);
+            } else {
+                this.logger.log(`[${level}]`);
+                this.logger.log(message);
+            }
+        }
     }
 
     parseLogLevelNumberFromOption(level: string | boolean | number) {

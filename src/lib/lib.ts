@@ -1,5 +1,7 @@
 import * as Crypto from 'crypto';
 
+import dateFormat from 'dateformat';
+
 export class Encryption {
     static base64Encode(str: string, encoding: 'ascii' | 'utf-8' | 'binary' = 'utf-8') {
         const buff = Buffer.from(str ? str : '', encoding);
@@ -123,6 +125,28 @@ export function isFunction(target: any): boolean {
     return target && (Object.prototype.toString.call(target) === '[object Function]' || 'function' === typeof target || target instanceof Function);
 }
 
+export function timeFormat(
+    format: 'date' | 'time' | 'full',
+    dateSeperator: string = '-',
+    timeSeperator: string = ':',
+    seperator: string = ' ',
+    time?: number,
+    utc?: boolean
+) {
+    let dateString = `yyyy'${dateSeperator}'mm'${dateSeperator}'dd`;
+    let timeString = `HH'${timeSeperator}'MM'${timeSeperator}'ss`;
+    let date = time || Date.now();
+    switch (format) {
+        case 'date':
+            return dateFormat(date, dateString, utc);
+        case 'time':
+            return dateFormat(date, timeString, utc);
+        case 'full':
+        default:
+            return dateFormat(date, `${dateString}${seperator}${timeString}`, utc);
+    }
+}
+
 // https://stackoverflow.com/questions/57118453/structural-type-checking-in-javascript
 // this one is for simple object checking only
 export function duckTypeCheck(obj: any, model: any) {
@@ -213,9 +237,9 @@ export function applyMixins(derivedConstructor: any, baseConstructors: any[]) {
 }
 
 // Generic option wrapper
-export type Options<T> = {
-    [O in keyof T]?: T[O];
-};
+// export type Options<T> = {
+//     [O in keyof T]?: T[O];
+// };
 
 export type Constructor<T> = new (...args: any) => T;
 

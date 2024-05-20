@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import HiveCommand from '../lib/hiveCommand.js';
-import { Options, sleep } from '../lib/lib.js';
+import { sleep } from '../lib/lib.js';
 
 export const BIOSVERSION = 'v1.21';
 export const BIOSVERSIONBUILD = '11-27-2023';
@@ -53,7 +53,7 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
     .addNewOption('-HiveNetIP <ip>', 'Auto connect to HiveNet')
     .addNewArgument('[argv...]', 'arguments pass to main program', '')
     .setAction((args, opts) => {
-        let config: Options<BootConfig> = {
+        let config: Partial<BootConfig> = {
             name: (opts['-name'] as string) || undefined,
             headless: (opts['-headless'] as boolean) || undefined,
             debug: (opts['-debug'] as boolean) || undefined,
@@ -71,13 +71,13 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
         };
     });
 
-export async function parseBIOSConfig(processArgvString: string): Promise<{ config: Options<BootConfig>; argv: string }> {
+export async function parseBIOSConfig(processArgvString: string): Promise<{ config: Partial<BootConfig>; argv: string }> {
     const result = await BootConfigParserProgram.execute(`parse ${processArgvString}`);
     if (!result[0]) throw new Error('[parseBIOSConfig]: ERROR: Empty result');
     return result[0];
 }
 
-export function mergeBIOSConfig(...configs: (BootConfig | Options<BootConfig>)[]) {
+export function mergeBIOSConfig(...configs: (BootConfig | Partial<BootConfig>)[]) {
     let config = Object.assign({}, DEFAULTCONFIG);
     if (configs.length == 0) return config;
     for (let nextConfig of configs) {

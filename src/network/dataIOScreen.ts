@@ -2,7 +2,6 @@ import { inspect } from 'util';
 
 import DataIO from './dataIO.js';
 import HiveComponent from '../lib/component.js';
-import { Options } from '../lib/lib.js';
 import { DataSignaturesToString } from './hiveNet.js';
 
 type DataIOScreenOptions = {
@@ -24,7 +23,7 @@ export default class DataIOScreen extends HiveComponent {
     _records: any[] = [];
     _pointer: number = 0;
 
-    constructor(options?: Options<DataIOScreenOptions>) {
+    constructor(options?: Partial<DataIOScreenOptions>) {
         super('screen');
         this.options = Object.assign({}, DEFAULTSCREENOPTIONS, options);
         this.stdIO.on(
