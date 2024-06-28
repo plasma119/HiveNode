@@ -13,8 +13,8 @@ export class Encryption {
         return buff.toString(encoding);
     }
 
-    static hash(str: string) {
-        const hash = Crypto.createHash('sha256');
+    static hash(str: string, algorithm: 'sha256' | 'md5' = 'sha256') {
+        const hash = Crypto.createHash(algorithm);
         hash.update(str);
         return hash;
     }

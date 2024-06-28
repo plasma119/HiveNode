@@ -24,7 +24,6 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: standardize error emit/handling
 // TODO: actually use DataIOScreen
 // TODO: implement processManager
-// TODO: portIO actually be extending dataIO? to bundle port ID directly
 
 // TODO: re-visit HTP protocol system
 // TODO: net command refining
@@ -32,7 +31,6 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: cleanup that ugly script import path stuff
 // TODO: util -> tool to compare integrity of files against NAS version (to repair CM3D2)
 
-// TODO: figure out ways to auto timestamp component build time
 // TODO: central server control system - hiveMind
 // TODO: update system
 

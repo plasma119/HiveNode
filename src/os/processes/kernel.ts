@@ -4,6 +4,7 @@ import HiveCommand from '../../lib/hiveCommand.js';
 import { sleep } from '../../lib/lib.js';
 import DataIO from '../../network/dataIO.js';
 import { HIVENETPORT } from '../../network/hiveNet.js';
+import { VERSION } from '../../tool/autoBuildVersion.js';
 import HiveProcess from '../process.js';
 import HiveProcessLogger from './logger.js';
 import HiveProcessNet from './net.js';
@@ -28,8 +29,14 @@ export default class HiveProcessKernel extends HiveProcess {
         //this.os.stdIO.on('input', kernel.stdIO.inputBind); // force direct input to local kernel
         this.os.stdIO.passThrough(this.os.HTP.listen(HIVENETPORT.STDIO));
 
-        kernel.addNewCommand('version', 'display HiveNode version').setAction(() => {
-            return version;
+        kernel.addNewCommand('version', 'display HiveNode version')
+        .addNewOption('-detail', 'display all file version')
+        .setAction((_args, opts) => {
+            if (opts['-detail']) {
+                return VERSION.files.map(file => `${file.path} -> ${new Date(file.lastModified).toISOString()}`).join('\n');
+            } else {
+                return version;
+            }
         });
 
         kernel.addNewCommand('status', 'display system status').setAction(() => {

@@ -159,6 +159,20 @@
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ]
+        },
+        {
+            "name": "auto version test",
+            "request": "launch",
+            "type": "node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\tool\\autoBuildVersion.js",
+            "args": ["-build"],
+            "skipFiles": [
+                "<node_internals>/**",
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
         }
     ]
 }
