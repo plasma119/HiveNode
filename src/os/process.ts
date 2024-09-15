@@ -32,6 +32,7 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
 
     program: HiveCommand;
     alive: boolean = true;
+    ready: boolean = false;
     screen: DataIOScreen = new DataIOScreen({ includeSignatures: true });
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number) {
@@ -69,5 +70,21 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     spawnChild<C extends Constructor<HiveProcess>>(processConstructor: C, name: string, argv: string[] = []): InstanceType<C> {
         // why the fuck this works here but not the above
         return this.os.newProcess(processConstructor, this, name, argv);
+    }
+
+    onReady(callback: () => void) {
+        if (this.ready) {
+            callback();
+        } else {
+            // stupid TS
+            // @ts-ignore
+            this.on('ready', callback);
+        }
+    }
+
+    onReadyAsync(): Promise<void> {
+        return new Promise((resolve) => {
+            this.onReady(resolve);
+        });
     }
 }

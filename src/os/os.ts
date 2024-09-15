@@ -8,6 +8,7 @@ import { HiveNetDevice } from '../network/hiveNet.js';
 import HiveNetInterface from '../network/interface.js';
 import HTP from '../network/protocol.js';
 import HiveProcess from './process.js';
+import HiveProcessDB from './processes/db.js';
 import HiveProcessKernel from './processes/kernel.js';
 import HiveProcessLogger, { logLevel } from './processes/logger.js';
 import HiveProcessNet from './processes/net.js';
@@ -24,6 +25,7 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: standardize error emit/handling
 // TODO: actually use DataIOScreen
 // TODO: implement processManager
+// TODO: add extra info for error catching in HiveCommand
 
 // TODO: re-visit HTP protocol system
 // TODO: net command refining
@@ -48,6 +50,7 @@ export type HiveOSEvent = {
 
 type CoreServices = {
     logger: HiveProcessLogger;
+    db: HiveProcessDB;
     shelld: HiveProcessShellDaemon;
     terminal: HiveProcessTerminal;
     socketd: HiveProcessSocketDaemon;
@@ -63,6 +66,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     HTP: HTP;
 
     kernel: HiveProcessKernel;
+    //@ts-ignore
     shell: HiveCommand;
     coreServices: Partial<CoreServices> = {};
 
@@ -122,8 +126,10 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
         // init system processes
         this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
-        this.shell = this.kernel.getSystemShell();
-        this.emit('kernelReady');
+        this.kernel.onReady(() => {
+            this.shell = this.kernel.getSystemShell();
+            this.emit('kernelReady');
+        });
     }
 
     // casting type / search for process
@@ -159,14 +165,16 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         name: string,
         argv: string[]
     ): InstanceType<C> {
-        let p = new processConstructor(name, this, this.nextpid++, parentProcess?.pid || 0);
+        const p = new processConstructor(name, this, this.nextpid++, parentProcess?.pid || 0);
         this.processes.set(p.pid, p);
         if (parentProcess) parentProcess.childs.set(p.pid, p);
         try {
-            p.main(argv); // TODO: async main
-            p.emit('ready');
+            Promise.resolve(p.main(argv)).then(() => {
+                p.ready = true;
+                p.emit('ready');
+            });
         } catch (e) {
-            this.log(`ERROR: Process ${name} crashed on startup.`, 'error');
+            this.log(`[OS] ERROR: Process ${name} crashed on startup.`, 'error');
             this.log(e, 'error');
             throw e; // if inside HiveCommand, this should be 'safe', otherwise cascade upward to parent (unlikely to affect core system)
         }
@@ -185,11 +193,12 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
     registerCoreService<K extends keyof CoreServices>(service: K, process: CoreServices[K]) {
         this.coreServices[service] = process;
+        this.log(`Core Service [${service}] ready`, 'info');
     }
 
     getCoreService<K extends keyof CoreServices>(service: K): CoreServices[K] {
-        let process = this.coreServices[service];
-        if (!process) throw new Error(`[ERROR] os.getCoreService failed, cannot find [${service}] process`);
+        const process = this.coreServices[service];
+        if (!process) throw new Error(`[OS] ERROR: os.getCoreService failed, core service [${service}] not registered.`);
         return process;
     }
 

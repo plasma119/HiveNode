@@ -102,6 +102,13 @@ export default class HiveProcessLogger extends HiveProcess {
         }
     }
 
+    setLogLevel(level: keyof typeof logLevel) {
+        let levelNumber = this.parseLogLevelNumber(level);
+        if (!levelNumber) throw new Error(`Invalid log level [${level}]`);
+        this.logLevel = levelNumber;
+        return this.logLevel;
+    }
+
     parseLogLevelNumberFromOption(level: string | boolean | number) {
         if (typeof level == 'boolean') level = 'info'; // should not happen, just in case
         if (typeof level == 'string' && level.length == 1) level = Number.parseInt(level);

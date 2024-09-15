@@ -49,6 +49,8 @@ process.on('message', async (message) => {
 
     // init HiveOS
     const os = new HiveOS(config.name);
+    await os.kernel.onReadyAsync();
+    console.log(`[Boot Loader]: Building terminal: Headless[${config.headless}], Debug[${config.debug}]`);
     os.buildTerminal(config.headless, config.debug);
 
     // start HiveNet server

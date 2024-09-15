@@ -1,11 +1,12 @@
 import { version } from '../../index.js';
 import exitHelper from '../../lib/exitHelper.js';
 import HiveCommand from '../../lib/hiveCommand.js';
-import { sleep } from '../../lib/lib.js';
+import { format, sleep } from '../../lib/lib.js';
 import DataIO from '../../network/dataIO.js';
 import { HIVENETPORT } from '../../network/hiveNet.js';
 import { VERSION } from '../../tool/autoBuildVersion.js';
 import HiveProcess from '../process.js';
+import HiveProcessDB from './db.js';
 import HiveProcessLogger from './logger.js';
 import HiveProcessNet from './net.js';
 import HiveProcessShellDaemon from './shell.js';
@@ -29,15 +30,16 @@ export default class HiveProcessKernel extends HiveProcess {
         //this.os.stdIO.on('input', kernel.stdIO.inputBind); // force direct input to local kernel
         this.os.stdIO.passThrough(this.os.HTP.listen(HIVENETPORT.STDIO));
 
-        kernel.addNewCommand('version', 'display HiveNode version')
-        .addNewOption('-detail', 'display all file version')
-        .setAction((_args, opts) => {
-            if (opts['-detail']) {
-                return VERSION.files.map(file => `${file.path} -> ${new Date(file.lastModified).toISOString()}`).join('\n');
-            } else {
-                return version;
-            }
-        });
+        kernel
+            .addNewCommand('version', 'display HiveNode version')
+            .addNewOption('-detail', 'display all file version')
+            .setAction((_args, opts) => {
+                if (opts['-detail']) {
+                    return format(VERSION.files.map((file) => [`${file.path}`, ` -> ${new Date(file.lastModified).toISOString()}`]));
+                } else {
+                    return version;
+                }
+            });
 
         kernel.addNewCommand('status', 'display system status').setAction(() => {
             let str = '';
@@ -46,7 +48,7 @@ export default class HiveProcessKernel extends HiveProcess {
             const heap = usage.heapUsed / 1024 / 1024;
             const heapMax = usage.heapTotal / 1024 / 1024;
             str += `Platform: ${process.platform}\n`;
-            str += `Node release: ${process.release.sourceUrl? process.release.sourceUrl: 'unknown'}\n`
+            str += `Node release: ${process.release.sourceUrl ? process.release.sourceUrl : 'unknown'}\n`;
             str += `Totoal RSS: ${Math.floor(rss)} MB, Heap: ${Math.floor(heap)}/${Math.floor(heapMax)} MB\n`;
             return str;
         });
@@ -115,27 +117,37 @@ export default class HiveProcessKernel extends HiveProcess {
         return kernel;
     }
 
-    main() {
+    async main() {
         const logger = this.spawnChild(HiveProcessLogger, 'logger');
+        await logger.onReadyAsync();
         this.os.registerCoreService('logger', logger);
 
+        const db = this.spawnChild(HiveProcessDB, 'db');
+        await db.onReadyAsync();
+        this.os.registerCoreService('db', db);
+
         const shelld = this.spawnChild(HiveProcessShellDaemon, 'shelld');
+        await shelld.onReadyAsync();
         this.os.registerCoreService('shelld', shelld);
         shelld.registerShellProgram(this.program);
         shelld.registerShellProgram(logger.program);
 
         const terminal = this.spawnChild(HiveProcessTerminal, 'terminal');
+        await terminal.onReadyAsync();
         this.os.registerCoreService('terminal', terminal);
 
         const socketd = this.spawnChild(HiveProcessSocketDaemon, 'socketd');
+        await socketd.onReadyAsync();
         this.os.registerCoreService('socketd', socketd);
 
         const net = this.spawnChild(HiveProcessNet, 'net');
+        await net.onReadyAsync();
         this.os.registerCoreService('net', net);
 
         // services
         const service = this.program.addNewCommand('service', 'access to service processes');
         service.addCommand(logger.program);
+        service.addCommand(db.program);
         service.addCommand(shelld.program);
         service.addCommand(terminal.program);
         service.addCommand(socketd.program);
@@ -143,6 +155,7 @@ export default class HiveProcessKernel extends HiveProcess {
 
         // shell programs
         const util = this.spawnChild(HiveProcessUtil, 'util');
+        await util.onReadyAsync();
         shelld.registerShellProgram(util.program);
     }
 
