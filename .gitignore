@@ -4,4 +4,6 @@ log
 log/*
 dump
 dump/*
+LevelDB
+LevelDB/*
 package-lock.json

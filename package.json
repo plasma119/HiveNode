@@ -13,13 +13,15 @@
   "license": "ISC",
   "dependencies": {
     "dateformat": "^5.0.3",
+    "level": "^8.0.1",
     "mute-stream": "^1.0.0",
-    "tslib": "^2.6.3",
-    "ws": "^8.17.0"
+    "tslib": "^2.7.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/dateformat": "^5.0.2",
+    "@types/level": "^6.0.3",
     "@types/mute-stream": "^0.0.4",
-    "@types/ws": "^8.5.10"
+    "@types/ws": "^8.5.12"
   }
 }
