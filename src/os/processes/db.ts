@@ -9,7 +9,14 @@ type MasterRecord = {
     tables: string[];
 };
 
-export default class HiveProcessDB extends HiveProcess {
+export interface DBWrapper {
+    get: (table: string, key: string) => Promise<string | null>;
+    put: (table: string, key: string, value: string) => Promise<void>;
+    getTable: (table: string) => Promise<string[] | null>;
+    newTable: (table: string) => Promise<void>;
+}
+
+export default class HiveProcessDB extends HiveProcess implements DBWrapper {
     databasePath = 'LevelDB';
 
     // these should be init in main()
@@ -42,6 +49,7 @@ export default class HiveProcessDB extends HiveProcess {
             return this.put(args['table'], args['key'], args['value']);
         });
 
+        // TODO: better format?
         program.addNewCommand('dump').setAction(() => {
             return this.dump();
         });
@@ -72,58 +80,62 @@ export default class HiveProcessDB extends HiveProcess {
     }
 
     // TODO: array get/put, complex chain of action
-    get(table: string, key: string) {
+    // TODO: delete record/table
+    async get(table: string, key: string) {
         this.os.log(`[DB]: Get [${table}] [${key}]`, 'trace');
-        if (!this.tableMap.has(table)) return '';
-        return this.database.get(this._entry(table, key)).catch(() => null);
+        if (!this.tableMap.has(table)) return null;
+        return await this.database.get(this._entry(table, key)).catch(() => null);
     }
 
-    put(table: string, key: string, value: string) {
+    async put(table: string, key: string, value: string) {
         this.os.log(`[DB]: Put [${table}] [${key}]`, 'trace');
         if (!this.tableMap.has(table)) this.newTable(table);
-        return this.database.put(this._entry(table, key), value);
+        return await this.database.put(this._entry(table, key), value).catch((e) => {
+            this.os.log(`[DB]: Put failed, table[${table}] key[${key}] value[${value}]`, 'error');
+            this.os.log(e, 'error');
+        });
     }
 
-    newTable(table: string) {
-        if (this.tableMap.has(table)) return;
+    async getTable(table: string) {
+        if (this.tableMap.has(table)) {
+            this.os.log(`[DB]: Get table [${table}] failed, table dose not exist!`, 'warn');
+            return null;
+        }
+        this.os.log(`[DB]: Get table [${table}]`, 'trace');
+        const header = `T[${table}]-`;
+        const values = [];
+        for await (const value of this.database.values({ gt: header, lt: header + '\xFF' })) {
+            values.push(value);
+        }
+        return values;
+    }
+
+    async newTable(table: string) {
+        if (this.tableMap.has(table)) {
+            this.os.log(`[DB]: New table [${table}] failed, table already exist!`, 'warn');
+            return undefined;
+        }
         this.os.log(`[DB]: New table [${table}]`, 'debug');
         this.masterRecord.tables.push(table);
         this.tableMap.set(table, true);
-        return this._putMasterRecord();
+        return await this._putMasterRecord();
     }
 
     // extracting sublevel: https://github.com/Level/level/issues/238
     async listAllKeys() {
-        const iterator = this.database.keys({ keyEncoding: 'utf8' });
-        const keys: string[] = [];
-        let key = await iterator.next();
-        try {
-            while (key) {
-                keys.push(key);
-                key = await iterator.next();
-            }
-        } finally {
-            await iterator.close();
+        const keys = [];
+        for await (const key of this.database.keys()) {
+            keys.push(key);
         }
-
         return keys;
     }
 
     async listTableKeys(table: string) {
         const header = `T[${table}]-`;
-        const iterator = this.database.keys({ keyEncoding: 'utf8', gte: header });
-        const keys: string[] = [];
-        let key = await iterator.next();
-        try {
-            while (key) {
-                if (!key.startsWith(header)) break;
-                keys.push(key.slice(header.length + 2, key.length - 1));
-                key = await iterator.next();
-            }
-        } finally {
-            await iterator.close();
+        const keys = [];
+        for await (const key of this.database.keys({ gt: header, lt: header + '\xFF' })) {
+            keys.push(key);
         }
-
         return keys;
     }
 
@@ -134,7 +146,7 @@ export default class HiveProcessDB extends HiveProcess {
 
     async dump() {
         const arr: { key: string; value: string }[] = [];
-        for await (const [key, value] of this.database.iterator({ keyEncoding: 'utf8' })) {
+        for await (const [key, value] of this.database.iterator()) {
             arr.push({
                 key,
                 value,
