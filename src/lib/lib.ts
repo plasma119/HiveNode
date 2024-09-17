@@ -365,3 +365,32 @@ export async function performanceTestAdvanced(
         log(`Function ${i + 1}: Executed: ${metrics[i].executed}, time: ${s}s, calls/s = ${Math.round(metrics[i].executed / s)}`);
     }
 }
+
+let uuidv7PrevTimestamp = -1;
+let uuidv7Seq = 0;
+// https://stackoverflow.com/questions/71816194/uuidv6-v7-v8-in-javascript-browser
+export function uuidv7() {
+    const UNIX_TS_MS_BITS = 48;
+    const VER_DIGIT = '7';
+    const SEQ_BITS = 12;
+    const VAR = 0b10;
+    const VAR_BITS = 2;
+    const RAND_BITS = 62;
+
+    const timestamp = Math.max(Date.now(), uuidv7PrevTimestamp);
+    uuidv7Seq = timestamp === uuidv7PrevTimestamp ? uuidv7Seq + 1 : 0;
+    uuidv7PrevTimestamp = timestamp;
+
+    const var_rand = new Uint32Array(2);
+    crypto.getRandomValues(var_rand);
+    var_rand[0] = (VAR << (32 - VAR_BITS)) | (var_rand[0] >>> VAR_BITS);
+
+    const digits =
+        timestamp.toString(16).padStart(UNIX_TS_MS_BITS / 4, '0') +
+        VER_DIGIT +
+        uuidv7Seq.toString(16).padStart(SEQ_BITS / 4, '0') +
+        var_rand[0].toString(16).padStart((VAR_BITS + RAND_BITS) / 2 / 4, '0') +
+        var_rand[1].toString(16).padStart((VAR_BITS + RAND_BITS) / 2 / 4, '0');
+
+    return digits.slice(0, 8) + '-' + digits.slice(8, 12) + '-' + digits.slice(12, 16) + '-' + digits.slice(16, 20) + '-' + digits.slice(20);
+}
