@@ -1,4 +1,4 @@
-import WebSocket from 'ws';
+import { WebSocketServer }  from 'ws';
 
 import HiveCommand from '../../lib/hiveCommand.js';
 import { format, sleep } from '../../lib/lib.js';
@@ -22,8 +22,8 @@ export default class HiveProcessNet extends HiveProcess {
     nameMap: Map<string, string> = new Map(); // Map<name, UUID>
 
     switch: HiveNetSwitch = new HiveNetSwitch(this.os.name);
-    server?: WebSocket.Server;
-    sshServer?: WebSocket.Server;
+    server?: WebSocketServer;
+    sshServer?: WebSocketServer;
 
     initProgram() {
         const program = new HiveCommand('net', 'HiveNet Commands');
@@ -279,7 +279,7 @@ export default class HiveProcessNet extends HiveProcess {
 
     listen(port: string | number, directSSH: boolean = false) {
         if (typeof port == 'string') port = Number.parseInt(port);
-        const server = new WebSocket.Server({ port });
+        const server = new WebSocketServer({ port });
         if (directSSH) {
             this.sshServer = server;
             server.on('listening', () => this.os.stdIO.output(`SSH server now listening on port:${port}`));
