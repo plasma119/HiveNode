@@ -39,6 +39,7 @@ type VHFSEvent = {
 
 // TODO: delete record/bundle
 // TODO: alias, file name map table?
+// TODO: logging
 // throws error directly if no error event listener exist
 // actual file operations should be done by other modules
 export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
@@ -51,18 +52,22 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
     fileTableName: string;
     bundleTableName: string;
 
-    constructor(name: string, database?: DBWrapper) {
+    constructor(name: string) {
         super();
         this.name = name;
         this.fileTableName = `VHFS[${this.name}]-file`;
         this.bundleTableName = `VHFS[${this.name}]-bundle`;
-        if (database) {
-            this.db = database;
-            this.initDB();
-        }
     }
 
-    initDB() {
+    useDatabase(database: DBWrapper) {
+        if (!database.avaliable) {
+            this._emitError(new Error('Database Not Avaliable!'));
+        }
+        this.db = database;
+        this._initDB();
+    }
+
+    _initDB() {
         // TODO: prepare tables/other info
     }
 

@@ -10,6 +10,7 @@ type MasterRecord = {
 };
 
 export interface DBWrapper {
+    avaliable: boolean;
     get: (table: string, key: string) => Promise<string | null>;
     put: (table: string, key: string, value: string) => Promise<void>;
     delete: (table: string, key: string) => Promise<void>;
@@ -21,6 +22,7 @@ export interface DBWrapper {
 
 export default class HiveProcessDB extends HiveProcess implements DBWrapper {
     databasePath = 'LevelDB';
+    avaliable: boolean = false;
 
     // these should be init in main()
     // @ts-ignore
@@ -67,7 +69,14 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         }
 
         this.database = new Level.Level(this.databasePath, { keyEncoding: 'utf8', valueEncoding: 'utf8' });
-        await this.database.open();
+        let error = await this.database.open().catch((e) => e as Error);
+        if (error) {
+            this.os.log(error, 'error');
+            this.os.log(`[DB]: Failed to open Level DB, perhaps this is client OS?`, 'error');
+            this.os.log(`[DB]: Disabling DB`, 'error');
+            this.avaliable = false;
+            return;
+        }
 
         let MR = await this._readMasterRecord();
         if (!MR) {
@@ -80,6 +89,7 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         });
 
         this.os.log(`[DB]: Level DB ready with [${MR.tables.length}] tables`, 'info');
+        this.avaliable = true;
     }
 
     // TODO: array get/put, complex chain of action
