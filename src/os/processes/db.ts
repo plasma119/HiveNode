@@ -12,8 +12,11 @@ type MasterRecord = {
 export interface DBWrapper {
     get: (table: string, key: string) => Promise<string | null>;
     put: (table: string, key: string, value: string) => Promise<void>;
+    delete: (table: string, key: string) => Promise<void>;
     getTable: (table: string) => Promise<string[] | null>;
     newTable: (table: string) => Promise<void>;
+    deleteTable: (table: string) => Promise<void>;
+    getMasterRecord: () => MasterRecord;
 }
 
 export default class HiveProcessDB extends HiveProcess implements DBWrapper {
@@ -66,7 +69,7 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         this.database = new Level.Level(this.databasePath, { keyEncoding: 'utf8', valueEncoding: 'utf8' });
         await this.database.open();
 
-        let MR = await this._getMasterRecord();
+        let MR = await this._readMasterRecord();
         if (!MR) {
             this.os.log(`[DB]: Initializing Level DB`, 'info');
             MR = await this._initDatabase();
@@ -80,11 +83,13 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
     }
 
     // TODO: array get/put, complex chain of action
-    // TODO: delete record/table
     async get(table: string, key: string) {
         this.os.log(`[DB]: Get [${table}] [${key}]`, 'trace');
         if (!this.tableMap.has(table)) return null;
-        return await this.database.get(this._entry(table, key)).catch(() => null);
+        return await this.database.get(this._entry(table, key)).catch((e) => {
+            this.os.log(e, 'trace');
+            return null;
+        });
     }
 
     async put(table: string, key: string, value: string) {
@@ -93,6 +98,14 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         return await this.database.put(this._entry(table, key), value).catch((e) => {
             this.os.log(`[DB]: Put failed, table[${table}] key[${key}] value[${value}]`, 'error');
             this.os.log(e, 'error');
+        });
+    }
+
+    async delete(table: string, key: string) {
+        this.os.log(`[DB]: Delete [${table}] [${key}]`, 'trace');
+        if (!this.tableMap.has(table)) return;
+        return await this.database.del(this._entry(table, key)).catch((e) => {
+            this.os.log(e, 'trace');
         });
     }
 
@@ -113,12 +126,27 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
     async newTable(table: string) {
         if (this.tableMap.has(table)) {
             this.os.log(`[DB]: New table [${table}] failed, table already exist!`, 'warn');
-            return undefined;
+            return;
         }
         this.os.log(`[DB]: New table [${table}]`, 'debug');
         this.masterRecord.tables.push(table);
         this.tableMap.set(table, true);
         return await this._putMasterRecord();
+    }
+
+    async deleteTable(table: string) {
+        if (!this.tableMap.has(table)) {
+            this.os.log(`[DB]: Delete table [${table}] failed, table dose not exist!`, 'warn');
+            return;
+        }
+        this.os.log(`[DB]: Delete table [${table}]`, 'debug');
+        this.masterRecord.tables = this.masterRecord.tables.filter((t) => t != table);
+        this.tableMap.delete(table);
+        return await this._putMasterRecord();
+    }
+
+    getMasterRecord() {
+        return this.masterRecord;
     }
 
     // extracting sublevel: https://github.com/Level/level/issues/238
@@ -176,7 +204,7 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         return MR;
     }
 
-    async _getMasterRecord() {
+    async _readMasterRecord() {
         let v = await this.database.get('_MasterRecord').catch(() => null);
         if (!v) return null;
         try {
