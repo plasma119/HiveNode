@@ -3,7 +3,7 @@ import { inspect } from 'util';
 import DataIO from './dataIO.js';
 import HiveComponent from '../lib/component.js';
 import { DataSignaturesToString } from './hiveNet.js';
-import { circularBuffer } from '../lib/circularBuffer.js';
+import { CircularBuffer } from '../lib/circularBuffer.js';
 
 type DataIOBufferOptions = {
     maxSize: number;
@@ -25,12 +25,12 @@ export default class DataIOBuffer extends HiveComponent {
     stdIO: DataIO = new DataIO(this, 'screen');
     options: DataIOBufferOptions;
 
-    buffer: circularBuffer<any>;
+    buffer: CircularBuffer<any>;
 
     constructor(options?: Partial<DataIOBufferOptions>) {
         super('DataIOBuffer');
         this.options = Object.assign({}, DEFAULTSCREENOPTIONS, options);
-        this.buffer = new circularBuffer(this.options.maxSize);
+        this.buffer = new CircularBuffer(this.options.maxSize);
         this.stdIO.on(
             'input',
             (data, signatures) => {

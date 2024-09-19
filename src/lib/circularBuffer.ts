@@ -1,4 +1,4 @@
-export class circularBuffer<T> {
+export class CircularBuffer<T> {
     maxSize: number;
 
     _array: T[] = [];
