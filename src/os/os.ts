@@ -17,15 +17,16 @@ import HiveProcessSocketDaemon from './processes/socket.js';
 import HiveProcessTerminal from './processes/terminal.js';
 
 // TODO: finish new shell system
-// TODO: database system
 // TODO: worker HiveProcess
 // TODO: job scheduler
 
 // TODO: add log to all core/important steps for debugging
 // TODO: standardize error emit/handling
-// TODO: actually use DataIOScreen
+// TODO: actually use DataIOBuffer
+// TODO: define os.debugMode
 // TODO: implement processManager
 // TODO: add extra info for error catching in HiveCommand
+// TODO: client mode OS (since DB is locked to main OS only)
 
 // TODO: re-visit HTP protocol system
 // TODO: net command refining

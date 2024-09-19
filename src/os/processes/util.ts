@@ -1,8 +1,10 @@
 import * as fs from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 
 import HiveCommand from '../../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
+import { uuidv7 } from '../../lib/lib.js';
 
 type copyFolder = {
     name: string;
@@ -38,6 +40,14 @@ type copyListItem = {
 export default class HiveProcessUtil extends HiveProcess {
     initProgram(): HiveCommand {
         const program = new HiveCommand('util', 'utility commands');
+
+        program
+            .addNewCommand('uuid', 'return new uuid, default v7')
+            .addNewOption('-v4', 'use uuid v4')
+            .setAction((_args, opts) => {
+                if (opts['-v4']) return randomUUID();
+                return uuidv7();
+            });
 
         program
             .addNewCommand('copy-no-dup', 'copy with no duplicate files based on file size/hash')

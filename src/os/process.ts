@@ -2,7 +2,7 @@ import { DefaultListener, ListenerSignature } from '../lib/basicEventEmitter.js'
 import HiveComponent from '../lib/component.js';
 import HiveCommand from '../lib/hiveCommand.js';
 import { Constructor } from '../lib/lib.js';
-import DataIOScreen from '../network/dataIOScreen.js';
+import DataIOBuffer from '../network/dataIOBuffer.js';
 import HiveOS from './os.js';
 
 /*
@@ -33,7 +33,7 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     program: HiveCommand;
     alive: boolean = true;
     ready: boolean = false;
-    screen: DataIOScreen = new DataIOScreen({ includeSignatures: true });
+    IOBuffer: DataIOBuffer = new DataIOBuffer({ includeSignatures: true });
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number) {
         super(name);
@@ -42,6 +42,7 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
         this.ppid = ppid;
         this.childs = new Map();
         this.program = this.initProgram();
+        if (os.debugMode) this.enableIOBuffer();
     }
 
     // override by process
@@ -54,9 +55,9 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     main(_argv: string[]) {}
 
     // for debugging purpose, captures complete HiveNet packets + signatures
-    enableScreen() {
-        this.program.stdIO.on('input', this.screen.stdIO.inputBind, 'screen');
-        this.program.stdIO.on('output', this.screen.stdIO.inputBind, 'screen');
+    enableIOBuffer() {
+        this.program.stdIO.on('input', this.IOBuffer.stdIO.inputBind, 'screen');
+        this.program.stdIO.on('output', this.IOBuffer.stdIO.inputBind, 'screen');
     }
 
     exit(error?: any) {

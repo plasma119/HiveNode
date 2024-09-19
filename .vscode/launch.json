@@ -78,10 +78,10 @@
             ]
         },
         {
-            "name": "screen Test",
+            "name": "circularBuffer Test",
             "request": "launch",
             "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\screen_test.js",
+            "program": "${workspaceFolder}\\dist\\tests\\circularBuffer_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
