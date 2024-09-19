@@ -1,3 +1,6 @@
+import { inspect } from 'util';
+
+import { CircularBuffer } from '../../lib/circularBuffer.js';
 import exitHelper from '../../lib/exitHelper.js';
 import HiveCommand from '../../lib/hiveCommand.js';
 import Logger, { LoggerStream } from '../../lib/logger.js';
@@ -35,6 +38,7 @@ export default class HiveProcessLogger extends HiveProcess {
     crashLogger: Logger;
 
     logLevel: number = 4;
+    buffer: CircularBuffer<{ message: any; level: keyof typeof logLevel }> = new CircularBuffer(1000);
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number) {
         super(name, os, pid, ppid);
@@ -85,6 +89,26 @@ export default class HiveProcessLogger extends HiveProcess {
                 return this.logLevel;
             });
 
+        // TODO: timestamp
+        program
+            .addNewCommand('ls', 'display log buffer (maximum 1000 entries)')
+            .addNewOption('-level <level>', 'filter log level, default: [info]')
+            .setAction((_args, opts) => {
+                let parsed = this.parseLogLevelNumberFromOption(opts['-level']) || 4;
+                let buffer = this.buffer.slice();
+                let output: any[] = [];
+                for (let item of buffer) {
+                    if ((this.parseLogLevelNumber(item.level) || 6) > parsed) continue;
+                    if (typeof item.message == 'string') {
+                        output.push(`[${item.level}] ${item.message}`);
+                    } else {
+                        output.push(`[${item.level}]`);
+                        output.push(inspect(item.message, false, 4, true));
+                    }
+                }
+                return output.join('\n');
+            });
+
         return program;
     }
 
@@ -92,6 +116,7 @@ export default class HiveProcessLogger extends HiveProcess {
         let levelNumber = this.parseLogLevelNumber(level);
         if (!levelNumber) throw new Error(`Invalid log level [${level}]`);
         if (levelNumber == 1) this.crashLogger.log(message); // fatal, crash logger is synchronous direct write
+        this.buffer.push({ message, level });
         if (levelNumber <= this.logLevel) {
             if (typeof message == 'string') {
                 this.logger.log(`[${level}] ${message}`);

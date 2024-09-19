@@ -142,7 +142,7 @@ export class LoggerStream extends Logger {
 
     log(message: any, mute: boolean = false): Promise<void> {
         return new Promise((resolve) => {
-            if (typeof message != 'string') message = inspect(message, false, 2, false);
+            if (typeof message != 'string') message = inspect(message, false, 4, false);
             const log = this._stamp(message);
             if (!mute) this._echo(log);
             if (!this.logFileStream) {
