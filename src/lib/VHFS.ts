@@ -6,6 +6,7 @@ type fileRecord = {
     id: string;
     name: string;
     path: string;
+    server: string;
     fileStat?: {
         created: number;
         modified: number;
@@ -62,6 +63,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
     useDatabase(database: DBWrapper) {
         if (!database.avaliable) {
             this._emitError(new Error('Database Not Avaliable!'));
+            return;
         }
         this.db = database;
         this._initDB();
@@ -88,11 +90,12 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         await this.putBundle(bundle);
     }
 
-    newFile(fileName: string, path: string): fileRecord {
+    newFile(fileName: string, path: string, server: string): fileRecord {
         let record: fileRecord = {
             id: uuidv7(),
             name: fileName,
             path,
+            server,
             metadata: {},
             bundleID: [],
         };

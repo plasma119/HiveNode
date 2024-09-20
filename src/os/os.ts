@@ -28,14 +28,17 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: add extra info for error catching in HiveCommand
 // TODO: client mode OS (since DB is locked to main OS only)
 
+// TODO: extra wrapper on HiveCommand return for shell, indicating WIP or end of script
 // TODO: re-visit HTP protocol system
 // TODO: net command refining
 // TODO: seperate terminal control to it's own special shell
 // TODO: cleanup that ugly script import path stuff
 // TODO: util -> tool to compare integrity of files against NAS version (to repair CM3D2)
+// TODO: system shell log
 
 // TODO: central server control system - hiveMind
 // TODO: update system
+// TODO: boot option select menu
 
 // TODO: dataIO connection to HiveOS for worker - done, but multi-layer is not supported yet
 
