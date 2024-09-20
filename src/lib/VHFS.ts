@@ -49,6 +49,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
 
     name: string;
     db?: DBWrapper;
+    dbSynchronized: boolean = false;
 
     fileTableName: string;
     bundleTableName: string;
@@ -177,6 +178,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
 
     async getAllRecordFromDB() {
         if (!this.db) return;
+        if (this.dbSynchronized) return;
         const files = await this.db.getTable(this.fileTableName).catch(this._emitError);
         if (files) {
             files.forEach((r) => {
@@ -199,6 +201,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
                 }
             });
         }
+        this.dbSynchronized = true;
     }
 
     async exportJSON(): Promise<VHFSExport<T>> {
