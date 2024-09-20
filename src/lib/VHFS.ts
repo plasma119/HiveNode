@@ -15,7 +15,7 @@ type fileRecord = {
     metadata: {
         hash?: string;
     };
-    bundleID: string[];
+    parentBundleIDs: string[];
 };
 
 // type bundleRecordType = 'file';
@@ -25,8 +25,10 @@ type bundleRecord<T> = {
     type: T;
     name: string;
     fileIDs: string[];
+    bundleIDs: string[];
     lastUpdate: number;
     metadata: {};
+    parentBundleIDs: string[];
 };
 
 type VHFSExport<T> = {
@@ -76,19 +78,30 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
 
     //TODO: delete record/bundle, remove record form bundle
     async bundleAddFile(bundle: bundleRecord<T>, file: fileRecord) {
-        file.bundleID.push(bundle.id);
+        file.parentBundleIDs.push(bundle.id);
         await this.putFile(file);
         bundle.fileIDs.push(file.id);
+        bundle.lastUpdate = Date.now();
         await this.putBundle(bundle);
     }
 
-    async bundleAddFiles(bundle: bundleRecord<T>, file: fileRecord[]) {
-        for (let record of file) {
-            record.bundleID.push(bundle.id);
-            await this.putFile(record);
+    async bundleAddFiles(bundle: bundleRecord<T>, files: fileRecord[]) {
+        for (let file of files) {
+            file.parentBundleIDs.push(bundle.id);
+            await this.putFile(file);
         }
-        bundle.fileIDs.push(...file.map((r) => r.id));
+        bundle.fileIDs.push(...files.map((r) => r.id));
+        bundle.lastUpdate = Date.now();
         await this.putBundle(bundle);
+    }
+
+    async bundleAddBundle(parent: bundleRecord<T>, child: bundleRecord<T>) {
+        child.parentBundleIDs.push(parent.id);
+        child.lastUpdate = Date.now();
+        await this.putBundle(child);
+        parent.bundleIDs.push(child.id);
+        parent.lastUpdate = Date.now();
+        await this.putBundle(parent);
     }
 
     newFile(fileName: string, path: string, server: string): fileRecord {
@@ -98,7 +111,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
             path,
             server,
             metadata: {},
-            bundleID: [],
+            parentBundleIDs: [],
         };
         return record;
     }
@@ -109,8 +122,10 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
             type,
             name,
             fileIDs: [],
+            bundleIDs: [],
             lastUpdate: Date.now(),
             metadata: {},
+            parentBundleIDs: [],
         };
         return bundle;
     }
