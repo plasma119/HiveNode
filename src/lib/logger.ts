@@ -63,8 +63,8 @@ export default class Logger extends HiveComponent {
             this.logFileHandle = this._newLogFileHandle();
             this.log(t);
         }
-        fs.writeSync(this.logFileHandle, log);
-        if (!mute) this._echo(log + (log.endsWith('\n') ? '' : '\n')); // finish write first, as _echo might crash during crash logging
+        fs.writeSync(this.logFileHandle, log + (log.endsWith('\n') ? '' : '\n'));
+        if (!mute) this._echo(log); // finish write first, as _echo might crash during crash logging
         return;
     }
 
