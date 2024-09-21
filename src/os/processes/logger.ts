@@ -112,6 +112,11 @@ export default class HiveProcessLogger extends HiveProcess {
         return program;
     }
 
+    main() {
+        this.logger.stdIO.on('output', (data) => console.log(data), 'logger output');
+        this.log(`[logger] Current log level: [${this.parseLogLevelString(this.logLevel)}]`, 'info');
+    }
+
     log(message: any, level: keyof typeof logLevel) {
         let levelNumber = this.parseLogLevelNumber(level);
         if (!levelNumber) throw new Error(`Invalid log level [${level}]`);

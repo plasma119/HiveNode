@@ -64,7 +64,7 @@ export default class Logger extends HiveComponent {
             this.log(t);
         }
         fs.writeSync(this.logFileHandle, log);
-        if (!mute) this._echo(log); // finish write first, as _echo might crash during crash logging
+        if (!mute) this._echo(log + (log.endsWith('\n') ? '' : '\n')); // finish write first, as _echo might crash during crash logging
         return;
     }
 
@@ -74,11 +74,7 @@ export default class Logger extends HiveComponent {
     }
 
     _stamp(message: string) {
-        return (
-            `[${timeFormat('full')}] ` +
-            (this.options.appendLoggerName ? `[${this.options.name}]: ${message}` : message) +
-            (message.endsWith('\n') ? '' : '\n')
-        );
+        return `[${timeFormat('full')}] ` + (this.options.appendLoggerName ? `[${this.options.name}]: ${message}` : message);
     }
 
     _echo(log: string) {
@@ -165,7 +161,7 @@ export class LoggerStream extends Logger {
                 return;
             }
             // write log
-            if (!this.logFileStream.write(log)) {
+            if (!this.logFileStream.write(log + (log.endsWith('\n') ? '' : '\n'))) {
                 // waiting for drain
                 this.drainWaiting = true;
                 this.logFileStream.once('drain', () => {
