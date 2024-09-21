@@ -86,8 +86,8 @@ export default class HiveNetInterface extends HiveComponent {
         io.on(
             'input',
             (data, signatures) => {
-                // ignore invalid packet
-                if (!(data instanceof HiveNetPacket)) return;
+                // not HiveNetPacket, but still forward it
+                if (!(data instanceof HiveNetPacket)) return this.netIO.output(data, signatures);
 
                 // stamp packet
                 if (!data.flags.nat) data.src = this.UUID;
