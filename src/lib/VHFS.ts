@@ -2,7 +2,7 @@ import { DBWrapper } from '../os/processes/db.js';
 import BasicEventEmitter from './basicEventEmitter.js';
 import { uuidv7 } from './lib.js';
 
-type VHFSFileRecord = {
+export type VHFSFileRecord = {
     id: string;
     name: string;
     path: string;
@@ -22,7 +22,7 @@ type VHFSFileRecord = {
 
 // type bundleRecordType = 'file';
 // e.g. new VHFS<bundleRecordType>('foo')
-type VHFSBundleRecord<T> = {
+export type VHFSBundleRecord<T> = {
     id: string;
     type: T;
     name: string;
@@ -33,7 +33,7 @@ type VHFSBundleRecord<T> = {
     parentBundleIDs: string[];
 };
 
-type VHFSExport<T> = {
+export type VHFSExport<T> = {
     bundles: VHFSBundleRecord<T>[];
     files: VHFSFileRecord[];
 };
