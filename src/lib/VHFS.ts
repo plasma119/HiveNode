@@ -2,7 +2,7 @@ import { DBWrapper } from '../os/processes/db.js';
 import BasicEventEmitter from './basicEventEmitter.js';
 import { uuidv7 } from './lib.js';
 
-type fileRecord = {
+type VHFSFileRecord = {
     id: string;
     name: string;
     path: string;
@@ -12,28 +12,30 @@ type fileRecord = {
         modified: number;
         size: number;
     };
-    metadata: {
-        hash?: string;
+    hash?: {
+        hash: string;
+        hashTime: number;
     };
+    metadata: { [key: string]: string };
     parentBundleIDs: string[];
 };
 
 // type bundleRecordType = 'file';
 // e.g. new VHFS<bundleRecordType>('foo')
-type bundleRecord<T> = {
+type VHFSBundleRecord<T> = {
     id: string;
     type: T;
     name: string;
     fileIDs: string[];
     bundleIDs: string[];
     lastUpdate: number;
-    metadata: {};
+    metadata: { [key: string]: string };
     parentBundleIDs: string[];
 };
 
 type VHFSExport<T> = {
-    bundles: bundleRecord<T>[];
-    files: fileRecord[];
+    bundles: VHFSBundleRecord<T>[];
+    files: VHFSFileRecord[];
 };
 
 type VHFSEvent = {
@@ -46,8 +48,8 @@ type VHFSEvent = {
 // throws error directly if no error event listener exist
 // actual file operations should be done by other modules
 export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
-    files: Map<string, fileRecord> = new Map();
-    bundles: Map<string, bundleRecord<T>> = new Map();
+    files: Map<string, VHFSFileRecord> = new Map();
+    bundles: Map<string, VHFSBundleRecord<T>> = new Map();
 
     name: string;
     db?: DBWrapper;
@@ -77,7 +79,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
     }
 
     //TODO: delete record/bundle, remove record form bundle
-    async bundleAddFile(bundle: bundleRecord<T>, file: fileRecord) {
+    async bundleAddFile(bundle: VHFSBundleRecord<T>, file: VHFSFileRecord) {
         file.parentBundleIDs.push(bundle.id);
         await this.putFile(file);
         bundle.fileIDs.push(file.id);
@@ -85,7 +87,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         await this.putBundle(bundle);
     }
 
-    async bundleAddFiles(bundle: bundleRecord<T>, files: fileRecord[]) {
+    async bundleAddFiles(bundle: VHFSBundleRecord<T>, files: VHFSFileRecord[]) {
         for (let file of files) {
             file.parentBundleIDs.push(bundle.id);
             await this.putFile(file);
@@ -95,7 +97,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         await this.putBundle(bundle);
     }
 
-    async bundleAddBundle(parent: bundleRecord<T>, child: bundleRecord<T>) {
+    async bundleAddBundle(parent: VHFSBundleRecord<T>, child: VHFSBundleRecord<T>) {
         child.parentBundleIDs.push(parent.id);
         child.lastUpdate = Date.now();
         await this.putBundle(child);
@@ -104,8 +106,8 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         await this.putBundle(parent);
     }
 
-    newFile(fileName: string, path: string, server: string): fileRecord {
-        let record: fileRecord = {
+    newFile(fileName: string, path: string, server: string): VHFSFileRecord {
+        let record: VHFSFileRecord = {
             id: uuidv7(),
             name: fileName,
             path,
@@ -116,8 +118,8 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         return record;
     }
 
-    newBundle(type: T, name: string): bundleRecord<T> {
-        let bundle: bundleRecord<T> = {
+    newBundle(type: T, name: string): VHFSBundleRecord<T> {
+        let bundle: VHFSBundleRecord<T> = {
             id: uuidv7(),
             type,
             name,
@@ -130,14 +132,14 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         return bundle;
     }
 
-    async putFile(file: fileRecord) {
+    async putFile(file: VHFSFileRecord) {
         this.files.set(file.id, file);
         if (this.db) {
             return this.db.put(this.fileTableName, file.id, JSON.stringify(file)).catch(this._emitError);
         }
     }
 
-    async putBundle(bundle: bundleRecord<T>) {
+    async putBundle(bundle: VHFSBundleRecord<T>) {
         this.bundles.set(bundle.id, bundle);
         if (this.db) {
             return this.db.put(this.bundleTableName, bundle.id, JSON.stringify(bundle)).catch(this._emitError);
@@ -150,7 +152,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
             try {
                 let fileDB = await this.db.get(this.fileTableName, fileID).catch(this._emitError);
                 if (fileDB) {
-                    file = JSON.parse(fileDB) as fileRecord;
+                    file = JSON.parse(fileDB) as VHFSFileRecord;
                     this.files.set(fileID, file);
                 }
             } catch (error) {
@@ -166,7 +168,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
             try {
                 let bundleDB = await this.db.get(this.bundleTableName, bundleID).catch(this._emitError);
                 if (bundleDB) {
-                    bundle = JSON.parse(bundleDB) as bundleRecord<T>;
+                    bundle = JSON.parse(bundleDB) as VHFSBundleRecord<T>;
                     this.bundles.set(bundleID, bundle);
                 }
             } catch (error) {
@@ -198,7 +200,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         if (files) {
             files.forEach((r) => {
                 try {
-                    let file = JSON.parse(r) as fileRecord;
+                    let file = JSON.parse(r) as VHFSFileRecord;
                     this.files.set(file.id, file);
                 } catch (error) {
                     this._emitError(error);
@@ -209,7 +211,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         if (bundles) {
             bundles.forEach((b) => {
                 try {
-                    let bundle = JSON.parse(b) as bundleRecord<T>;
+                    let bundle = JSON.parse(b) as VHFSBundleRecord<T>;
                     this.bundles.set(bundle.id, bundle);
                 } catch (error) {
                     this._emitError(error);
