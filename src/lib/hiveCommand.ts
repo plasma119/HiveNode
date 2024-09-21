@@ -279,6 +279,7 @@ export default class HiveCommand extends HiveComponent {
         chain.shift();
         let base = chain.join(' ');
         let cmds = Array.from(this.commands).map((i) => i[0]) as string[];
+        let rebuildcmd = (str: string) => ((base ? base + ' ' : '') + str);
 
         // find possible commands
         let hits = cmds.filter((c) => c.startsWith(info.currentInput));
@@ -288,15 +289,16 @@ export default class HiveCommand extends HiveComponent {
             hits.push(' '); // to stop auto complete
         } else if (hits.length === 1) {
             // single hit
-            hits = hits.map((str) => (base ? base + ' ' : '') + str); // reconstruct full command
+            hits = [rebuildcmd(hits[0])]; // reconstruct full command
         } else if (hits.length > 1) {
             // multiple hits, extract prefix for auto complete
             let prefix = commonPrefix(hits as string[]) || '';
             if (info.currentInput != '' && info.currentInput != prefix && prefix != '') {
-                hits = [prefix];
+                hits = [rebuildcmd(prefix)];
+            } else {
+                hits.sort();
+                hits.push(' '); // to stop auto prefix trimming
             }
-            hits.sort();
-            hits.push(' '); // to stop auto prefix trimming
         }
 
         if (hits.length == 0 || hits[0] == ' ') hits = []; // no auto complete result
