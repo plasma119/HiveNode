@@ -232,17 +232,17 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         };
     }
 
-    async exportJSON(skipParsing: boolean): Promise<string> {
+    async exportJSON(skipParsing?: boolean, jsonSpace?: number): Promise<string> {
         if (skipParsing) {
             if (this.db && !this.dbSynchronized) {
-                const files = JSON.stringify((await this.db.getTable(this.fileTableName).catch(this._emitError)) || []);
-                const bundles = JSON.stringify((await this.db.getTable(this.bundleTableName).catch(this._emitError)) || []);
+                const files = JSON.stringify((await this.db.getTable(this.fileTableName).catch(this._emitError)) || [], undefined, jsonSpace);
+                const bundles = JSON.stringify((await this.db.getTable(this.bundleTableName).catch(this._emitError)) || [], undefined, jsonSpace);
                 return `{"bundles":\n${files},\n"files":\n${bundles}}`;
             }
         }
         await this.getAllRecordFromDB();
-        let bundlesString = JSON.stringify(Array.from(this.bundles.values()));
-        let filesString = JSON.stringify(Array.from(this.files.values()));
+        let bundlesString = JSON.stringify(Array.from(this.bundles.values()), undefined, jsonSpace);
+        let filesString = JSON.stringify(Array.from(this.files.values()), undefined, jsonSpace);
         // {"bundles":[],"files":[]}
         return `{"bundles":\n${bundlesString},\n"files":\n${filesString}}`;
     }
