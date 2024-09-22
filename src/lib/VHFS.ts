@@ -224,8 +224,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         this.dbSynchronized = true;
     }
 
-    async exportJSON(): Promise<VHFSExport<T>> {
-        // TODO: optimize: remove JSON conversions for db
+    async export(): Promise<VHFSExport<T>> {
         await this.getAllRecordFromDB();
         return {
             bundles: Array.from(this.bundles.values()),
@@ -233,7 +232,22 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         };
     }
 
-    async importJSON(json: string | VHFSExport<T>) {
+    async exportJSON(skipParsing: boolean): Promise<string> {
+        if (skipParsing) {
+            if (this.db && !this.dbSynchronized) {
+                const files = JSON.stringify((await this.db.getTable(this.fileTableName).catch(this._emitError)) || []);
+                const bundles = JSON.stringify((await this.db.getTable(this.bundleTableName).catch(this._emitError)) || []);
+                return `{"bundles":\n${files},\n"files":\n${bundles}}`;
+            }
+        }
+        await this.getAllRecordFromDB();
+        let bundlesString = JSON.stringify(Array.from(this.bundles.values()));
+        let filesString = JSON.stringify(Array.from(this.files.values()));
+        // {"bundles":[],"files":[]}
+        return `{"bundles":\n${bundlesString},\n"files":\n${filesString}}`;
+    }
+
+    async import(json: string | VHFSExport<T>) {
         if (typeof json === 'string') json = JSON.parse(json) as VHFSExport<T>;
         for (let bundle of json.bundles) {
             await this.putBundle(bundle);
