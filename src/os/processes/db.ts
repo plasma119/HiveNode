@@ -120,7 +120,7 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
     }
 
     async getTable(table: string) {
-        if (this.tableMap.has(table)) {
+        if (!this.tableMap.has(table)) {
             this.os.log(`[DB]: Get table [${table}] failed, table dose not exist!`, 'warn');
             return null;
         }
