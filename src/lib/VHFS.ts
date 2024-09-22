@@ -16,7 +16,7 @@ export type VHFSFileRecord = {
         hash: string;
         hashTime: number;
     };
-    metadata: { [key: string]: string };
+    metadata: { [key: string]: any };
     parentBundleIDs: string[];
 };
 
@@ -29,7 +29,7 @@ export type VHFSBundleRecord<T> = {
     fileIDs: string[];
     bundleIDs: string[];
     lastUpdate: number;
-    metadata: { [key: string]: string };
+    metadata: { [key: string]: any };
     parentBundleIDs: string[];
 };
 
@@ -78,8 +78,9 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         // TODO: prepare tables/other info
     }
 
-    //TODO: delete record/bundle, remove record form bundle
+    // TODO: delete record/bundle, remove record form bundle
     async bundleAddFile(bundle: VHFSBundleRecord<T>, file: VHFSFileRecord) {
+        if (file.parentBundleIDs.includes(bundle.id)) return;
         file.parentBundleIDs.push(bundle.id);
         await this.putFile(file);
         bundle.fileIDs.push(file.id);
@@ -89,15 +90,17 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
 
     async bundleAddFiles(bundle: VHFSBundleRecord<T>, files: VHFSFileRecord[]) {
         for (let file of files) {
+            if (file.parentBundleIDs.includes(bundle.id)) continue;
             file.parentBundleIDs.push(bundle.id);
             await this.putFile(file);
+            bundle.fileIDs.push(file.id);
         }
-        bundle.fileIDs.push(...files.map((r) => r.id));
         bundle.lastUpdate = Date.now();
         await this.putBundle(bundle);
     }
 
     async bundleAddBundle(parent: VHFSBundleRecord<T>, child: VHFSBundleRecord<T>) {
+        if (child.parentBundleIDs.includes(parent.id)) return;
         child.parentBundleIDs.push(parent.id);
         child.lastUpdate = Date.now();
         await this.putBundle(child);
