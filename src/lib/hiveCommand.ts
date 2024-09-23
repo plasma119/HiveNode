@@ -279,7 +279,7 @@ export default class HiveCommand extends HiveComponent {
         chain.shift();
         let base = chain.join(' ');
         let cmds = Array.from(this.commands).map((i) => i[0]) as string[];
-        let rebuildcmd = (str: string) => ((base ? base + ' ' : '') + str);
+        let rebuildcmd = (str: string) => (base ? base + ' ' : '') + str;
 
         // find possible commands
         let hits = cmds.filter((c) => c.startsWith(info.currentInput));
@@ -325,10 +325,13 @@ export default class HiveCommand extends HiveComponent {
     }
 
     static splitCommandStr(command: string) {
-        const result = command.match(/([^ ]+) *(.*)/);
-        if (!result) return null;
-        const [, name, args] = result;
-        return { name, args };
+        let str = command.trim();
+        for (let i = 0; i < str.length; i++) {
+            if (str[i] === ' ') {
+                return { name: str.substring(0, i), args: str.substring(i + 1) };
+            }
+        }
+        return { name: str, args: '' };
     }
 
     static fromImport(data: HiveCommandExport) {
