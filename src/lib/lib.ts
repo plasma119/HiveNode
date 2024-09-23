@@ -304,15 +304,15 @@ export function findFirstWord(string: string, start: number = 0): number[] | nul
                     return [start, i];
             }
         } else if (match == char) {
-            // end of quote
             if (quoteStart) {
+                // end of quote
                 return [start + 1, i];
             } else {
                 match = ' ';
             }
         }
     }
-    if (match == ' ') return [start, string.length];
+    if (match == ' ') return [start, string.length]; // end of string
     if (match != '') {
         // bad input, cannot find ending quote
         // try find next complete word's end

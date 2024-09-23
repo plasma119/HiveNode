@@ -5,7 +5,7 @@
 import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
 import HiveComponent from './component.js';
-import { commonPrefix, formatTab, parseArgv, typeCheck } from './lib.js';
+import { commonPrefix, findFirstWord, formatTab, typeCheck } from './lib.js';
 
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: `-${string}`]: boolean | string }, info: HiveCommandInfo) => any;
 
@@ -170,7 +170,7 @@ export default class HiveCommand extends HiveComponent {
         }
 
         const o = HiveCommand.splitCommandStr(str);
-        if (!o) {
+        if (!o.name) {
             // empty current input, possibly as sub-command
             if (info.terminalControl && info.terminalControl.request == 'completer') return this.terminalCompleter(info);
             if (str.length == 0) {
@@ -334,6 +334,12 @@ export default class HiveCommand extends HiveComponent {
         return { name: str, args: '' };
     }
 
+    static escapeString(str: string) {
+        // assume only either ' or " in the string, not both 
+        if (str.includes('"')) return `'${str}'`;
+        return `"${str}"`;
+    }
+
     static fromImport(data: HiveCommandExport) {
         let cmd = new HiveCommand();
         cmd.import(data);
@@ -367,11 +373,9 @@ export class HiveSubCommand extends HiveCommand {
 
         // check sub-command
         const o = HiveCommand.splitCommandStr(str);
-        if (o) {
-            const cmd = this.findCommand(o.name);
-            if (cmd) {
-                return cmd.parse(o.args, info);
-            }
+        const cmd = this.findCommand(o.name);
+        if (cmd) {
+            return cmd.parse(o.args, info);
         }
 
         // terminal control
@@ -380,14 +384,16 @@ export class HiveSubCommand extends HiveCommand {
         // initialize
         info.currentProgram = this;
         this.reset();
-        const args = parseArgv(str);
         let argumentCount = 0;
         let argumentArr = Array.from(this.arguments.values());
 
         // parse command
-        while (args.length > 0) {
-            const arg = args.shift();
-            if (!arg) continue;
+        let start = 0;
+        do {
+            const positions = findFirstWord(str, start);
+            if (!positions) break;
+            const arg = str.substring(positions[0], positions[1]);
+            start = positions[1] + 1;
 
             // check option
             if (arg.length > 1 && arg[0] === '-') {
@@ -395,14 +401,19 @@ export class HiveSubCommand extends HiveCommand {
                 if (!option) throw new HiveCommandError(`Invalid Option: ${arg}`);
                 if (option.argument) {
                     // try to get argument for flag
+                    const nextPositions = findFirstWord(str, start);
+                    const nextArg = nextPositions? str.substring(nextPositions[0], nextPositions[1]): '';
                     if (option.argument.required) {
-                        const value = args.shift();
-                        if (!value) throw new HiveCommandError(`Missing required argument for option: ${option.name}`);
-                        option.setValue(value);
+                        // required argument
+                        if (!nextArg) throw new HiveCommandError(`Missing required argument for option: ${option.name}`);
+                        option.setValue(nextArg);
+                        if (nextPositions) start = nextPositions[1] + 1;
                     } else {
-                        if (args.length > 0 && args[0] && !this.findOption(args[0])) {
-                            option.setValue(args[0]);
-                            args.shift();
+                        // optional argument
+                        if (nextArg && !this.findOption(nextArg)) {
+                            // next string is not option flag, so must be argument
+                            option.setValue(nextArg);
+                            if (nextPositions) start = nextPositions[1] + 1;
                         } else {
                             // no argument
                             option.setValue(true);
@@ -419,8 +430,8 @@ export class HiveSubCommand extends HiveCommand {
             if (argumentCount < this.arguments.size) {
                 let currentArgument = argumentArr[argumentCount++];
                 if (currentArgument.variadic) {
-                    args.unshift(arg); // put back current extracted arg
-                    currentArgument.setValue(args.join(' '));
+                    // variadic argument
+                    currentArgument.setValue(str.substring(positions[0]));
                     break;
                 } else {
                     currentArgument.setValue(arg);
@@ -430,7 +441,7 @@ export class HiveSubCommand extends HiveCommand {
 
             // ran out of defined arguments
             break;
-        }
+        } while (start < str.length)
 
         // check required arguments
         let required = 0;

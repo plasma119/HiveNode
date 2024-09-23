@@ -53,15 +53,15 @@ program.addNewCommand('test5', 'return promise').setAction(() => {
     });
 });
 
+program.addNewCommand('test6', 'variadic').addNewArgument('<arg1>').addNewArgument('<arg2...>').setAction(log);
+
 let program2 = HiveCommand.fromImport(program.export());
 
 let list = [
     'testInvalid',
 
     'help',
-    'help test2',
-    'help test3',
-    'help test4',
+    'help test1',
 
     'test1 help',
     'test1',
@@ -87,7 +87,11 @@ let list = [
     'test4 help',
     'test4',
 
+    'test5 help',
     'test5',
+    
+    'test6 help',
+    `test6 junk "variadic data" "do not chop 'em up" 'keep the "quotes"'`,
 ];
 
 (async () => {
@@ -121,5 +125,4 @@ let list = [
             }
         }
     }
-
 })();
