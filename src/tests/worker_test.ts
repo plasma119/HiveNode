@@ -1,6 +1,6 @@
 import { sleep } from '../lib/lib.js';
 import DataIO from '../network/dataIO.js';
-import {  HIVENETPORT, HiveNetPacket } from '../network/hiveNet.js';
+import { HIVENETPORT, HiveNetPacket } from '../network/hiveNet.js';
 import HiveNetInterface from '../network/interface.js';
 import { getLoader } from '../os/loader.js';
 import HiveOS from '../os/os.js';
@@ -57,7 +57,10 @@ export async function worker(dataIO: DataIO, argv: string[], netInterface: HiveN
     if (netInterface) {
         dataIO.input(`net interface detected`);
         // DataIO.debugMode();
-        let data = await netInterface.HTP.sendAndReceiveOnce('kernel status', '', HIVENETPORT.SHELL);
-        console.log(data.data);
+        let data = await netInterface.HTP.sendAndReceiveOnce('kernel status', '', HIVENETPORT.SHELL, undefined, {
+            rawPacket: false,
+            waitForEOF: false,
+        });
+        console.log(data);
     }
 }

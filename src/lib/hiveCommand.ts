@@ -103,6 +103,7 @@ export default class HiveCommand extends HiveComponent {
     async _inputHandler(data: any, signatures: DataSignature[], replyOverride?: (data: any) => void) {
         // unpack data
         let input = data instanceof HiveNetPacket ? data.data : data;
+        let eof = false;
         const info: HiveCommandInfo = {
             rawData: data,
             rawInput: input,
@@ -119,6 +120,7 @@ export default class HiveCommand extends HiveComponent {
                         //src: this.UUID,
                         dest: data.src,
                         dport: data.sport,
+                        flags: { eof: eof },
                     });
                     if (replyOverride) {
                         replyOverride(packet);
@@ -156,6 +158,7 @@ export default class HiveCommand extends HiveComponent {
         }
 
         // return result
+        eof = true;
         info.reply(result);
     }
 
@@ -335,7 +338,7 @@ export default class HiveCommand extends HiveComponent {
     }
 
     static escapeString(str: string) {
-        // assume only either ' or " in the string, not both 
+        // assume only either ' or " in the string, not both
         if (str.includes('"')) return `'${str}'`;
         return `"${str}"`;
     }
@@ -402,7 +405,7 @@ export class HiveSubCommand extends HiveCommand {
                 if (option.argument) {
                     // try to get argument for flag
                     const nextPositions = findFirstWord(str, start);
-                    const nextArg = nextPositions? str.substring(nextPositions[0], nextPositions[1]): '';
+                    const nextArg = nextPositions ? str.substring(nextPositions[0], nextPositions[1]) : '';
                     if (option.argument.required) {
                         // required argument
                         if (!nextArg) throw new HiveCommandError(`Missing required argument for option: ${option.name}`);
@@ -441,7 +444,7 @@ export class HiveSubCommand extends HiveCommand {
 
             // ran out of defined arguments
             break;
-        } while (start < str.length)
+        } while (start < str.length);
 
         // check required arguments
         let required = 0;

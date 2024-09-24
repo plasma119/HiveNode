@@ -166,11 +166,11 @@ export default class HiveProcessNet extends HiveProcess {
                 resolve('Timeout');
             }, options.timeout);
 
-            this.os.HTP.sendAndReceiveOnce('ping', dest, options.dport, { ping: true })
+            this.os.HTP.sendAndReceiveOnce('ping', dest, options.dport, { ping: true }, { rawPacket: false, waitForEOF: false })
                 .then((data) => {
                     if (timeout) return;
                     clearTimeout(timer);
-                    resolve([Date.now() - t1, data.data - t1]); //[roundtrip time, first half-trip time]
+                    resolve([Date.now() - t1, data - t1]); //[roundtrip time, first half-trip time]
                 })
                 .catch(() => resolve('Error'));
         });
@@ -195,11 +195,11 @@ export default class HiveProcessNet extends HiveProcess {
             });
 
             // try to resolve through HiveNet
-            const data = await this.os.HTP.sendAndReceiveOnce('', UUID, HIVENETPORT.INFO).catch(() => resolve(null));
+            const data = await this.os.HTP.sendAndReceiveOnce('', UUID, HIVENETPORT.INFO, undefined, { rawPacket: false, waitForEOF: false });
             if (resolved || !data) return;
             result = {
                 timestamp: Date.now(),
-                info: data.data,
+                info: data,
             };
             this.infoMap.set(UUID, result);
             this.nameMap.set(result.info.name, UUID);

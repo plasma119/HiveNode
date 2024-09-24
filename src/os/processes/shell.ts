@@ -138,9 +138,11 @@ export class HiveProcessShell extends HiveProcess {
                         log: !!opts['-log'],
                     },
                 });
-                let result = await this.os.HTP.sendAndReceiveOnce(packet.data, packet.dest, packet.dport, packet.flags);
-                if (opts['-full']) return result;
-                return result.data;
+                let result = await this.os.HTP.sendAndReceiveOnce(packet.data, packet.dest, packet.dport, packet.flags, {
+                    rawPacket: !!opts['-full'],
+                    waitForEOF: true,
+                });
+                return result.length == 1 ? result[0] : result;
             });
 
         return program;

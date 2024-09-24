@@ -8,6 +8,14 @@ import HiveNetInterface from './interface.js';
     OSI model layer 5 - session layer
 */
 
+type sendAndReceiveOnce<rawPacket, waitForEOF> = waitForEOF extends true
+    ? rawPacket extends true
+        ? HiveNetPacket[]
+        : any[]
+    : rawPacket extends true
+    ? HiveNetPacket
+    : any;
+
 // only HiveNetPacket is routed by interface to port
 type HTPCallback = (data: HiveNetPacket, signatures: DataSignature[], portIO: DataIO) => any;
 
@@ -26,28 +34,37 @@ export default class HTP extends HiveComponent {
         port.input(new HiveNetPacket({ data, dest, dport, flags }));
     }
 
-    sendAndReceiveOnce(
+    // TODO: check packet actually reached target
+    sendAndReceiveOnce<Raw extends boolean, EOF extends boolean>(
         data: any,
         dest: string,
         dport: number,
-        flags?: Partial<HiveNetFlags>,
-        sport = this.netInterface.newRandomPortNumber()
-    ): Promise<HiveNetPacket> {
-        return new Promise((resolve, reject) => {
-            try {
-                const port = this.netInterface.newIO(sport, this);
+        flags: Partial<HiveNetFlags> | undefined,
+        options: { rawPacket: Raw; waitForEOF: EOF }
+    ): Promise<sendAndReceiveOnce<Raw, EOF>> {
+        return new Promise((resolve) => {
+            const port = this.netInterface.newIO(this.netInterface.newRandomPortNumber(), this);
+            const reply = (result: any) => {
+                port.destroy();
+                resolve(result);
+            };
+            if (options.waitForEOF) {
+                let collector = this.newEOFCollector((results) => {
+                    if (options.rawPacket) return reply(results);
+                    reply(results.map((p) => p.data));
+                });
+                port.on('output', collector, 'HTP - sendAndReceiveOnce: EOF');
+            } else {
                 port.on(
                     'output',
-                    (data) => {
-                        port.destroy();
-                        resolve(data);
+                    (packet) => {
+                        if (options.rawPacket) return reply(packet);
+                        reply(packet.data);
                     },
                     'HTP - sendAndReceiveOnce'
                 );
-                port.input(new HiveNetPacket({ data, dest, dport, flags }));
-            } catch (e) {
-                reject(e);
             }
+            port.input(new HiveNetPacket({ data, dest, dport, flags }));
         });
     }
 
@@ -67,6 +84,15 @@ export default class HTP extends HiveComponent {
 
     release(port: number) {
         return this.netInterface.closePort(port);
+    }
+
+    newEOFCollector(callback: (results: HiveNetPacket[]) => void) {
+        let results: HiveNetPacket[] = [];
+        let collector = (packet: HiveNetPacket) => {
+            results.push(packet);
+            if (packet.flags.eof) callback(results);
+        };
+        return collector;
     }
 
     _bindCallback(portIO: DataIO, callback: HTPCallback) {

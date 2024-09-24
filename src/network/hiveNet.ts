@@ -16,6 +16,7 @@ export type HiveNetFlags = {
     log: boolean;
     error: boolean;
     nat: boolean;
+    eof: boolean;
 };
 
 export type TerminalControlPacket = {
@@ -48,6 +49,7 @@ export class HiveNetPacket {
             log: false,
             error: false,
             nat: false,
+            eof: false,
         };
         if (o.flags) {
             this.flags = Object.assign(this.flags, o.flags);
@@ -67,6 +69,7 @@ const HiveNetPacketStructure = {
         log: 'boolean',
         error: 'boolean',
         nat: 'boolean',
+        eof: 'boolean',
     },
 };
 
