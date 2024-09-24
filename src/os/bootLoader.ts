@@ -1,15 +1,10 @@
 import * as fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 import HiveOS from './os.js';
 import { BootConfig } from './bios.js';
 import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
-import { getLoader, setLoader } from './loader.js';
+import { getLoader, resolveFileImport, setLoader } from './loader.js';
 
 export const BOOTLOADERVERSION = 'v1.24';
 export const BOOTLOADERVERSIONBUILD = '11-27-2023';
@@ -74,8 +69,7 @@ process.on('message', async (message) => {
             os.stdIO.output(`[Boot Loader]: ERROR: Cannot find main program file.`);
         } else {
             try {
-                let relativePath = path.relative(__dirname, path.resolve(config.programFile)); // need relative path from this file
-                let program = await import(relativePath.replace('\\', '/')); // stupid path
+                let program = await import(resolveFileImport(import.meta.url, config.programFile));
                 program.main(os, argv);
             } catch (e) {
                 os.stdIO.output(e);

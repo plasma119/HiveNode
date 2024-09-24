@@ -1,15 +1,9 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 import HiveComponent from '../lib/component.js';
 import DataIO from '../network/dataIO.js';
 import { DataParsing, DataSerialize, DataSignature } from '../network/hiveNet.js';
 import { BootConfig } from './bios.js';
 import { WorkerData, WorkerConfig } from './worker.js';
-import { getLoader, setLoader } from './loader.js';
+import { getLoader, resolveFileImport, setLoader } from './loader.js';
 import { sleep } from '../lib/lib.js';
 import HiveNetInterface from '../network/interface.js';
 
@@ -87,8 +81,7 @@ export function send(data: WorkerData) {
 async function bootWorker(workerConfig: WorkerConfig) {
     if (booted) return;
     booted = true;
-    let relativePath = path.relative(__dirname, path.resolve(workerConfig.workerFile)); // need relative path from this file
-    let program = await import(relativePath.replace('\\', '/')); // stupid path
+    let program = await import(resolveFileImport(import.meta.url, workerConfig.workerFile));
 
     if (workerConfig.hiveOS) {
         let netInterface = new HiveNetInterface('worker');
