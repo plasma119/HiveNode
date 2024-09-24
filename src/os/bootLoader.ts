@@ -1,10 +1,10 @@
 import * as fs from 'fs';
 
 import HiveOS from './os.js';
-import { BootConfig } from './bios.js';
 import DataIO from '../network/dataIO.js';
 import { sleep } from '../lib/lib.js';
 import { getLoader, resolveFileImport, setLoader } from './loader.js';
+import { BootConfig } from './bootConfig.js';
 
 export const BOOTLOADERVERSION = 'v1.24';
 export const BOOTLOADERVERSIONBUILD = '11-27-2023';

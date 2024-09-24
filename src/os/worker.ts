@@ -5,9 +5,9 @@ import path from 'path';
 import DataIO from '../network/dataIO.js';
 import HiveComponent from '../lib/component.js';
 import { DataParsing, DataSerialize, DataSignature } from '../network/hiveNet.js';
-import { BootConfig } from './bios.js';
 import { getLoader } from './loader.js';
 import HiveNetInterface, { PortIO } from '../network/interface.js';
+import { BootConfig } from './bootConfig.js';
 
 // TODO: make this into HiveProcess
 // !! do not import HiveOS here

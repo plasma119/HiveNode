@@ -1,8 +1,8 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { BootConfig } from './bios.js';
 import { WorkerConfig } from './worker.js';
+import { BootConfig } from './bootConfig.js';
 
 // Identify current process's loader & retrieve configs
 
