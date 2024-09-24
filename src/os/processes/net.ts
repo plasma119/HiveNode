@@ -1,4 +1,4 @@
-import { WebSocketServer }  from 'ws';
+import { WebSocketServer } from 'ws';
 
 import HiveCommand from '../../lib/hiveCommand.js';
 import { format, sleep } from '../../lib/lib.js';
@@ -82,6 +82,12 @@ export default class HiveProcessNet extends HiveProcess {
             .addNewOption('-detail', 'display data signatures')
             .setAction((_, opts) => this.netview(!!opts['-detail']));
 
+        // view
+        program
+            .addNewCommand('resolveUUID', 'resolve UUID for target server')
+            .addNewArgument('<server>', 'server name')
+            .setAction((args) => this.resolveUUID(args['server']));
+
         // connect
         program
             .addNewCommand('connect', 'new HiveNet connection')
@@ -130,17 +136,17 @@ export default class HiveProcessNet extends HiveProcess {
 
     // TODO: resolve fail seems to be stuck
     async resolveUUID(target: string, reply?: (message: any) => void) {
-        let uuid = target.startsWith('UUID') ? target : this.nameMap.get(target);
+        // TODO: figure out how to deal with disconnected target
+        // let uuid = target.startsWith('UUID') ? target : this.nameMap.get(target);
+        let uuid: string | undefined = target;
+        if (reply) reply('Resolving target UUID...');
+        await this.netview();
+        uuid = this.nameMap.get(target);
         if (!uuid) {
-            if (reply) reply('Resolving target UUID...');
-            await this.netview();
-            uuid = this.nameMap.get(target);
-            if (!uuid) {
-                if (reply) reply('Target not found.');
-                return null;
-            }
-            if (reply) reply(`Resolved UUID: ${uuid}`);
+            if (reply) reply('Target not found.');
+            return null;
         }
+        if (reply) reply(`Resolved UUID: ${uuid}`);
         return uuid;
     }
 
@@ -258,11 +264,15 @@ export default class HiveProcessNet extends HiveProcess {
                 data.dport = HIVENETPORT.SHELL;
                 socketDT.stdIO.input(data, signatures);
             });
-            socketDT.stdIO.on('output', (data, signatures) => {
-                if (data instanceof HiveNetPacket) data = data.data;
-                // @ts-ignore
-                terminalPort.output(data, signatures);
-            }, 'write to terminal');
+            socketDT.stdIO.on(
+                'output',
+                (data, signatures) => {
+                    if (data instanceof HiveNetPacket) data = data.data;
+                    // @ts-ignore
+                    terminalPort.output(data, signatures);
+                },
+                'write to terminal'
+            );
             //this.os.stdIO.passThrough(socketDT.stdIO);
             terminal.terminalDestPort = sport;
             terminal.setPrompt(`->${host}:${port}`);
@@ -311,10 +321,14 @@ export default class HiveProcessNet extends HiveProcess {
 
             // debug
             if (this.os.debugMode)
-                dt.stdIO.on('output', (d, s) => {
-                    console.log(DataSignaturesToString(s));
-                    console.log(d);
-                }, 'debug');
+                dt.stdIO.on(
+                    'output',
+                    (d, s) => {
+                        console.log(DataSignaturesToString(s));
+                        console.log(d);
+                    },
+                    'debug'
+                );
 
             client
                 .use(ws)
