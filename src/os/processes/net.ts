@@ -35,7 +35,7 @@ export default class HiveProcessNet extends HiveProcess {
         program
             .addNewCommand('message', 'message target node')
             .addNewArgument('<target>', 'target UUID or name')
-            .addNewArgument('<text>', 'message to send')
+            .addNewArgument('<text...>', 'message to send')
             .setAction(async (args, _opts, info) => {
                 let uuid = await this.resolveUUID(args['target'], info.reply);
                 if (!uuid) return;
@@ -44,9 +44,8 @@ export default class HiveProcessNet extends HiveProcess {
             });
 
         // ping
-        this.os.HTP.listen(HIVENETPORT.PING, (packet) => {
-            if (packet.flags.ping) return new HiveNetPacket({ data: Date.now(), flags: { pong: true } });
-            return null;
+        this.os.HTP.listen(HIVENETPORT.PING, () => {
+            return new HiveNetPacket({ data: Date.now() });
         });
         program
             .addNewCommand('ping', 'ping target node')
@@ -167,7 +166,7 @@ export default class HiveProcessNet extends HiveProcess {
                 resolve('Timeout');
             }, options.timeout);
 
-            this.os.HTP.sendAndReceiveOnce(t1, dest, options.dport, { ping: true })
+            this.os.HTP.sendAndReceiveOnce('ping', dest, options.dport, { ping: true })
                 .then((data) => {
                     if (timeout) return;
                     clearTimeout(timer);
@@ -231,7 +230,7 @@ export default class HiveProcessNet extends HiveProcess {
         });
 
         // TODO: figure out how to fix the 3s delay to output
-        port.input(new HiveNetPacket({ data: t, dest: HIVENETADDRESS.BROADCAST, dport: HIVENETPORT.PING, flags: { ping: true } }));
+        port.input(new HiveNetPacket({ data: 'ping', dest: HIVENETADDRESS.BROADCAST, dport: HIVENETPORT.PING, flags: { ping: true } }));
         await sleep(3000);
         port.destroy();
         return format(list, ' ');

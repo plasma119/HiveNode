@@ -48,15 +48,12 @@ export default class HiveNetSwitch extends HiveNetDevice {
 
         // to this router
         if (packet.dest === this.UUID || packet.dest === '' || packet.dest === HIVENETADDRESS.BROADCAST) {
-            // ping
             if (packet.flags.ping) {
-                this._returnPacket(sender, packet, Date.now(), {
-                    pong: true,
-                });
-            }
-            // info
-            if (packet.dport === HIVENETPORT.INFO) {
-                this._returnPacket(sender, packet, this.getDeviceInfo(), {});
+                // ping
+                this._returnPacket(sender, packet, Date.now());
+            } else if (packet.dport === HIVENETPORT.INFO) {
+                // info
+                this._returnPacket(sender, packet, this.getDeviceInfo());
             }
             // forward broadcast packet
             if (packet.dest != HIVENETADDRESS.BROADCAST) return;
@@ -64,11 +61,11 @@ export default class HiveNetSwitch extends HiveNetDevice {
 
         // ttl check
         packet.ttl--;
-        if (packet.ttl === 0 && !packet.flags.timeout) {
+        if (packet.ttl === 0 && !packet.flags.error) {
             // ttl-timeout
             if (packet.dest != HIVENETADDRESS.BROADCAST) {
                 this._returnPacket(sender, packet, 'ttl-timeout', {
-                    timeout: true,
+                    error: true,
                 });
             }
             return;
@@ -108,7 +105,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
         });
     }
 
-    _returnPacket(sender: DataIO, packet: HiveNetPacket, data: any, flags: Partial<HiveNetFlags>) {
+    _returnPacket(sender: DataIO, packet: HiveNetPacket, data: any, flags?: Partial<HiveNetFlags>) {
         sender.output(
             new HiveNetPacket({
                 data: data,

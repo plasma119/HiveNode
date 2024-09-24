@@ -13,11 +13,8 @@ export type DataSignature = {
 
 export type HiveNetFlags = {
     ping: boolean;
-    pong: boolean;
-    ack: boolean;
-    nak: boolean;
     log: boolean;
-    timeout: boolean;
+    error: boolean;
     nat: boolean;
 };
 
@@ -48,11 +45,8 @@ export class HiveNetPacket {
         this.ttl = o.ttl || 16;
         this.flags = {
             ping: false,
-            pong: false,
-            ack: false,
-            nak: false,
             log: false,
-            timeout: false,
+            error: false,
             nat: false,
         };
         if (o.flags) {
@@ -70,10 +64,9 @@ const HiveNetPacketStructure = {
     ttl: 'number',
     flags: {
         ping: 'boolean',
-        pong: 'boolean',
-        ack: 'boolean',
-        nak: 'boolean',
-        timeout: 'boolean',
+        log: 'boolean',
+        error: 'boolean',
+        nat: 'boolean',
     },
 };
 

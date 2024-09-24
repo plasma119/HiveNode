@@ -35,6 +35,7 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: cleanup that ugly script import path stuff
 // TODO: util -> tool to compare integrity of files against NAS version (to repair CM3D2)
 // TODO: system shell log
+// TODO: coreServices command option -json for easy parsing result
 
 // TODO: worker thread
 // TODO: refactor worker -> HiveNet connection mess
