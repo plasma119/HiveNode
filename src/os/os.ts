@@ -31,7 +31,7 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: extra wrapper on HiveCommand return for shell, indicating WIP or end of script
 // TODO: re-visit HTP protocol system
 // TODO: net command refining
-// TODO: seperate terminal control to it's own special shell
+// TODO: seperate terminal control to it's own class + special shell
 // TODO: util -> tool to compare integrity of files against NAS version (to repair CM3D2)
 // TODO: system shell log
 // TODO: coreServices command option -json for easy parsing result

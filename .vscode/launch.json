@@ -144,6 +144,23 @@
             ]
         },
         {
+            "name": "Run Boot Config Editor",
+            "request": "launch",
+            "type": "node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\bootConfigEditor.js",
+            "skipFiles": [
+                "<node_internals>/**",
+                "${workspaceFolder}/src/lib/basicEventEmitter.ts",
+                "${workspaceFolder}/src/lib/component.ts",
+                "${workspaceFolder}/src/network/dataIO.ts",
+                "${workspaceFolder}/src/network/hiveNet.ts",
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
             "name": "worker test",
             "request": "launch",
             "type": "node",
