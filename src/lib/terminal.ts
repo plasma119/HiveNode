@@ -6,7 +6,7 @@ import MuteStream from 'mute-stream';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
 import HiveComponent from './component.js';
-import { Encryption } from './lib.js';
+import Encryption from './encryption.js';
 
 export type completer = (line: string) => PromiseLike<string[]> | string[];
 

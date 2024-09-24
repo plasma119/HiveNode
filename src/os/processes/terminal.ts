@@ -1,5 +1,5 @@
 import HiveCommand from '../../lib/hiveCommand.js';
-import { Encryption } from '../../lib/lib.js';
+import Encryption from '../../lib/encryption.js';
 import { StopPropagation } from '../../lib/signals.js';
 import Terminal from '../../lib/terminal.js';
 import { DataTransformer } from '../../network/dataIO.js';
