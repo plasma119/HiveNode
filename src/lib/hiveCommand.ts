@@ -17,7 +17,7 @@ export type HiveCommandInfo = {
     currentInput: string;
     programChain: HiveCommand[];
     terminalControl?: TerminalControlPacket;
-    reply: (message: any) => void;
+    reply: (message: any, forceReply?: boolean) => void;
 };
 
 export type HiveCommandExport = {
@@ -103,7 +103,7 @@ export default class HiveCommand extends HiveComponent {
     async _inputHandler(data: any, signatures: DataSignature[], replyOverride?: (data: any) => void) {
         // unpack data
         let input = data instanceof HiveNetPacket ? data.data : data;
-        let eof = false;
+        let eoc = false;
         const info: HiveCommandInfo = {
             rawData: data,
             rawInput: input,
@@ -111,28 +111,24 @@ export default class HiveCommand extends HiveComponent {
             currentProgram: this,
             currentInput: input,
             programChain: [],
-            reply: (message) => {
-                if (message === undefined || message === null) return;
+            reply: (message, forceReply) => {
+                if (!forceReply && (message === undefined || message === null)) return;
+                let returnData: any;
                 if (data instanceof HiveNetPacket) {
                     // re-pack data
-                    const packet = new HiveNetPacket({
+                    returnData = new HiveNetPacket({
                         data: message,
-                        //src: this.UUID,
                         dest: data.src,
                         dport: data.sport,
-                        flags: { eof: eof },
+                        flags: { eoc: eoc },
                     });
-                    if (replyOverride) {
-                        replyOverride(packet);
-                    } else {
-                        this.stdIO.output(packet, signatures);
-                    }
                 } else {
-                    if (replyOverride) {
-                        replyOverride(message);
-                    } else {
-                        this.stdIO.output(message, signatures);
-                    }
+                    returnData = message;
+                }
+                if (replyOverride) {
+                    replyOverride(returnData);
+                } else {
+                    this.stdIO.output(returnData, signatures);
                 }
             },
         };
@@ -158,8 +154,8 @@ export default class HiveCommand extends HiveComponent {
         }
 
         // return result
-        eof = true;
-        info.reply(result);
+        eoc = true;
+        info.reply(result, true);
     }
 
     parse(str: string, info: HiveCommandInfo): any {

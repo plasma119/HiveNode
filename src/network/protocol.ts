@@ -49,7 +49,7 @@ export default class HTP extends HiveComponent {
                 resolve(result);
             };
             if (options.waitForEOF) {
-                let collector = this.newEOFCollector((results) => {
+                let collector = this.newEOCCollector((results) => {
                     if (options.rawPacket) return reply(results);
                     reply(results.map((p) => p.data));
                 });
@@ -86,11 +86,11 @@ export default class HTP extends HiveComponent {
         return this.netInterface.closePort(port);
     }
 
-    newEOFCollector(callback: (results: HiveNetPacket[]) => void) {
+    newEOCCollector(callback: (results: HiveNetPacket[]) => void) {
         let results: HiveNetPacket[] = [];
         let collector = (packet: HiveNetPacket) => {
             results.push(packet);
-            if (packet.flags.eof) callback(results);
+            if (packet.flags.eoc) callback(results);
         };
         return collector;
     }
