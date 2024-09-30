@@ -1,15 +1,18 @@
 import fs from 'fs';
 import { spawn } from 'child_process';
+import { inspect } from 'util';
 
 import { IgnoreSIGINT, Signal } from './signals.js';
 import Logger from './logger.js';
 
+// Singleton
 class ExitHelper {
     _exitState: number = 0;
     _restarting: boolean = false;
     _silent: boolean = false;
-    cleanUpList: ((exitCode: NodeJS.Signals | Error) => void | Promise<void>)[] = [];
 
+    crashing: boolean = false;
+    cleanUpList: ((exitCode: NodeJS.Signals | Error) => void | Promise<void>)[] = [];
     exitCallback?: Function;
     SIGINTCallback?: Function;
 
@@ -17,71 +20,75 @@ class ExitHelper {
     crashLogger?: Logger;
 
     constructor() {
-        const handler = this._exitHandler.bind(this);
-        //do something when app is closing
-        //process.on('exit', exitHandler);
-        process.on('SIGTERM', handler);
-        process.on('SIGHUP', handler);
+        const exitHandler = this._exitHandler.bind(this);
 
-        //catches ctrl+c event
+        // catches closing application
+        process.on('SIGTERM', exitHandler);
+        process.on('SIGHUP', exitHandler);
+
+        // catches ctrl+c event
         process.on('SIGINT', (exitCode) => {
             if (this.SIGINTCallback) {
                 if (this.SIGINTCallback(exitCode) === IgnoreSIGINT) return;
             }
-            handler(exitCode);
+            exitHandler(exitCode);
         });
 
         // catches "kill pid" (for example: nodemon restart)
-        process.on('SIGUSR1', handler);
-        process.on('SIGUSR2', handler);
+        process.on('SIGUSR1', exitHandler);
+        process.on('SIGUSR2', exitHandler);
 
-        //catches uncaught exceptions
-        process.on('uncaughtException', handler);
-        process.on('unhandledRejection', handler);
+        // catches uncaught exceptions
+        process.on('uncaughtException', exitHandler);
+        process.on('unhandledRejection', exitHandler);
     }
 
+    // synchronous writes to stdout
     async _exitHandler(exitCode: NodeJS.Signals | Error) {
         this._exitState++;
         if (this._exitState >= 3) process.exit(); // failed very hard
         if (this._exitState == 2) {
             // sigint/error during exit handling
+            this.crashing = true;
             this.cleanUpList = [];
             this.SIGINTCallback = undefined;
             this.exitCallback = undefined;
         }
 
-        // !! synchronous writes to stdout
         if (exitCode instanceof Error && exitCode.stack) {
             // crashing
+            this.crashing = true;
             fs.writeSync(1, exitCode.stack + '\n');
             // must write crash log first, incase normal streamlogger crash on stackoverflow
             if (this.crashLogger) await this.crashLogger.log(exitCode.stack);
 
             if (this.logger) {
-                await this.logger.log(`Exit logger detected`);
                 if (this.crashLogger) await this.logger.log(`Crash logger detected`);
+                await this.logger.log(`Writing crash log:`);
+                await this.logger.log(exitCode.stack);
             }
-            if (this.logger) await this.logger.log(exitCode.stack);
         } else {
             // normal exiting
             if (!this._silent) fs.writeSync(1, exitCode.toString() + '\n');
             if (this.logger) await this.logger.log(exitCode.toString() + '\n');
         }
 
+        // cleanup callbacks
         if (this.cleanUpList && this.cleanUpList.length > 0) {
             if (!this._silent) fs.writeSync(1, `Cleaning up...\n`);
             if (this.logger) await this.logger.log(`Cleaning up...\n`);
-            //await Promise.allSettled(this.cleanUpList.map(cleanup => cleanup()).filter(notVoid => notVoid));
             for (let i = 0; i < this.cleanUpList.length; i++) {
                 try {
                     await this.cleanUpList[i](exitCode);
                 } catch (e: any) {
-                    console.log(e);
-                    if (this.logger) await this.logger.log(e instanceof Error ? e.stack : e);
+                    const str = e instanceof Error ? e.stack : inspect(e, false, 4, false);
+                    fs.writeSync(1, str + '\n');
+                    if (this.logger) await this.logger.log(str);
                 }
             }
         }
 
+        // exit callback
         if (this.exitCallback) this.exitCallback(exitCode);
 
         if (this._restarting) {
@@ -108,7 +115,7 @@ class ExitHelper {
         if (this.logger) await this.logger.end();
         if (this.crashLogger) await this.crashLogger.end();
 
-        process.exit();
+        process.exit(this.crashing ? 1 : 0);
     }
 
     addCleanUp(callback: (exitCode: NodeJS.Signals | Error) => void | Promise<void>) {
@@ -132,7 +139,7 @@ class ExitHelper {
     }
 
     exit(silent: boolean = false) {
-        if (silent) this._silent = true;
+        this._silent = silent;
         this._exitHandler('SIGTERM');
     }
 
