@@ -190,6 +190,34 @@
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ]
+        },
+        {
+            "name": "auto test",
+            "request": "launch",
+            "type": "node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\tool\\testHelper.js",
+            "args": ["-runTest", "${workspaceFolder}\\dist\\tests\\LRUMap_test.js"],
+            "skipFiles": [
+                "<node_internals>/**",
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
+            "name": "auto test gen",
+            "request": "launch",
+            "type": "node",
+            "console": "integratedTerminal",
+            "program": "${workspaceFolder}\\dist\\tool\\testHelper.js",
+            "args": ["-genTest", "${workspaceFolder}\\dist\\tests\\LRUMap_test.js"],
+            "skipFiles": [
+                "<node_internals>/**",
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
         }
     ]
 }

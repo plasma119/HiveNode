@@ -1,6 +1,7 @@
 import { DBWrapper } from '../os/processes/db.js';
 import BasicEventEmitter from './basicEventEmitter.js';
 import { uuidv7 } from './lib.js';
+import LRUMap from './LRUMap.js';
 
 export type VHFSFileRecord = {
     id: string;
@@ -48,8 +49,8 @@ type VHFSEvent = {
 // throws error directly if no error event listener exist
 // actual file operations should be done by other modules
 export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
-    files: Map<string, VHFSFileRecord> = new Map();
-    bundles: Map<string, VHFSBundleRecord<T>> = new Map();
+    files: LRUMap<string, VHFSFileRecord> = new LRUMap();
+    bundles: LRUMap<string, VHFSBundleRecord<T>> = new LRUMap();
 
     name: string;
     db?: DBWrapper;
@@ -72,6 +73,11 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         }
         this.db = database;
         this._initDB();
+    }
+
+    setCacheSize(fileCacheSize: number, bundleCacheSize: number) {
+        this.files.resize(fileCacheSize);
+        this.bundles.resize(bundleCacheSize);
     }
 
     _initDB() {
@@ -196,6 +202,7 @@ export default class VHFS<T> extends BasicEventEmitter<VHFSEvent> {
         }
     }
 
+    // TODO: skip loading for super large database
     async getAllRecordFromDB() {
         if (!this.db) return;
         if (this.dbSynchronized) return;
