@@ -25,6 +25,12 @@ let waitHiveOS = false;
 let bootConfig: BootConfig | null = null;
 let workerConfig: WorkerConfig | null = null;
 
+// app should use DataIO instead
+export function send(data: WorkerData) {
+    if (!process.send) throw new Error(`Process send failed!`);
+    process.send(data);
+}
+
 // main function
 (async () => {
     send({
@@ -41,6 +47,7 @@ let workerConfig: WorkerConfig | null = null;
     }
 })();
 
+// message handler
 process.on('message', (message) => {
     try {
         const data: WorkerData = message as WorkerData;
@@ -72,12 +79,7 @@ process.on('message', (message) => {
     } catch (e) {}
 });
 
-// app should use DataIO instead
-export function send(data: WorkerData) {
-    if (!process.send) throw new Error(`Process send failed!`);
-    process.send(data);
-}
-
+// load worker script
 async function bootWorker(workerConfig: WorkerConfig) {
     if (booted) return;
     booted = true;

@@ -128,12 +128,12 @@ export class workerWrapper extends HiveComponent<workerWrapperEvents> {
             this.sendData = (data: WorkerData) => worker.send(data);
 
             worker.on('exit', () => {
+                this.alive = false;
+                this.infoIO.output('Worker exited.');
+                this.emit('exit');
                 this.infoIO.destroy();
                 this.dataIO.destroy();
                 workerCount--;
-                this.alive = false;
-                this.emit('exit');
-                this.infoIO.output('Worker exited.');
             });
             worker.on('error', (e) => {
                 this.alive = false;
