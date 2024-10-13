@@ -57,6 +57,7 @@ export class HiveNetPacket {
     }
 }
 
+// TODO: auto test to prevent failing to reconstruct packet
 const HiveNetPacketStructure = {
     // data: 'any',
     src: 'string',
@@ -69,7 +70,7 @@ const HiveNetPacketStructure = {
         log: 'boolean',
         error: 'boolean',
         nat: 'boolean',
-        eof: 'boolean',
+        eoc: 'boolean',
     },
 };
 
