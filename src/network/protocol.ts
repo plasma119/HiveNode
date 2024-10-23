@@ -95,11 +95,12 @@ export default class HTP extends HiveComponent {
         return collector;
     }
 
+    // auto respond packet if callback returns non-null/undefined value
     _bindCallback(portIO: DataIO, callback: HTPCallback) {
         portIO.on(
             'output',
-            (data: HiveNetPacket, signatures) => {
-                let res = callback(data, signatures, portIO);
+            async (data: HiveNetPacket, signatures) => {
+                let res = await callback(data, signatures, portIO);
                 if (res !== undefined && res !== null) {
                     if (res instanceof HiveNetPacket) {
                         res.dest = data.src;
