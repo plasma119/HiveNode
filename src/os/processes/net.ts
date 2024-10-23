@@ -4,6 +4,7 @@ import HiveCommand from '../../lib/hiveCommand.js';
 import { format, sleep } from '../../lib/lib.js';
 import { DataTransformer } from '../../network/dataIO.js';
 import {
+    DataSignature,
     // DataParsing,
     // DataSerialize,
     DataSignaturesToString,
@@ -16,6 +17,13 @@ import HiveSocket from '../../network/socket.js';
 import HiveNetSwitch from '../../network/switch.js';
 import HiveProcess from '../process.js';
 import HiveProcessTerminal from './terminal.js';
+
+type PingInfo = {
+    info: HiveNetDeviceInfo;
+    UUID: string;
+    ping: number;
+    signatures: DataSignature[];
+};
 
 export default class HiveProcessNet extends HiveProcess {
     infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
@@ -81,7 +89,7 @@ export default class HiveProcessNet extends HiveProcess {
             .addNewOption('-detail', 'display data signatures')
             .setAction((_, opts) => this.netview(!!opts['-detail']));
 
-        // view
+        // resolveUUID
         program
             .addNewCommand('resolveUUID', 'resolve UUID for target server')
             .addNewArgument('<server>', 'server name')
@@ -131,22 +139,6 @@ export default class HiveProcessNet extends HiveProcess {
 
     main() {
         this.os.netInterface.connect(this.switch, 'net');
-    }
-
-    // TODO: resolve fail seems to be stuck
-    async resolveUUID(target: string, reply?: (message: any) => void) {
-        // TODO: figure out how to deal with disconnected target
-        // let uuid = target.startsWith('UUID') ? target : this.nameMap.get(target);
-        let uuid: string | undefined = target;
-        if (reply) reply('Resolving target UUID...');
-        await this.netview();
-        uuid = this.nameMap.get(target);
-        if (!uuid) {
-            if (reply) reply('Target not found.');
-            return null;
-        }
-        if (reply) reply(`Resolved UUID: ${uuid}`);
-        return uuid;
     }
 
     message(dest: string, data: any) {
@@ -210,30 +202,39 @@ export default class HiveProcessNet extends HiveProcess {
 
     async netview(detail: boolean = false) {
         let list: string[][] = [];
-        let t = Date.now();
-
-        let port = this.os.HTP.listen(this.os.netInterface.newRandomPortNumber(), async (packet, signatures) => {
-            let info = (await this.getInfo(packet.src, true))?.info;
-            let time = Date.now() - t;
-            if (!info)
-                info = {
-                    name: 'unknown',
-                    UUID: packet.src,
-                    type: 'unknown',
-                    HiveNodeVersion: 'unknown',
-                };
+        let pingInfoList = await this.networkGetAllDevice(undefined, true);
+        for (let pingInfo of pingInfoList) {
+            const info = pingInfo.info;
             if (detail) {
-                list.push([`${info.name}[${packet.src}]:`, `${info.type}`, `${time}ms`, DataSignaturesToString(signatures)]);
+                list.push([`${info.name}[${pingInfo.UUID}]:`, `${info.type}`, `${pingInfo.ping}ms`, DataSignaturesToString(pingInfo.signatures)]);
             } else {
-                list.push([`${info.name}:`, `${info.type}`, `${time}ms`, `${info.UUID}`]);
+                list.push([`${info.name}:`, `${info.type}`, `${pingInfo.ping}ms`, `${info.UUID}`]);
             }
-        });
+        }
 
         // TODO: figure out how to fix the 3s delay to output
-        port.input(new HiveNetPacket({ data: 'ping', dest: HIVENETADDRESS.BROADCAST, dport: HIVENETPORT.PING, flags: { ping: true } }));
-        await sleep(3000);
-        port.destroy();
         return format(list, ' ');
+    }
+
+    resolveUUID(target: string, reply: (message: any) => void = () => {}): Promise<string | null> {
+        return new Promise(async (resolve) => {
+            // using brute force re-scan whole network
+            // TODO: figure out how to deal with disconnected target better then this
+            let resolved = false;
+            let returnResult = (uuid: string) => {
+                resolved = true;
+                reply(`Resolved UUID: ${uuid}`);
+                resolve(uuid);
+            };
+            reply('Resolving target UUID...');
+            await this.networkGetAllDevice((pingInfo) => {
+                if (resolved) return;
+                if (pingInfo.info.name === target) returnResult(pingInfo.UUID);
+            }, true);
+            if (resolved) return;
+            reply('Target not found.');
+            resolve(null);
+        });
     }
 
     // TODO: integrate with shellDaemon system
@@ -336,5 +337,37 @@ export default class HiveProcessNet extends HiveProcess {
         });
         server.on('error', (e) => this.os.stdIO.output(e.stack));
         return server;
+    }
+
+    // lib functions
+    async networkGetAllDevice(callback?: (pingInfo: PingInfo) => void, requestInfo: boolean = false, timeoutms: number = 3000) {
+        let list: PingInfo[] = [];
+        let t = Date.now();
+
+        let port = this.os.HTP.listen(this.os.netInterface.newRandomPortNumber(), async (packet, signatures) => {
+            let info = requestInfo ? (await this.getInfo(packet.src, true))?.info : undefined;
+            let time = Date.now() - t;
+            if (!info) {
+                info = {
+                    name: 'unknown',
+                    UUID: packet.src,
+                    type: 'unknown',
+                    HiveNodeVersion: 'unknown',
+                };
+            }
+            const pingInfo = {
+                info,
+                UUID: packet.src,
+                ping: time,
+                signatures,
+            };
+            list.push(pingInfo);
+            if (callback) callback(pingInfo);
+        });
+
+        port.input(new HiveNetPacket({ data: 'ping', dest: HIVENETADDRESS.BROADCAST, dport: HIVENETPORT.PING, flags: { ping: true } }));
+        await sleep(timeoutms);
+        port.destroy();
+        return list;
     }
 }
