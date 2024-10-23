@@ -140,7 +140,7 @@ export class HiveProcessShell extends HiveProcess {
                 });
                 let result = await this.os.HTP.sendAndReceiveOnce(packet.data, packet.dest, packet.dport, packet.flags, {
                     rawPacket: !!opts['-full'],
-                    waitForEOF: true,
+                    waitForEOC: true,
                 });
                 return result.length == 1 ? result[0] : result;
             });

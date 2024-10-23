@@ -8,7 +8,7 @@ import HiveNetInterface from './interface.js';
     OSI model layer 5 - session layer
 */
 
-type sendAndReceiveOnce<rawPacket, waitForEOF> = waitForEOF extends true
+type sendAndReceiveOnce<rawPacket, waitForEOC> = waitForEOC extends true
     ? rawPacket extends true
         ? HiveNetPacket[]
         : any[]
@@ -35,25 +35,25 @@ export default class HTP extends HiveComponent {
     }
 
     // TODO: check packet actually reached target
-    sendAndReceiveOnce<Raw extends boolean, EOF extends boolean>(
+    sendAndReceiveOnce<Raw extends boolean, EOC extends boolean>(
         data: any,
         dest: string,
         dport: number,
         flags: Partial<HiveNetFlags> | undefined,
-        options: { rawPacket: Raw; waitForEOF: EOF }
-    ): Promise<sendAndReceiveOnce<Raw, EOF>> {
+        options: { rawPacket: Raw; waitForEOC: EOC }
+    ): Promise<sendAndReceiveOnce<Raw, EOC>> {
         return new Promise((resolve) => {
             const port = this.netInterface.newIO(this.netInterface.newRandomPortNumber(), this);
             const reply = (result: any) => {
                 port.destroy();
                 resolve(result);
             };
-            if (options.waitForEOF) {
+            if (options.waitForEOC) {
                 let collector = this.newEOCCollector((results) => {
                     if (options.rawPacket) return reply(results);
                     reply(results.map((p) => p.data));
                 });
-                port.on('output', collector, 'HTP - sendAndReceiveOnce: EOF');
+                port.on('output', collector, 'HTP - sendAndReceiveOnce: EOC');
             } else {
                 port.on(
                     'output',

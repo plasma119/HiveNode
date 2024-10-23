@@ -158,7 +158,7 @@ export default class HiveProcessNet extends HiveProcess {
                 resolve('Timeout');
             }, options.timeout);
 
-            this.os.HTP.sendAndReceiveOnce('ping', dest, options.dport, { ping: true }, { rawPacket: false, waitForEOF: false })
+            this.os.HTP.sendAndReceiveOnce('ping', dest, options.dport, { ping: true }, { rawPacket: false, waitForEOC: false })
                 .then((data) => {
                     if (timeout) return;
                     clearTimeout(timer);
@@ -187,7 +187,7 @@ export default class HiveProcessNet extends HiveProcess {
             });
 
             // try to resolve through HiveNet
-            const data = await this.os.HTP.sendAndReceiveOnce('', UUID, HIVENETPORT.INFO, undefined, { rawPacket: false, waitForEOF: false });
+            const data = await this.os.HTP.sendAndReceiveOnce('', UUID, HIVENETPORT.INFO, undefined, { rawPacket: false, waitForEOC: false });
             if (resolved || !data) return;
             result = {
                 timestamp: Date.now(),

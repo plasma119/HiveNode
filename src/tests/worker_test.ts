@@ -59,7 +59,7 @@ export async function worker(dataIO: DataIO, argv: string[], netInterface: HiveN
         // DataIO.debugMode();
         let data = await netInterface.HTP.sendAndReceiveOnce('kernel status', '', HIVENETPORT.SHELL, undefined, {
             rawPacket: false,
-            waitForEOF: false,
+            waitForEOC: false,
         });
         console.log(data);
     }
