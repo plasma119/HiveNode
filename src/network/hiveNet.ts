@@ -58,6 +58,8 @@ export class HiveNetPacket {
 }
 
 // TODO: auto test to prevent failing to reconstruct packet
+// TODO: packet ID? for debugging/tracking
+// TODO: packet creator? maybe extra metadata?
 const HiveNetPacketStructure = {
     // data: 'any',
     src: 'string',
@@ -66,11 +68,12 @@ const HiveNetPacketStructure = {
     dport: 'number',
     ttl: 'number',
     flags: {
-        ping: 'boolean',
-        log: 'boolean',
-        error: 'boolean',
-        nat: 'boolean',
-        eoc: 'boolean',
+        // don't care about the actual type, also for compatibility
+        // ping: 'boolean',
+        // log: 'boolean',
+        // error: 'boolean',
+        // nat: 'boolean',
+        // eoc: 'boolean',
     },
 };
 
