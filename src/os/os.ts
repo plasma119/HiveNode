@@ -9,6 +9,7 @@ import HiveNetInterface from '../network/interface.js';
 import HTP from '../network/protocol.js';
 import HiveProcess from './process.js';
 import HiveProcessDB from './processes/db.js';
+import HiveProcessEventLogger from './processes/eventLogger.js';
 import HiveProcessKernel from './processes/kernel.js';
 import HiveProcessLogger, { logLevel } from './processes/logger.js';
 import HiveProcessNet from './processes/net.js';
@@ -53,12 +54,15 @@ import HiveProcessTerminal from './processes/terminal.js';
 export type HiveOSEvent = {
     sigint: () => void;
     wakeup: (timePassed: number) => void;
-    consoleLog: (param: { data: any[]; log: Function; suppressBubble: boolean }) => void; // fires after console.log
+    // fires before console.log
+    // WARNING: DO NOT use any DataIO/console.log/logger/eventLogger during capture without safeguard
+    consoleLog: (param: { data: any[]; log: Function; suppressBubble: boolean }) => void;
     kernelReady: () => void;
 };
 
-type CoreServices = {
+export type CoreServices = {
     logger: HiveProcessLogger;
+    event: HiveProcessEventLogger;
     db: HiveProcessDB;
     shelld: HiveProcessShellDaemon;
     terminal: HiveProcessTerminal;
@@ -222,5 +226,9 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
     log(message: any, level: keyof typeof logLevel) {
         this.getCoreService('logger').log(message, level);
+    }
+
+    newEventLogger(tag?: string) {
+        return this.getCoreService('event').newEventLogger(tag);
     }
 }

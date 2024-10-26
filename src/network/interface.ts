@@ -87,8 +87,12 @@ export default class HiveNetInterface extends HiveComponent {
             'input',
             (data, signatures) => {
                 // not HiveNetPacket, but still forward it
-                if (!(data instanceof HiveNetPacket)) return this.netIO.output(data, signatures);
+                if (!(data instanceof HiveNetPacket)) {
+                    this.eventLogger(`[direct]: ${data}`, 'input', 'portIO');
+                    return this.netIO.output(data, signatures);
+                }
 
+                this.eventLogger(`[${data.src}:${data.sport}]->[${data.dest}:${data.dport}]: ${data.data}`, 'input', 'portIO');
                 // stamp packet
                 if (!data.flags.nat) data.src = this.UUID;
                 data.sport = port;
@@ -119,7 +123,17 @@ export default class HiveNetInterface extends HiveComponent {
             },
             'portIO input'
         );
-        io.on('destroy', () => this.closePort(port));
+        io.on('output', (data) => {
+            if (data instanceof HiveNetPacket) {
+                this.eventLogger(`[${data.src}:${data.sport}]->[${data.dest}:${data.dport}]: ${data.data}`, 'output', 'portIO');
+            } else {
+                this.eventLogger(`[direct]: ${data}`, 'output', 'portIO');
+            }
+        });
+        io.on('destroy', () => {
+            this.eventLogger(`portIO[${port}]`, 'close', 'portIO');
+            this.closePort(port);
+        });
         return io;
     }
 

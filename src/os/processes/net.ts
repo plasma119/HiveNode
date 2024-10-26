@@ -139,6 +139,7 @@ export default class HiveProcessNet extends HiveProcess {
 
     main() {
         this.os.netInterface.connect(this.switch, 'net');
+        this.switch.setEventLogger(this.os.newEventLogger('net->switch'));
     }
 
     message(dest: string, data: any) {

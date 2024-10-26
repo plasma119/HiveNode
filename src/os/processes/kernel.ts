@@ -1,12 +1,14 @@
 import { version } from '../../index.js';
 import exitHelper from '../../lib/exitHelper.js';
 import HiveCommand from '../../lib/hiveCommand.js';
-import { format, sleep } from '../../lib/lib.js';
+import { Constructor, format, sleep } from '../../lib/lib.js';
 import DataIO from '../../network/dataIO.js';
 import { HIVENETPORT } from '../../network/hiveNet.js';
 import { VERSION } from '../../tool/autoBuildVersion.js';
+import { CoreServices } from '../os.js';
 import HiveProcess from '../process.js';
 import HiveProcessDB from './db.js';
+import HiveProcessEventLogger from './eventLogger.js';
 import HiveProcessLogger from './logger.js';
 import HiveProcessNet from './net.js';
 import HiveProcessShellDaemon from './shell.js';
@@ -118,51 +120,47 @@ export default class HiveProcessKernel extends HiveProcess {
     }
 
     async main() {
-        const logger = this.spawnChild(HiveProcessLogger, 'logger');
-        await logger.onReadyAsync();
-        this.os.registerCoreService('logger', logger);
+        // core services
+        const logger = await this._spawnCoreService(HiveProcessLogger, 'logger'); // must be first service to be loaded
+        await this._spawnCoreService(HiveProcessEventLogger, 'event');
+        await this._spawnCoreService(HiveProcessDB, 'db');
 
-        const db = this.spawnChild(HiveProcessDB, 'db');
-        await db.onReadyAsync();
-        this.os.registerCoreService('db', db);
+        this.os.netInterface.setEventLogger(this.os.newEventLogger('os->netInterface'));
 
-        const shelld = this.spawnChild(HiveProcessShellDaemon, 'shelld');
-        await shelld.onReadyAsync();
-        this.os.registerCoreService('shelld', shelld);
+        const shelld = await this._spawnCoreService(HiveProcessShellDaemon, 'shelld');
         shelld.registerShellProgram(this.program);
         shelld.registerShellProgram(logger.program);
 
-        const terminal = this.spawnChild(HiveProcessTerminal, 'terminal');
-        await terminal.onReadyAsync();
-        this.os.registerCoreService('terminal', terminal);
+        await this._spawnCoreService(HiveProcessTerminal, 'terminal');
+        await this._spawnCoreService(HiveProcessSocketDaemon, 'socketd');
+        await this._spawnCoreService(HiveProcessNet, 'net');
 
-        const socketd = this.spawnChild(HiveProcessSocketDaemon, 'socketd');
-        await socketd.onReadyAsync();
-        this.os.registerCoreService('socketd', socketd);
-
-        const net = this.spawnChild(HiveProcessNet, 'net');
-        await net.onReadyAsync();
-        this.os.registerCoreService('net', net);
-
-        // services
-        const service = this.program.addNewCommand('service', 'access to service processes');
-        service.addCommand(logger.program);
-        service.addCommand(db.program);
-        service.addCommand(shelld.program);
-        service.addCommand(terminal.program);
-        service.addCommand(socketd.program);
-        service.addCommand(net.program);
+        // register to shell
+        const service = this.program.addNewCommand('service', 'access to core service processes');
+        for (let process of Object.values(this.os.coreServices)) {
+            service.addCommand(process.program);
+        }
 
         // shell programs
         const util = this.spawnChild(HiveProcessUtil, 'util');
         await util.onReadyAsync();
         shelld.registerShellProgram(util.program);
+
+        // other init
+
+        // TODO: maybe move terminal.build and other init from bootLoader to here?
+    }
+
+    private async _spawnCoreService<C extends Constructor<CoreServices[K]>, K extends keyof CoreServices>(constructor: C, serviceName: K) {
+        const service = this.spawnChild(constructor, serviceName);
+        await service.onReadyAsync();
+        this.os.registerCoreService(serviceName, service);
+        return service;
     }
 
     getSystemShell() {
         if (this.systemShell) return this.systemShell;
-        let shelld = this.os.getProcess(HiveProcessShellDaemon);
-        if (!shelld) throw new Error('[ERROR] Failed to initialize system shell, cannot find shell daemon process');
+        let shelld = this.os.getCoreService('shelld');
         let shell = shelld.spawnShell(this, HIVENETPORT.SHELL); // for now
         shell.rename('systemShell');
         let shellProgram = shell.program;

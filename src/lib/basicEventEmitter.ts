@@ -19,7 +19,7 @@ type Handler = {
 };
 
 export default class BasicEventEmitter<EventList extends ListenerSignature<EventList> = DefaultListener> {
-    _events: Map<keyof EventList, Handler[]> = new Map();
+    private _events: Map<keyof EventList, Handler[]> = new Map();
 
     once<Event extends keyof EventList>(event: Event, listener: EventList[Event], label?: string): this {
         const handlers = this._getEvent(event);
@@ -81,6 +81,7 @@ export default class BasicEventEmitter<EventList extends ListenerSignature<Event
     }
 
     getListenerCount<Event extends keyof EventList>(event: Event): number {
+        if (!this._events.has(event)) return 0;
         const handlers = this._getEvent(event);
         return handlers.length;
     }
