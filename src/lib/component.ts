@@ -8,7 +8,7 @@ const DefaultEventLogger = () => {};
 export default class HiveComponent<EventList extends ListenerSignature<EventList> = DefaultListener> extends BasicEventEmitter<EventList> {
     UUID: string = 'UUID-' + randomUUID();
     name: string;
-    eventLogger: EventLogger = DefaultEventLogger;
+    logEvent: EventLogger = DefaultEventLogger;
 
     constructor(name: string) {
         super();
@@ -16,6 +16,6 @@ export default class HiveComponent<EventList extends ListenerSignature<EventList
     }
 
     setEventLogger(eventLogger: EventLogger) {
-        this.eventLogger = eventLogger;
+        this.logEvent = eventLogger;
     }
 }

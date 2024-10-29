@@ -29,7 +29,7 @@ export default class HiveProcessNet extends HiveProcess {
     infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
     nameMap: Map<string, string> = new Map(); // Map<name, UUID>
 
-    switch: HiveNetSwitch = new HiveNetSwitch(this.os.name);
+    switch: HiveNetSwitch = new HiveNetSwitch(`switch-[${this.os.name}]`);
     server?: WebSocketServer;
     sshServer?: WebSocketServer;
 

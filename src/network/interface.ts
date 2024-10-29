@@ -27,38 +27,46 @@ export default class HiveNetInterface extends HiveComponent {
 
     NATMode: boolean = false;
 
+    debugPortIO: boolean = false;
+
     constructor(name: string) {
         super(name);
         // port routing
         this.netIO.on(
             'input',
-            (data, signatures) => {
-                if (data instanceof HiveNetPacket) {
-                    this.addressTable.set(data.src, Date.now());
+            (packet, signatures) => {
+                if (packet instanceof HiveNetPacket) {
+                    this.logEvent(packet.toString(true, true), 'input', 'netIO');
+                    this.addressTable.set(packet.src, Date.now());
                     if (
-                        data.dest != this.UUID &&
-                        data.dest != HIVENETADDRESS.LOCAL &&
-                        data.dest != HIVENETADDRESS.BROADCAST &&
-                        !data.dest.startsWith('NAT')
+                        packet.dest != this.UUID &&
+                        packet.dest != HIVENETADDRESS.LOCAL &&
+                        packet.dest != HIVENETADDRESS.BROADCAST &&
+                        !packet.dest.startsWith('NAT')
                     ) {
                         // wrong destination, ignore it
+                        this.logEvent(`wrong destination`, 'input', 'netIO');
                         return;
                     }
-                    const port = this.ports.get(data.dport);
+                    const port = this.ports.get(packet.dport);
                     if (port) {
                         // route packet
-                        if (data.dest.startsWith('NAT')) {
+                        if (packet.dest.startsWith('NAT')) {
                             // NAT unpacking
-                            let tokens = data.dest.split('|');
-                            data.dport = Number.parseInt(tokens[1]);
-                            data.dest = tokens.slice(2).join('|');
+                            let tokens = packet.dest.split('|');
+                            packet.dport = Number.parseInt(tokens[1]);
+                            packet.dest = tokens.slice(2).join('|');
+                            this.logEvent(`NAT unpacking->[${packet.dest}:${packet.dport}]`, 'input', 'netIO');
                         }
-                        port.output(data, signatures);
+                        return port.output(packet, signatures);
                     } else {
                         // not a open port, ignore it
+                        this.logEvent(`portIO:${packet.dport} is not open`, 'input', 'netIO');
                     }
+                } else {
+                    // not via hiveNet, ignore it
+                    this.logEvent(`not HiveNetPacket: ${packet}`, 'input', 'netIO');
                 }
-                // not via hiveNet, ignore it
             },
             'interface netIO input'
         );
@@ -70,10 +78,12 @@ export default class HiveNetInterface extends HiveComponent {
         switch (type) {
             case 'net':
                 io = this.netIO;
+                this.logEvent(`${target.name} <-> netIO`, 'connect', 'event');
                 break;
             case 'port':
             default:
                 io = this.newIO(port, this);
+                this.logEvent(`${target.name} <-> portIO:${port}`, 'connect', 'event');
                 break;
         }
         target.connect(io);
@@ -83,55 +93,62 @@ export default class HiveNetInterface extends HiveComponent {
         if (this.ports.has(port)) throw new Error(`HiveNetInterface: port ${port} is in use already`);
         const io = new PortIO(owner, `portIO:${port}`, port);
         this.ports.set(port, io);
+        this.logEvent(`${owner.name} -> portIO:${port}`, 'create', 'portIO');
         io.on(
             'input',
-            (data, signatures) => {
-                // not HiveNetPacket, but still forward it
-                if (!(data instanceof HiveNetPacket)) {
-                    this.eventLogger(`[direct]: ${data}`, 'input', 'portIO');
-                    return this.netIO.output(data, signatures);
+            (packet, signatures) => {
+                if (!(packet instanceof HiveNetPacket)) {
+                    // not HiveNetPacket, but still forward it
+                    if (this.debugPortIO) this.logEvent(`[direct]: ${packet}`, 'input', 'portIO');
+                    return this.netIO.output(packet, signatures);
                 }
+                if (this.debugPortIO) this.logEvent(packet.toString(true, true), 'input', 'portIO');
 
-                this.eventLogger(`[${data.src}:${data.sport}]->[${data.dest}:${data.dport}]: ${data.data}`, 'input', 'portIO');
                 // stamp packet
-                if (!data.flags.nat) data.src = this.UUID;
-                data.sport = port;
+                if (!packet.flags.nat) packet.src = this.UUID;
+                packet.sport = port;
 
                 // stamp NAT
                 // TODO: more options
                 if (this.NATMode) {
-                    data.dest = HIVENETADDRESS.NET;
-                    data.flags.nat = true;
+                    packet.dest = HIVENETADDRESS.NET;
+                    packet.flags.nat = true;
                 }
 
-                if (data.src === data.dest || data.dest === HIVENETADDRESS.LOCAL || data.dest.startsWith('NAT')) {
+                if (packet.src === packet.dest || packet.dest === HIVENETADDRESS.LOCAL || packet.dest.startsWith('NAT')) {
                     // loopback address
-                    this.netIO.input(data, signatures);
+                    this.netIO.input(packet, signatures);
                 } else {
-                    if (data.flags.nat) {
+                    if (packet.flags.nat) {
                         // NAT
-                        if (data.dest == HIVENETADDRESS.NET) {
+                        if (packet.dest == HIVENETADDRESS.NET) {
                             // forward to next layer as local
-                            data.dest = HIVENETADDRESS.LOCAL;
+                            packet.dest = HIVENETADDRESS.LOCAL;
                             // stuff the sport data (will be overwritten by layer above) into src
-                            data.src = `NAT|${data.sport}|` + data.src;
+                            packet.src = `NAT|${packet.sport}|` + packet.src;
+                            if (this.debugPortIO) this.logEvent(`NAT packing->[${packet.dest}:${packet.dport}]`, 'input', 'portIO');
                         }
                     }
                     // send to netIO
-                    this.netIO.output(data, signatures);
+                    this.netIO.output(packet, signatures);
                 }
             },
             'portIO input'
         );
-        io.on('output', (data) => {
-            if (data instanceof HiveNetPacket) {
-                this.eventLogger(`[${data.src}:${data.sport}]->[${data.dest}:${data.dport}]: ${data.data}`, 'output', 'portIO');
-            } else {
-                this.eventLogger(`[direct]: ${data}`, 'output', 'portIO');
-            }
-        });
+        io.on(
+            'output',
+            (data) => {
+                if (!this.debugPortIO) return;
+                if (data instanceof HiveNetPacket) {
+                    this.logEvent(data.toString(true, true), 'output', 'portIO');
+                } else {
+                    this.logEvent(`[direct]: ${data}`, 'output', 'portIO');
+                }
+            },
+            'portIO output'
+        );
         io.on('destroy', () => {
-            this.eventLogger(`portIO[${port}]`, 'close', 'portIO');
+            this.logEvent(`portIO:${port}`, 'close', 'portIO');
             this.closePort(port);
         });
         return io;

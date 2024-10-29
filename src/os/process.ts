@@ -9,6 +9,11 @@ import HiveOS from './os.js';
     OSI model layer 7 - application layer
 */
 
+interface HiveProcessInterface {
+    initProgram: () => HiveCommand;
+    main: (argv: string[]) => void | Promise<void>;
+}
+
 export type HiveProcessEvents = {
     ready: () => void; // emit after process.main, maybe figure out aysnc main?
     exit: (error?: any) => void;
@@ -22,9 +27,10 @@ export type HiveProcessEvents = {
 // either use the stupidParameters in basicEventEmitter and have maximum paramters, plus that stupid error below
 // or just accept that only HiveProcess cannot have typescript check on event arguments
 
-export default class HiveProcess<EventList extends ListenerSignature<EventList> = DefaultListener> extends HiveComponent<
-    HiveProcessEvents & EventList
-> {
+export default class HiveProcess<EventList extends ListenerSignature<EventList> = DefaultListener>
+    extends HiveComponent<HiveProcessEvents & EventList>
+    implements HiveProcessInterface
+{
     os: HiveOS;
     pid: number;
     ppid: number;
@@ -52,7 +58,7 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     }
 
     // override by process
-    main(_argv: string[]) {}
+    main(_argv: string[]): void | Promise<void> {}
 
     // for debugging purpose, captures complete HiveNet packets + signatures
     enableIOBuffer() {
@@ -87,5 +93,9 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
         return new Promise((resolve) => {
             this.onReady(resolve);
         });
+    }
+
+    toString() {
+        return `${this.constructor.name}[${this.name}]:pid[${this.pid}]`;
     }
 }

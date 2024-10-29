@@ -21,7 +21,7 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: worker HiveProcess
 // TODO: job scheduler
 
-// TODO: add log to all core/important steps for debugging
+// TODO: add log/trace to all core/important steps for debugging
 // TODO: standardize error emit/handling
 // TODO: actually use DataIOBuffer
 // TODO: define os.debugMode
@@ -29,7 +29,6 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: add extra info for error catching in HiveCommand
 // TODO: client mode OS (since DB is locked to main OS only)
 
-// TODO: extra wrapper on HiveCommand return for shell, indicating WIP or end of script
 // TODO: re-visit HTP protocol system
 // TODO: net command refining
 // TODO: seperate terminal control to it's own class + special shell
@@ -99,6 +98,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
         // SIGINT capture
         exitHelper.onSIGINT(() => {
+            this.logEvent(``, 'SIGINT', 'system');
             this.log('[OS] SIGINT intercepted', 'debug');
             this.emit('sigint');
             return IgnoreSIGINT;
@@ -107,6 +107,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         // sleep detector
         detectWakeup.init();
         detectWakeup.on('wakeup', (timePassed) => {
+            this.logEvent(`Time passed: ${timePassed}`, 'wakeup', 'system');
             this.log(`[OS] Wakeup detected, last timestamp at ${timeFormat('full', '-', ':', ' ', Date.now() - timePassed)}`, 'info');
             this.emit('wakeup', timePassed);
         });
@@ -141,6 +142,8 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.kernel = this.newProcess(HiveProcessKernel, null, 'kernel', []);
         this.kernel.onReady(() => {
             this.shell = this.kernel.getSystemShell();
+            this.logEvent(`kernelReady`, 'event', 'system');
+            this.log('[OS] Kernel Ready', 'info');
             this.emit('kernelReady');
         });
     }
@@ -178,34 +181,53 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         name: string,
         argv: string[]
     ): InstanceType<C> {
-        const p = new processConstructor(name, this, this.nextpid++, parentProcess?.pid || 0);
-        this.processes.set(p.pid, p);
-        if (parentProcess) parentProcess.childs.set(p.pid, p);
+        const pid = this.nextpid++;
+        this.logEvent(
+            `${parentProcess ? parentProcess : 'null'}->${processConstructor.name}[${name}]:pid[${pid}] [${argv}]`,
+            'new process',
+            'system'
+        );
+
+        const hiveProcess = new processConstructor(name, this, pid, parentProcess?.pid || 0);
+        this.logEvent(`${hiveProcess} program loaded`, 'new process', 'system');
+
+        this.processes.set(hiveProcess.pid, hiveProcess);
+        if (parentProcess) parentProcess.childs.set(hiveProcess.pid, hiveProcess);
         try {
-            Promise.resolve(p.main(argv)).then(() => {
-                p.ready = true;
-                p.emit('ready');
-            });
+            let mainReturn = hiveProcess.main(argv);
+            if (typeof mainReturn?.then == 'function') {
+                Promise.resolve(mainReturn).then(() => {
+                    this.logEvent(`${hiveProcess} process ready`, 'new process', 'system');
+                    hiveProcess.ready = true;
+                    hiveProcess.emit('ready');
+                });
+            } else {
+                this.logEvent(`${hiveProcess} process ready`, 'new process', 'system');
+                hiveProcess.ready = true;
+                hiveProcess.emit('ready');
+            }
         } catch (e) {
             this.log(`[OS] ERROR: Process ${name} crashed on startup.`, 'error');
             this.log(e, 'error');
-            throw e; // if inside HiveCommand, this should be 'safe', otherwise cascade upward to parent (unlikely to affect core system)
+            throw e; // if inside HiveCommand, this should be 'safe', otherwise cascade upward to parent
         }
-        return p as InstanceType<C>;
+        return hiveProcess as InstanceType<C>;
     }
 
-    processExitHandle(process: HiveProcess) {
-        const parent = this.getProcess(HiveProcess, process.pid);
-        this.processes.delete(process.pid);
-        if (parent && process != parent) {
+    processExitHandle(hiveProcess: HiveProcess) {
+        const parentProcess = this.getProcess(HiveProcess, hiveProcess.ppid);
+        this.logEvent(`${parentProcess ? parentProcess : 'null'}->${hiveProcess}`, 'process exit', 'system');
+        this.processes.delete(hiveProcess.pid);
+        if (parentProcess && hiveProcess != parentProcess) {
             // move all child to parent process, TODO: maybe kill all child processes?
-            parent.childs.delete(process.pid);
-            process.childs.forEach((c) => parent.childs.set(c.pid, c));
+            parentProcess.childs.delete(hiveProcess.pid);
+            hiveProcess.childs.forEach((c) => parentProcess.childs.set(c.pid, c));
         }
     }
 
-    registerCoreService<K extends keyof CoreServices>(service: K, process: CoreServices[K]) {
-        this.coreServices[service] = process;
+    registerCoreService<K extends keyof CoreServices>(service: K, hiveProcess: CoreServices[K]) {
+        this.coreServices[service] = hiveProcess;
+        this.logEvent(hiveProcess.toString(), 'register', 'core service');
         this.log(`Core Service [${service}] ready`, 'info');
     }
 

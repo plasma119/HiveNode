@@ -29,9 +29,11 @@ export default class HTP extends HiveComponent {
     }
 
     send(data: any, dest: string, dport: number, flags?: Partial<HiveNetFlags>) {
-        let port = this.netInterface.getPort(HIVENETPORT.HTPSEND);
-        if (!port) port = this.netInterface.newIO(HIVENETPORT.HTPSEND, this);
-        port.input(new HiveNetPacket({ data, dest, dport, flags }));
+        const packet = new HiveNetPacket({ data, dest, dport, flags });
+        this.logEvent(packet.toString(false, true), 'send', 'HTP');
+        let portIO = this.netInterface.getPort(HIVENETPORT.HTPSEND);
+        if (!portIO) portIO = this.netInterface.newIO(HIVENETPORT.HTPSEND, this);
+        portIO.input(packet);
     }
 
     // TODO: check packet actually reached target
@@ -43,52 +45,60 @@ export default class HTP extends HiveComponent {
         options: { rawPacket: Raw; waitForEOC: EOC }
     ): Promise<sendAndReceiveOnce<Raw, EOC>> {
         return new Promise((resolve) => {
-            const port = this.netInterface.newIO(this.netInterface.newRandomPortNumber(), this);
-            const reply = (result: any) => {
-                port.destroy();
+            const portIO = this.netInterface.newIO(this.netInterface.newRandomPortNumber(), this);
+            const packet = new HiveNetPacket({ data, dest, dport, flags });
+            this.logEvent(packet.toString(false, true), 'send', 'HTP-SARO');
+            const returnResult = (result: any) => {
+                portIO.destroy();
                 resolve(result);
             };
             if (options.waitForEOC) {
                 let collector = this.newEOCCollector((results) => {
-                    if (options.rawPacket) return reply(results);
-                    reply(results.map((p) => p.data));
+                    this.logEvent(`EOC: ${results}`, 'receive', 'HTP-SARO');
+                    if (options.rawPacket) return returnResult(results);
+                    returnResult(results.map((p) => p.data));
                 });
-                port.on('output', collector, 'HTP - sendAndReceiveOnce: EOC');
+                portIO.on('output', collector, 'HTP-SARO: EOC');
             } else {
-                port.on(
+                portIO.on(
                     'output',
-                    (packet) => {
-                        if (options.rawPacket) return reply(packet);
-                        reply(packet.data);
+                    (packet2) => {
+                        this.logEvent(`Packet: ${packet2}`, 'receive', 'HTP-SARO');
+                        if (options.rawPacket) return returnResult(packet2);
+                        returnResult(packet2.data);
                     },
-                    'HTP - sendAndReceiveOnce'
+                    'HTP-SARO'
                 );
             }
-            port.input(new HiveNetPacket({ data, dest, dport, flags }));
+            portIO.input(packet);
         });
     }
 
-    listen(sport: number, callback?: HTPCallback) {
-        const port = this.netInterface.newIO(sport, this);
-        if (callback) this._bindCallback(port, callback);
-        return port;
+    listen(port: number, callback?: HTPCallback) {
+        this.logEvent(`port:${port}`, 'listen', 'HTP');
+        const portIO = this.netInterface.newIO(port, this);
+        if (callback) this._bindCallback(portIO, callback);
+        return portIO;
     }
 
     newConnection(dest: string, dport: number, callback: HTPCallback, sport = this.netInterface.newRandomPortNumber()) {
-        const port = this.netInterface.newIO(sport, this);
-        this._bindCallback(port, callback);
+        this.logEvent(`->[${dest}:${dport}]`, 'new connection', 'HTP');
+        const portIO = this.netInterface.newIO(sport, this);
+        this._bindCallback(portIO, callback);
         return (data: any, flags?: HiveNetFlags) => {
-            port.input(new HiveNetPacket({ data, dest, dport, flags }));
+            portIO.input(new HiveNetPacket({ data, dest, dport, flags }));
         };
     }
 
     release(port: number) {
+        this.logEvent(`port:${port}`, 'release', 'HTP');
         return this.netInterface.closePort(port);
     }
 
     newEOCCollector(callback: (results: HiveNetPacket[]) => void) {
         let results: HiveNetPacket[] = [];
         let collector = (packet: HiveNetPacket) => {
+            this.logEvent(`Packet: ${packet}`, 'receive', 'HTP-EOC');
             results.push(packet);
             if (packet.flags.eoc) callback(results);
         };
@@ -99,15 +109,18 @@ export default class HTP extends HiveComponent {
     _bindCallback(portIO: DataIO, callback: HTPCallback) {
         portIO.on(
             'output',
-            async (data: HiveNetPacket, signatures) => {
-                let res = await callback(data, signatures, portIO);
+            async (packet: HiveNetPacket, signatures) => {
+                let res = await callback(packet, signatures, portIO);
                 if (res !== undefined && res !== null) {
+                    this.logEvent(packet.toString(true), 'callback respond', 'HTP');
                     if (res instanceof HiveNetPacket) {
-                        res.dest = data.src;
-                        res.dport = data.sport;
+                        // ... wait this is sender address hacking...
+                        // does this even works?
+                        res.dest = packet.src;
+                        res.dport = packet.sport;
                         portIO.input(res);
                     } else {
-                        portIO.input(new HiveNetPacket({ data: res, dest: data.src, dport: data.sport }));
+                        portIO.input(new HiveNetPacket({ data: res, dest: packet.src, dport: packet.sport }));
                     }
                 }
             },

@@ -55,6 +55,19 @@ export class HiveNetPacket {
             this.flags = Object.assign(this.flags, o.flags);
         }
     }
+
+    toString(src: boolean = false, dest: boolean = false) {
+        let str = '';
+        if (src) str += `[${this.src}:${this.sport}]`;
+        if (src || dest) str += `->`;
+        if (dest) str += `[${this.dest}:${this.dport}]`;
+        let arr = [];
+        for (let [key, value] of Object.entries(this.flags)) if (value) arr.push(key);
+        if (arr.length > 0) str += `[flags:${arr}]`;
+        if (str.length > 0) str += ': ';
+        str += `${this.data}`;
+        return str;
+    }
 }
 
 // TODO: auto test to prevent failing to reconstruct packet

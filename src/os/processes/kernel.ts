@@ -67,9 +67,12 @@ export default class HiveProcessKernel extends HiveProcess {
             exitHelper.restart();
         });
 
-        kernel.addNewCommand('debug', 'toggle os debug info').setAction(() => (this.os.debugMode = !this.os.debugMode));
-
-        kernel.addNewCommand('debugDataIO', 'toggle DataIO debug info').setAction(() => DataIO.debugMode());
+        const debug = kernel.addNewCommand('debug', 'debug control');
+        debug.addNewCommand('os', 'toggle os debug info').setAction(() => (this.os.debugMode = !this.os.debugMode));
+        debug.addNewCommand('dataIO', 'toggle DataIO debug info').setAction(() => DataIO.debugMode());
+        debug
+            .addNewCommand('netInterface', 'toggle net interface PortIO trace info')
+            .setAction(() => (this.os.netInterface.debugPortIO = !this.os.netInterface.debugPortIO));
 
         kernel
             .addNewCommand('panic', 'PANIC')
@@ -123,9 +126,11 @@ export default class HiveProcessKernel extends HiveProcess {
         // core services
         const logger = await this._spawnCoreService(HiveProcessLogger, 'logger'); // must be first service to be loaded
         await this._spawnCoreService(HiveProcessEventLogger, 'event');
-        await this._spawnCoreService(HiveProcessDB, 'db');
-
+        this.os.setEventLogger(this.os.newEventLogger('os'));
         this.os.netInterface.setEventLogger(this.os.newEventLogger('os->netInterface'));
+        this.os.HTP.setEventLogger(this.os.newEventLogger('os->HTP'));
+
+        await this._spawnCoreService(HiveProcessDB, 'db');
 
         const shelld = await this._spawnCoreService(HiveProcessShellDaemon, 'shelld');
         shelld.registerShellProgram(this.program);

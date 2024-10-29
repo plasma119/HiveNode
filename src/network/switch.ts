@@ -38,10 +38,10 @@ export default class HiveNetSwitch extends HiveNetDevice {
 
     routePacket(sender: DataIO, packet: HiveNetPacket, signatures: DataSignature[]) {
         if (packet instanceof HiveNetPacket) {
-            this.eventLogger(`[${packet.src}:${packet.sport}]->[${packet.dest}:${packet.dport}]: ${packet.data}`, 'route', 'switchIO');
+            this.logEvent(packet.toString(true, true), 'route', 'switchIO');
         } else {
             // ignore invalid packet
-            return this.eventLogger(`[direct]: ${packet}`, 'route', 'switchIO');
+            return this.logEvent(`[direct]: ${packet}`, 'route', 'switchIO');
         }
 
         // ignore self packet
