@@ -1,12 +1,12 @@
-import Encryption from "../../lib/encryption";
-import HiveCommand from "../lib/hiveCommand";
-import { StopPropagation } from "../lib/signals";
-import Terminal from "../lib/terminal";
-import { DataTransformer } from "../network/dataIO";
-import { HIVENETPORT, HIVENETADDRESS, HiveNetPacket, TerminalControlPacket } from "../network/hiveNet";
-import HiveProcess from "../process";
-import HiveProcessNet from "./net";
-import HiveProcessShellDaemon from "./shell";
+import Encryption from '../../lib/encryption.js';
+import HiveCommand from '../lib/hiveCommand.js';
+import { StopPropagation } from '../lib/signals.js';
+import Terminal from '../lib/terminal.js';
+import { DataTransformer } from '../network/dataIO.js';
+import { HIVENETPORT, HIVENETADDRESS, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
+import HiveProcess from '../process.js';
+import HiveProcessNet from './net.js';
+import HiveProcessShellDaemon from './shell.js';
 
 export default class HiveProcessTerminal extends HiveProcess {
     shellPort: number = HIVENETPORT.SHELL;

@@ -228,7 +228,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     registerCoreService<K extends keyof CoreServices>(service: K, hiveProcess: CoreServices[K]) {
         this.coreServices[service] = hiveProcess;
         this.logEvent(hiveProcess.toString(), 'register', 'core service');
-        this.log(`Core Service [${service}] ready`, 'info');
+        this.log(`[OS] Core Service [${service}] ready`, 'info');
     }
 
     getCoreService<K extends keyof CoreServices>(service: K): CoreServices[K] {

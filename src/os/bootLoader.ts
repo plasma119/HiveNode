@@ -6,16 +6,18 @@ import { sleep } from '../lib/lib.js';
 import { getLoader, resolveFileImport, setLoader } from './loader.js';
 import { BootConfig } from './bootConfig.js';
 
-export const BOOTLOADERVERSION = 'v1.24';
-export const BOOTLOADERVERSIONBUILD = '11-27-2023';
+export const BOOTLOADERVERSION = 'v1.25';
+export const BOOTLOADERVERSIONBUILD = '10-29-2024';
 
 console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
 
 let booted = false;
 let bootConfig: BootConfig | null = null;
-// TODO: boot like worker to prevent missing boot message
-sleep(3000).then(() => {
+// TODO: inject boot config via argv
+sleep(3000).then(async () => {
     if (!booted && process.send) process.send('requestBootConfig');
+    await sleep(3000);
+    if (!booted) throw new Error(`Failed to get boot config.`);
 });
 
 process.on('message', async (message) => {
@@ -45,39 +47,39 @@ process.on('message', async (message) => {
     // init HiveOS
     const os = new HiveOS(config.name);
     await os.kernel.onReadyAsync();
-    console.log(`[Boot Loader]: Building terminal: Headless[${config.headless}], Debug[${config.debug}]`);
+    os.log(`[Boot Loader]: Building terminal: Headless[${config.headless}], Debug[${config.debug}]`, 'info');
     os.buildTerminal(config.headless, config.debug);
 
     // start HiveNet server
     if (config.HiveNetServer) {
-        os.stdIO.output(`[Boot Loader]: Starting HiveNet server...`);
+        os.log(`[Boot Loader]: Starting HiveNet server...`, 'info');
         //os.kernel.program.stdIO.input('net listen');
         await os.shell.execute('net listen');
     }
 
     // connect to HiveNet server
     if (config.HiveNetIP) {
-        os.stdIO.output(`[Boot Loader]: Connecting to HiveNet [${config.HiveNetIP}]...`);
+        os.log(`[Boot Loader]: Connecting to HiveNet [${config.HiveNetIP}]...`, 'info');
         //os.kernel.program.stdIO.input(`net connect ${config.HiveNetIP}`);
         await os.shell.execute(`net connect ${config.HiveNetIP}`);
     }
 
     // execute program
     if (config.programFile) {
-        os.stdIO.output(`[Boot Loader]: Running main program from [${config.programFile}]...`);
+        os.log(`[Boot Loader]: Running main program from [${config.programFile}]...`, 'info');
         if (!fs.existsSync(config.programFile)) {
-            os.stdIO.output(`[Boot Loader]: ERROR: Cannot find main program file.`);
+            os.log(`[Boot Loader]: ERROR: Cannot find main program file.`, 'error');
         } else {
             try {
                 let program = await import(resolveFileImport(import.meta.url, config.programFile));
                 program.main(os, argv);
             } catch (e) {
-                os.stdIO.output(e);
+                os.log(e, 'error');
             }
         }
     } else {
-        os.stdIO.output(`[Boot Loader]: No main program file specified.`);
+        os.log(`[Boot Loader]: No main program file specified.`, 'info');
     }
 
-    os.stdIO.output(`[Boot Loader]: Finished boot up sequence.`);
+    os.log(`[Boot Loader]: Finished boot up sequence.`, 'info');
 });
