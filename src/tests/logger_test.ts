@@ -1,5 +1,5 @@
 import { sleep } from '../lib/lib.js';
-import Logger, { LoggerStream } from '../lib/logger.js';
+import Logger, { LoggerStream } from '../os/lib/logger.js';
 
 (async () => {
     let logger = new Logger({

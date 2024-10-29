@@ -1,6 +1,6 @@
 import { inspect } from 'util';
 
-import DataIOBuffer from '../network/dataIOBuffer.js';
+import DataIOBuffer from '../os/network/dataIOBuffer.js';
 
 let log = (data: any) => {
     console.log(inspect(data,false, 4, true))

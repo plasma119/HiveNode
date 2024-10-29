@@ -1,8 +1,8 @@
 import { DefaultListener, ListenerSignature } from '../lib/basicEventEmitter.js';
-import HiveComponent from '../lib/component.js';
-import HiveCommand from '../lib/hiveCommand.js';
+import HiveComponent from './lib/hiveComponent.js';
+import HiveCommand from './lib/hiveCommand.js';
 import { Constructor } from '../lib/lib.js';
-import DataIOBuffer from '../network/dataIOBuffer.js';
+import DataIOBuffer from './network/dataIOBuffer.js';
 import HiveOS from './os.js';
 
 /*

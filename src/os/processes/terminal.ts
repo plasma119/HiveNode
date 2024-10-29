@@ -1,9 +1,9 @@
-import HiveCommand from '../../lib/hiveCommand.js';
+import HiveCommand from '../lib/hiveCommand.js';
 import Encryption from '../../lib/encryption.js';
-import { StopPropagation } from '../../lib/signals.js';
+import { StopPropagation } from '../lib/signals.js';
 import Terminal from '../../lib/terminal.js';
-import { DataTransformer } from '../../network/dataIO.js';
-import { HIVENETADDRESS, HiveNetPacket, HIVENETPORT, TerminalControlPacket } from '../../network/hiveNet.js';
+import { DataTransformer } from '../network/dataIO.js';
+import { HIVENETADDRESS, HiveNetPacket, HIVENETPORT, TerminalControlPacket } from '../network/hiveNet.js';
 import HiveProcess from '../process.js';
 import HiveProcessNet from './net.js';
 import HiveProcessShellDaemon from './shell.js';

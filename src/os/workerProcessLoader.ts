@@ -1,10 +1,10 @@
-import HiveComponent from '../lib/component.js';
-import DataIO from '../network/dataIO.js';
-import { DataParsing, DataSerialize, DataSignature } from '../network/hiveNet.js';
+import HiveComponent from './lib/hiveComponent.js';
+import DataIO from './network/dataIO.js';
+import { DataParsing, DataSerialize, DataSignature } from './network/hiveNet.js';
 import { WorkerData, WorkerConfig } from './worker.js';
 import { getLoader, resolveFileImport, setLoader } from './loader.js';
 import { sleep } from '../lib/lib.js';
-import HiveNetInterface from '../network/interface.js';
+import HiveNetInterface from './network/interface.js';
 import { BootConfig } from './bootConfig.js';
 
 const component = new HiveComponent('Worker Loader');

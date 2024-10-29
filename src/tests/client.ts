@@ -1,4 +1,4 @@
-import HiveCommand from "../lib/hiveCommand.js";
+import HiveCommand from "../os/lib/hiveCommand.js";
 import HiveOS from "../os/os.js";
 
 export function main(os: HiveOS) {

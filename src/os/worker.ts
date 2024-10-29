@@ -2,11 +2,11 @@ import * as fs from 'fs';
 import { fork, ChildProcess } from 'child_process';
 import path from 'path';
 
-import DataIO from '../network/dataIO.js';
-import HiveComponent from '../lib/component.js';
-import { DataParsing, DataSerialize, DataSignature } from '../network/hiveNet.js';
+import DataIO from './network/dataIO.js';
+import HiveComponent from './lib/hiveComponent.js';
+import { DataParsing, DataSerialize, DataSignature } from './network/hiveNet.js';
 import { getLoader } from './loader.js';
-import HiveNetInterface, { PortIO } from '../network/interface.js';
+import HiveNetInterface, { PortIO } from './network/interface.js';
 import { BootConfig } from './bootConfig.js';
 
 // TODO: make this into HiveProcess

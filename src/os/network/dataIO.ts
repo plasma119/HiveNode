@@ -1,4 +1,4 @@
-import HiveComponent from '../lib/component.js';
+import HiveComponent from '../lib/hiveComponent.js';
 import { StopPropagation } from '../lib/signals.js';
 import { DataSignature, DataSignaturesToString, HiveNetPacket } from './hiveNet.js';
 

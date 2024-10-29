@@ -1,5 +1,5 @@
-import HiveCommand from '../../lib/hiveCommand.js';
-import { HIVENETADDRESS, HIVENETPORTREVERSEMAP, HiveNetPacket } from '../../network/hiveNet.js';
+import HiveCommand from '../lib/hiveCommand.js';
+import { HIVENETADDRESS, HIVENETPORTREVERSEMAP, HiveNetPacket } from '../network/hiveNet.js';
 import HiveProcess from '../process.js';
 
 // TODO: maintain persistent shell interaction history

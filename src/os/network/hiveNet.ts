@@ -1,7 +1,7 @@
-import { ListenerSignature, DefaultListener } from '../lib/basicEventEmitter.js';
-import { version } from '../index.js';
-import HiveComponent from '../lib/component.js';
-import { reverseMapObj, typeCheck } from '../lib/lib.js';
+import { ListenerSignature, DefaultListener } from '../../lib/basicEventEmitter.js';
+import { reverseMapObj, typeCheck } from '../../lib/lib.js';
+import { version } from '../../index.js';
+import HiveComponent from '../lib/hiveComponent.js';
 
 export type DataSignature = {
     by: HiveComponent;

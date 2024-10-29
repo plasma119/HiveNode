@@ -1,4 +1,4 @@
-import HiveCommand from '../lib/hiveCommand.js';
+import HiveCommand from './lib/hiveCommand.js';
 
 export type BootConfig = {
     name: string;

@@ -1,5 +1,5 @@
 import { CircularBuffer } from '../../lib/circularBuffer.js';
-import HiveCommand from '../../lib/hiveCommand.js';
+import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
 
 type EventLog = { log: string; event: string; category: string; tag: string };

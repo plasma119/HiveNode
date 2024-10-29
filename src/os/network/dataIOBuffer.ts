@@ -1,9 +1,9 @@
 import { inspect } from 'util';
 
 import DataIO from './dataIO.js';
-import HiveComponent from '../lib/component.js';
+import HiveComponent from '../lib/hiveComponent.js';
 import { DataSignaturesToString } from './hiveNet.js';
-import { CircularBuffer } from '../lib/circularBuffer.js';
+import { CircularBuffer } from '../../lib/circularBuffer.js';
 
 type DataIOBufferOptions = {
     maxSize: number;

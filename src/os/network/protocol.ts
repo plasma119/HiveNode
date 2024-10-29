@@ -1,4 +1,4 @@
-import HiveComponent from '../lib/component.js';
+import HiveComponent from '../lib/hiveComponent.js';
 import DataIO from './dataIO.js';
 import { DataSignature, HiveNetFlags, HiveNetPacket, HIVENETPORT } from './hiveNet.js';
 import HiveNetInterface from './interface.js';

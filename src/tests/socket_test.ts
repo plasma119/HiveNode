@@ -1,9 +1,9 @@
 import WebSocket from 'ws';
 
-import HiveSocket, { HiveSocketOptions } from '../network/socket.js';
-import DataIO from '../network/dataIO.js';
-import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
-import HiveComponent from '../lib/component.js';
+import HiveSocket, { HiveSocketOptions } from '../os/network/socket.js';
+import DataIO from '../os/network/dataIO.js';
+import { DataSignature, DataSignaturesToString } from '../os/network/hiveNet.js';
+import HiveComponent from '../os/lib/hiveComponent.js';
 
 function noop(_a: any) {}
 function logWrapper(label: string) {

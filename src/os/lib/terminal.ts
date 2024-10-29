@@ -3,9 +3,9 @@ import { inspect } from 'util';
 import * as ReadLine from 'readline';
 import MuteStream from 'mute-stream';
 
-import DataIO from '../network/dataIO.js';
-import { DataSignature, DataSignaturesToString } from '../network/hiveNet.js';
-import HiveComponent from './component.js';
+import DataIO from '../os/network/dataIO.js';
+import { DataSignature, DataSignaturesToString } from '../os/network/hiveNet.js';
+import HiveComponent from './hiveComponent.js';
 import Encryption from './encryption.js';
 
 export type completer = (line: string) => PromiseLike<string[]> | string[];

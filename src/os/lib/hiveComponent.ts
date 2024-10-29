@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 
-import BasicEventEmitter, { DefaultListener, ListenerSignature } from './basicEventEmitter.js';
+import BasicEventEmitter, { DefaultListener, ListenerSignature } from '../../lib/basicEventEmitter.js';
 
 export type EventLogger = (log: string, event: string, category: string) => void;
 const DefaultEventLogger = () => {};

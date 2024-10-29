@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-import HiveCommand, { HiveSubCommand } from './lib/hiveCommand.js';
+import HiveCommand, { HiveSubCommand } from './os/lib/hiveCommand.js';
 import Terminal from './lib/terminal.js';
 import { BootConfig, BootConfigParserProgram, DEFAULTCONFIG, mergeBIOSConfig } from './os/bootConfig.js';
 

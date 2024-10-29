@@ -1,7 +1,7 @@
 
-import exitHelper from "../lib/exitHelper.js";
+import exitHelper from "../os/lib/exitHelper.js";
 import { sleep } from "../lib/lib.js";
-import { IgnoreSIGINT } from "../lib/signals.js";
+import { IgnoreSIGINT } from "../os/lib/signals.js";
 
 let foo = false;
 let boo = false;

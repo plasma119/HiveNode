@@ -2,7 +2,7 @@ import * as fs from 'fs';
 
 import Level from 'level';
 
-import HiveCommand from '../../lib/hiveCommand.js';
+import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
 
 type MasterRecord = {

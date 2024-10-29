@@ -2,13 +2,13 @@ import { inspect } from 'util';
 
 import WebSocket from 'ws';
 
-import { version } from '../index.js';
-import DataIO from './dataIO.js';
+import { version } from '../../index.js';
+import Encryption from '../../lib/encryption.js';
+import { sleep, typeCheck } from '../../lib/lib.js';
+import HiveComponent from '../lib/hiveComponent.js';
 import HiveCommand from '../lib/hiveCommand.js';
-import { sleep, typeCheck } from '../lib/lib.js';
-import HiveComponent from '../lib/component.js';
 import { DataParsing, DataSerialize, DataSignature } from './hiveNet.js';
-import Encryption from '../lib/encryption.js';
+import DataIO from './dataIO.js';
 
 const VERSION = 'V1.1';
 const BUILD = '2024-04-26';

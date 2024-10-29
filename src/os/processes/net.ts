@@ -1,8 +1,8 @@
 import { WebSocketServer } from 'ws';
 
-import HiveCommand from '../../lib/hiveCommand.js';
+import HiveCommand from '../lib/hiveCommand.js';
 import { format, sleep } from '../../lib/lib.js';
-import { DataTransformer } from '../../network/dataIO.js';
+import { DataTransformer } from '../network/dataIO.js';
 import {
     DataSignature,
     // DataParsing,
@@ -12,9 +12,9 @@ import {
     HiveNetDeviceInfo,
     HiveNetPacket,
     HIVENETPORT,
-} from '../../network/hiveNet.js';
-import HiveSocket from '../../network/socket.js';
-import HiveNetSwitch from '../../network/switch.js';
+} from '../network/hiveNet.js';
+import HiveSocket from '../network/socket.js';
+import HiveNetSwitch from '../network/switch.js';
 import HiveProcess from '../process.js';
 import HiveProcessTerminal from './terminal.js';
 

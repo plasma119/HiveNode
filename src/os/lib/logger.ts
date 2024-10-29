@@ -3,8 +3,8 @@ import path from 'path';
 import { inspect } from 'util';
 
 import DataIO from '../network/dataIO.js';
-import HiveComponent from './component.js';
-import { timeFormat } from './lib.js';
+import HiveComponent from './hiveComponent.js';
+import { timeFormat } from '../../lib/lib.js';
 
 type LoggerOptions = {
     name: string;

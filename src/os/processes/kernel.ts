@@ -1,9 +1,9 @@
 import { version } from '../../index.js';
-import exitHelper from '../../lib/exitHelper.js';
-import HiveCommand from '../../lib/hiveCommand.js';
+import exitHelper from '../lib/exitHelper.js';
+import HiveCommand from '../lib/hiveCommand.js';
 import { Constructor, format, sleep } from '../../lib/lib.js';
-import DataIO from '../../network/dataIO.js';
-import { HIVENETPORT } from '../../network/hiveNet.js';
+import DataIO from '../network/dataIO.js';
+import { HIVENETPORT } from '../network/hiveNet.js';
 import { VERSION } from '../../tool/autoBuildVersion.js';
 import { CoreServices } from '../os.js';
 import HiveProcess from '../process.js';

@@ -1,7 +1,7 @@
 import { sleep } from '../lib/lib.js';
-import DataIO from '../network/dataIO.js';
-import { HIVENETPORT, HiveNetPacket } from '../network/hiveNet.js';
-import HiveNetInterface from '../network/interface.js';
+import DataIO from '../os/network/dataIO.js';
+import { HIVENETPORT, HiveNetPacket } from '../os/network/hiveNet.js';
+import HiveNetInterface from '../os/network/interface.js';
 import { getLoader } from '../os/loader.js';
 import HiveOS from '../os/os.js';
 import { CreateNewProcess } from '../os/worker.js';

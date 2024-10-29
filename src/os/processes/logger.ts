@@ -1,9 +1,9 @@
 import { inspect } from 'util';
 
 import { CircularBuffer } from '../../lib/circularBuffer.js';
-import exitHelper from '../../lib/exitHelper.js';
-import HiveCommand from '../../lib/hiveCommand.js';
-import Logger, { LoggerStream } from '../../lib/logger.js';
+import exitHelper from '../lib/exitHelper.js';
+import HiveCommand from '../lib/hiveCommand.js';
+import Logger, { LoggerStream } from '../lib/logger.js';
 import HiveOS from '../os.js';
 import HiveProcess from '../process.js';
 

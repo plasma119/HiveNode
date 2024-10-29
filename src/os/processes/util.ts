@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 
-import HiveCommand from '../../lib/hiveCommand.js';
+import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
 import { uuidv7 } from '../../lib/lib.js';
 

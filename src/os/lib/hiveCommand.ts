@@ -4,8 +4,8 @@
 
 import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
-import HiveComponent from './component.js';
-import { commonPrefix, findFirstWord, formatTab, typeCheck } from './lib.js';
+import HiveComponent from './hiveComponent.js';
+import { commonPrefix, findFirstWord, formatTab, typeCheck } from '../../lib/lib.js';
 
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: `-${string}`]: boolean | string }, info: HiveCommandInfo) => any;
 

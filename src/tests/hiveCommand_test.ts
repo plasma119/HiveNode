@@ -1,7 +1,7 @@
-import HiveCommand from '../lib/hiveCommand.js';
-import DataIO from '../network/dataIO.js';
+import HiveCommand from '../os/lib/hiveCommand.js';
+import DataIO from '../os/network/dataIO.js';
 import { sleep } from '../lib/lib.js';
-import HiveComponent from '../lib/component.js';
+import HiveComponent from '../os/lib/hiveComponent.js';
 
 let program = new HiveCommand();
 let io = new DataIO(new HiveComponent('test'), 'io');
