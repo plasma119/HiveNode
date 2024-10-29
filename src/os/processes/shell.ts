@@ -130,7 +130,7 @@ export class HiveProcessShell extends HiveProcess {
                 let packet = new HiveNetPacket({
                     data: args['data'],
                     // src: opts['-src'],
-                    dest: program.toString(opts['-dest']) || HIVENETADDRESS.LOCAL,
+                    dest: program.toStr(opts['-dest']) || HIVENETADDRESS.LOCAL,
                     // sport: opts['-sport'],
                     dport: program.toInt(opts['-dport']),
                     // ttl: opts['-ttl'],

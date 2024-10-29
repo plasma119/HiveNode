@@ -7,7 +7,10 @@ import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/
 import HiveComponent from './hiveComponent.js';
 import { commonPrefix, findFirstWord, formatTab, typeCheck } from '../../lib/lib.js';
 
-export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: `-${string}`]: boolean | string }, info: HiveCommandInfo) => any;
+// this includes both '-var' and '-var boo'
+type OptionShape = `-${string}`;
+
+export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: OptionShape]: boolean | string }, info: HiveCommandInfo) => any;
 
 export type HiveCommandInfo = {
     rawData: any;
@@ -30,7 +33,7 @@ export type HiveCommandExport = {
         defaultValue: string | number;
     }[];
     opts: {
-        name: string;
+        name: OptionShape;
         description: string;
         defaultValue: boolean | string | number;
     }[];
@@ -309,12 +312,12 @@ export default class HiveCommand extends HiveComponent {
         };
     }
 
-    toString(input: boolean | string) {
+    toStr(input: boolean | string) {
         if (typeof input == 'boolean') return '';
         return input;
     }
 
-    toBoolean(input: boolean | string) {
+    toBool(input: boolean | string) {
         return !!input;
     }
 
@@ -532,7 +535,7 @@ export class HiveSubCommand extends HiveCommand {
         return this;
     }
 
-    addNewOption(name: string, description = '', defaultValue: boolean | string | number = false) {
+    addNewOption(name: OptionShape, description = '', defaultValue: boolean | string | number = false) {
         const option = new HiveOption(name, description, defaultValue);
         this.addOption(option);
         return this;
@@ -540,7 +543,7 @@ export class HiveSubCommand extends HiveCommand {
 
     addNewOptions(
         optionArr: {
-            name: string;
+            name: OptionShape;
             description?: string;
             defaultValue?: boolean | string | number;
         }[]
@@ -624,14 +627,14 @@ export class HiveSubCommand extends HiveCommand {
         result.description = this.description;
         this.arguments.forEach((arg) => {
             result.args.push({
-                name: arg.name,
+                name: arg.baseName,
                 description: arg.description,
                 defaultValue: arg.defaultValue,
             });
         });
         this.options.forEach((opt) => {
             result.opts.push({
-                name: opt.name,
+                name: opt.baseName,
                 description: opt.description,
                 defaultValue: opt.defaultValue,
             });
@@ -695,13 +698,13 @@ export class HiveArgument {
 
 export class HiveOption {
     name: string;
-    baseName: string;
+    baseName: OptionShape;
     description: string;
     defaultValue: boolean | string;
     argument?: HiveArgument;
     value: boolean | string;
 
-    constructor(name: string, description = '', defaultValue: boolean | string | number = false) {
+    constructor(name: OptionShape, description = '', defaultValue: boolean | string | number = false) {
         this.baseName = name;
         this.description = description;
         this.defaultValue = typeof defaultValue == 'number' ? defaultValue.toString() : defaultValue;
