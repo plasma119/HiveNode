@@ -15,12 +15,13 @@ import HiveProcessShellDaemon from './shell.js';
 import HiveProcessSocketDaemon from './socket.js';
 import HiveProcessTerminal from './terminal.js';
 import HiveProcessUtil from './util.js';
+import HiveProcessProcessManager from './processManager.js';
 
 export default class HiveProcessKernel extends HiveProcess {
     systemShell?: HiveCommand;
 
     initProgram(): HiveCommand {
-        const kernel = new HiveCommand('kernel', `[${this.os.name}] HiveOS ${version} Kernel Shell`);
+        const kernel = new HiveCommand('kernel', `Kernel Shell[${this.os.name}] HiveOS ${version}`);
 
         // void port
         this.os.HTP.listen(HIVENETPORT.DISCARD);
@@ -147,9 +148,8 @@ export default class HiveProcessKernel extends HiveProcess {
         }
 
         // shell programs
-        const util = this.spawnChild(HiveProcessUtil, 'util');
-        await util.onReadyAsync();
-        shelld.registerShellProgram(util.program);
+        await this._spawnShellProgram(HiveProcessUtil, 'util');
+        await this._spawnShellProgram(HiveProcessProcessManager, 'top');
 
         // other init
 
@@ -160,6 +160,13 @@ export default class HiveProcessKernel extends HiveProcess {
         const service = this.spawnChild(constructor, serviceName);
         await service.onReadyAsync();
         this.os.registerCoreService(serviceName, service);
+        return service;
+    }
+
+    private async _spawnShellProgram<C extends Constructor<HiveProcess>, K extends string>(constructor: C, serviceName: K) {
+        const service = this.spawnChild(constructor, serviceName);
+        await service.onReadyAsync();
+        this.os.registerShellProgram(service.program);
         return service;
     }
 

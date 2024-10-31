@@ -35,20 +35,22 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     pid: number;
     ppid: number;
     childs: Map<number, HiveProcess>;
+    argv: string[];
 
     program: HiveCommand;
     alive: boolean = true;
     ready: boolean = false;
     IOBuffer: DataIOBuffer = new DataIOBuffer({ includeSignatures: true });
 
-    constructor(name: string, os: HiveOS, pid: number, ppid: number) {
+    constructor(name: string, os: HiveOS, pid: number, ppid: number, argv: string[]) {
         super(name);
         this.os = os;
         this.pid = pid;
         this.ppid = ppid;
         this.childs = new Map();
-        this.program = this.initProgram();
-        if (os.debugMode) this.enableIOBuffer();
+        this.argv = argv;
+        this.program = this.initProgram(); // TODO: capture/store program.stdIO contains warning info
+        if (os.debugMode) this.enableIOBuffer(); // TODO: actually finish implementing this
     }
 
     // override by process
@@ -69,13 +71,10 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     exit(error?: any) {
         this.emit('exit', error);
         this.alive = false;
-        // I'm fucking done with typescript
-        // @ts-ignore
         this.os.processExitHandle(this);
     }
 
     spawnChild<C extends Constructor<HiveProcess>>(processConstructor: C, name: string, argv: string[] = []): InstanceType<C> {
-        // why the fuck this works here but not the above
         return this.os.newProcess(processConstructor, this, name, argv);
     }
 
@@ -96,6 +95,6 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
     }
 
     toString() {
-        return `${this.constructor.name}[${this.name}]:pid[${this.pid}]`;
+        return `${this.constructor.name.replace('HiveProcess', '')}[${this.name}]:pid[${this.pid}]`;
     }
 }

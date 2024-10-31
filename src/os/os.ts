@@ -93,8 +93,10 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         this.netInterface = new HiveNetInterface(name);
         this.HTP = this.netInterface.HTP;
         this.processes = new Map();
-        this.nextpid = 0;
+        this.nextpid = 1;
         this.debugMode = debugMode;
+
+        process.title = name;
 
         // SIGINT capture
         exitHelper.onSIGINT(() => {
@@ -183,12 +185,12 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     ): InstanceType<C> {
         const pid = this.nextpid++;
         this.logEvent(
-            `${parentProcess ? parentProcess : 'null'}->${processConstructor.name}[${name}]:pid[${pid}] [${argv}]`,
+            `${parentProcess ? parentProcess : 'null'}->${processConstructor.name.replace('HiveProcess', '')}[${name}]:pid[${pid}] [${argv}]`,
             'new process',
             'system'
         );
 
-        const hiveProcess = new processConstructor(name, this, pid, parentProcess?.pid || 0);
+        const hiveProcess = new processConstructor(name, this, pid, parentProcess?.pid || -1, argv);
         this.logEvent(`${hiveProcess} program loaded`, 'new process', 'system');
 
         this.processes.set(hiveProcess.pid, hiveProcess);
@@ -214,7 +216,8 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         return hiveProcess as InstanceType<C>;
     }
 
-    processExitHandle(hiveProcess: HiveProcess) {
+    // idk why TypeScript requires type here but not above
+    processExitHandle(hiveProcess: HiveProcess<any>) {
         const parentProcess = this.getProcess(HiveProcess, hiveProcess.ppid);
         this.logEvent(`${parentProcess ? parentProcess : 'null'}->${hiveProcess}`, 'process exit', 'system');
         this.processes.delete(hiveProcess.pid);

@@ -40,8 +40,8 @@ export default class HiveProcessLogger extends HiveProcess {
     logLevel: number = 4;
     buffer: CircularBuffer<{ message: any; level: keyof typeof logLevel }> = new CircularBuffer(1000);
 
-    constructor(name: string, os: HiveOS, pid: number, ppid: number) {
-        super(name, os, pid, ppid);
+    constructor(name: string, os: HiveOS, pid: number, ppid: number, argv: string[]) {
+        super(name, os, pid, ppid, argv);
         this.logger = new LoggerStream({
             name: 'HiveOS',
             logFolder: './log',

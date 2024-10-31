@@ -185,6 +185,7 @@ export function applyMixins(derivedConstructor: any, baseConstructors: any[]) {
 //     [O in keyof T]?: T[O];
 // };
 
+// typeof T also returns class constructor, but this one is fuzzy and stop TypeScript from throwing shit errors
 export type Constructor<T> = new (...args: any) => T;
 
 /*
