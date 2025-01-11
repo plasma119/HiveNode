@@ -21,7 +21,7 @@ export default class HiveProcessKernel extends HiveProcess {
     systemShell?: HiveCommand;
 
     initProgram(): HiveCommand {
-        const kernel = new HiveCommand('kernel', `Kernel Shell[${this.os.name}] HiveOS ${version}`);
+        const kernel = new HiveCommand('kernel', `Kernel Shell[${this.os.NodeName}] HiveOS ${version}`);
 
         // void port
         this.os.HTP.listen(HIVENETPORT.DISCARD);
@@ -126,7 +126,7 @@ export default class HiveProcessKernel extends HiveProcess {
     async main() {
         // core services
         const logger = await this._spawnCoreService(HiveProcessLogger, 'logger'); // must be first service to be loaded
-        await this._spawnCoreService(HiveProcessEventLogger, 'event');
+        await this._spawnCoreService(HiveProcessEventLogger, 'event', ['OS']);
         this.os.setEventLogger(this.os.newEventLogger('os'));
         this.os.netInterface.setEventLogger(this.os.newEventLogger('os->netInterface'));
         this.os.HTP.setEventLogger(this.os.newEventLogger('os->HTP'));
@@ -156,8 +156,12 @@ export default class HiveProcessKernel extends HiveProcess {
         // TODO: maybe move terminal.build and other init from bootLoader to here?
     }
 
-    private async _spawnCoreService<C extends Constructor<CoreServices[K]>, K extends keyof CoreServices>(constructor: C, serviceName: K) {
-        const service = this.spawnChild(constructor, serviceName);
+    private async _spawnCoreService<C extends Constructor<CoreServices[K]>, K extends keyof CoreServices>(
+        constructor: C,
+        serviceName: K,
+        argv?: string[]
+    ) {
+        const service = this.spawnChild(constructor, serviceName, argv);
         await service.onReadyAsync();
         this.os.registerCoreService(serviceName, service);
         return service;

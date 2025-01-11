@@ -79,6 +79,18 @@ export function timeFormat(
     }
 }
 
+export function timeConvert(time: number, target: 'auto' | 'minute' | 'hour' = 'auto') {
+    let seconds = time % 60;
+    let minutes = Math.floor(time / 60);
+    if (target == 'hour' || (target == 'auto' && minutes >= 60)) {
+        let hours = Math.floor(minutes / 60);
+        minutes = minutes % 60;
+        return `${hours}:${minutes}:${seconds}`;
+    } else {
+        return `${minutes}:${seconds}`;
+    }
+}
+
 // https://stackoverflow.com/questions/57118453/structural-type-checking-in-javascript
 // this one is for simple object checking only
 export function duckTypeCheck(obj: any, model: any) {

@@ -56,7 +56,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                     }
                 } else if (!args['target']) {
                     return 'Target not specified.';
-                } else if (args['target'] == this.os.name || args['target'] == this.os.netInterface.UUID) {
+                } else if (args['target'] == this.os.NodeName || args['target'] == this.os.netInterface.UUID) {
                     return 'Cannot remote terminal to self.';
                 }
                 const net = this.os.getProcess(HiveProcessNet);
@@ -160,7 +160,7 @@ export default class HiveProcessTerminal extends HiveProcess {
         // TODO: buffer screen for os.stdIO
         this.os.stdIO.on('output', dt.stdIO.outputBind, 'route os.stdIO to terminal');
         if (terminal && debug) terminal.debug = debug;
-        this.promptBuilder.basePrompt = `[${this.os.name}]`;
+        this.promptBuilder.basePrompt = `[${this.os.NodeName}]`;
         terminal.setPrompt(this.promptBuilder.build());
 
         // completer

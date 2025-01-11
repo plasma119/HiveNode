@@ -14,7 +14,7 @@ export default class HiveProcessProcessManager extends HiveProcess {
     initProgram() {
         const program = new HiveCommand('top', 'process manager');
         const top = program.addNewCommand('top', 'process manager').setAction(() => {
-            let str = `TOP - [${this.os.name}] HiveOS ${version}\n`;
+            let str = `TOP - HiveNode OS[${this.os.NodeName}] version ${version}\n`;
             let nodeInfo = getNodeInfo();
             let memory = nodeInfo.memory;
             let nodeCPUInfo = getNodeCPUInfo();
@@ -36,7 +36,7 @@ export default class HiveProcessProcessManager extends HiveProcess {
         });
 
         top.addNewCommand('system', 'display system info').setAction(() => {
-            let str = `TOP - HiveNode OS[${this.os.name}] version: ${version}\n`;
+            let str = `TOP - HiveNode OS[${this.os.NodeName}] version ${version}\n`;
             str = `Displaying system info:\n`;
             let OSInfo = getOSInfo();
             str += `Host: ${OSInfo.hostname}\n`;

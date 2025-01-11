@@ -1,7 +1,7 @@
 import { detectWakeup } from './lib/detectWakeup.js';
 import exitHelper from './lib/exitHelper.js';
 import HiveCommand from './lib/hiveCommand.js';
-import { Constructor, timeFormat } from '../lib/lib.js';
+import { Constructor, timeConvert, timeFormat } from '../lib/lib.js';
 import { IgnoreSIGINT } from './lib/signals.js';
 import DataIO from './network/dataIO.js';
 import { HiveNetDevice } from './network/hiveNet.js';
@@ -25,7 +25,6 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: standardize error emit/handling
 // TODO: actually use DataIOBuffer
 // TODO: define os.debugMode
-// TODO: implement processManager
 // TODO: add extra info for error catching in HiveCommand
 // TODO: client mode OS (since DB is locked to main OS only)
 
@@ -73,6 +72,7 @@ export type CoreServices = {
     OSI model layer 6 - presentation layer
 */
 export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
+    NodeName: string;
     stdIO: DataIO;
     netInterface: HiveNetInterface;
     HTP: HTP;
@@ -87,8 +87,9 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     debugMode: boolean;
 
     constructor(name: string, debugMode: boolean = false) {
-        // TODO: reserve os.name to 'HiveOS' for ease of debugging
-        super(name, 'node');
+        // reserve os.name to 'HiveOS' for ease of debugging
+        super('HiveOS', 'node');
+        this.NodeName = name;
         this.stdIO = new DataIO(this, 'stdIO');
         this.netInterface = new HiveNetInterface(name);
         this.HTP = this.netInterface.HTP;
@@ -110,7 +111,8 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         detectWakeup.init();
         detectWakeup.on('wakeup', (timePassed) => {
             this.logEvent(`Time passed: ${timePassed}`, 'wakeup', 'system');
-            this.log(`[OS] Wakeup detected, last timestamp at ${timeFormat('full', '-', ':', ' ', Date.now() - timePassed)}`, 'info');
+            let lastTime = timeFormat('full', '-', ':', ' ', Date.now() - timePassed);
+            this.log(`[OS] Wakeup detected, last timestamp at ${lastTime} (${timeConvert(timePassed)} ago)`, 'info');
             this.emit('wakeup', timePassed);
         });
 
@@ -209,6 +211,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
                 hiveProcess.emit('ready');
             }
         } catch (e) {
+            this.logEvent(`ERROR: ${hiveProcess} process crashed on startup`, 'new process', 'system');
             this.log(`[OS] ERROR: Process ${name} crashed on startup.`, 'error');
             this.log(e, 'error');
             throw e; // if inside HiveCommand, this should be 'safe', otherwise cascade upward to parent

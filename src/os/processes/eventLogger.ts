@@ -11,6 +11,8 @@ export default class HiveProcessEventLogger extends HiveProcess {
     events: Map<string, CircularBuffer<EventLog>> = new Map();
     history: CircularBuffer<EventLog> = new CircularBuffer(1000);
 
+    root: string = 'undefined';
+
     private _log = (tag: string, log: string, event: string, category: string) => {
         let arr = this.events.get(category);
         if (arr == undefined) {
@@ -25,7 +27,7 @@ export default class HiveProcessEventLogger extends HiveProcess {
         };
         arr.push(eventLog);
         this.history.push(eventLog);
-        this.os.log(`[${tag}][${category}][${event}]: ${log}`, 'trace');
+        this.os.log(`[${this.root}][${tag}][${category}][${event}]: ${log}`, 'trace');
     };
 
     initProgram() {
@@ -54,7 +56,7 @@ export default class HiveProcessEventLogger extends HiveProcess {
                 if (cat) events = events.filter((e) => e.category == cat);
                 if (event) events = events.filter((e) => e.event == event);
                 let slice = events.slice(0, item);
-                let str = '';
+                let str = `Event Logger [${this.root}]\n`;
                 str += `Displaying [${slice.length}/${events.length}] log results:\n`;
                 str += slice.map((e) => `[${e.tag}][${e.category}][${e.event}]: ${e.log}`).join('\n');
                 return str;
@@ -63,12 +65,18 @@ export default class HiveProcessEventLogger extends HiveProcess {
         return program;
     }
 
-    main() {
+    main(argv: string[]) {
+        if (argv[0] && typeof argv[0] == 'string') this.root = argv[0];
         this.setEventLogger(this.newEventLogger('EventLogger'));
     }
 
+    setRoot(root: string) {
+        this.logEvent(`[${this.root}]->[${root}]`, 'set root', 'event logger');
+        this.root = root;
+    }
+
     newEventLogger(tag: string = 'unknown') {
-        this.logEvent(`tag:[${tag}]`, 'new logger', 'event');
+        this.logEvent(`tag:[${tag}]`, 'new logger', 'event logger');
         return this._log.bind(this, tag);
     }
 }

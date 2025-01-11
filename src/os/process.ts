@@ -16,6 +16,7 @@ interface HiveProcessInterface {
 
 export type HiveProcessEvents = {
     ready: () => void; // emit after process.main, maybe figure out aysnc main?
+    error: (msg: string, error: any) => void; // auto throw error if no error listener
     exit: (error?: any) => void;
 };
 
@@ -92,6 +93,21 @@ export default class HiveProcess<EventList extends ListenerSignature<EventList> 
         return new Promise((resolve) => {
             this.onReady(resolve);
         });
+    }
+
+    throwError(msg: string, error: any) {
+        if (this.getListenerCount('error') === 0) {
+            this.os.log(msg, 'error');
+            if (error instanceof Error) {
+                throw error;
+            } else {
+                throw new Error(error || msg);
+            }
+        } else {
+            // stupid TS
+            // @ts-ignore
+            this.emit('error', msg, error);
+        }
     }
 
     toString() {
