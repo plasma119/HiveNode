@@ -6,8 +6,8 @@ import { sleep } from '../lib/lib.js';
 import { getLoader, resolveFileImport, setLoader } from './loader.js';
 import { BootConfig } from './bootConfig.js';
 
-export const BOOTLOADERVERSION = 'v1.25';
-export const BOOTLOADERVERSIONBUILD = '10-29-2024';
+export const BOOTLOADERVERSION = 'v1.26';
+export const BOOTLOADERVERSIONBUILD = '1-11-2025';
 
 console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
 
@@ -54,14 +54,14 @@ process.on('message', async (message) => {
     if (config.HiveNetServer) {
         os.log(`[Boot Loader]: Starting HiveNet server...`, 'info');
         //os.kernel.program.stdIO.input('net listen');
-        await os.shell.execute('net listen');
+        await os.shell.execute(`net listen -port ${config.HiveNetPort}`);
     }
 
     // connect to HiveNet server
     if (config.HiveNetIP) {
         os.log(`[Boot Loader]: Connecting to HiveNet [${config.HiveNetIP}]...`, 'info');
         //os.kernel.program.stdIO.input(`net connect ${config.HiveNetIP}`);
-        await os.shell.execute(`net connect ${config.HiveNetIP}`);
+        await os.shell.execute(`net connect ${config.HiveNetIP} -port ${config.HiveNetPort}`);
     }
 
     // execute program

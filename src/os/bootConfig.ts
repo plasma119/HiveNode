@@ -11,6 +11,7 @@ export type BootConfig = {
     configFile: string;
     HiveNetServer: boolean;
     HiveNetIP: string;
+    HiveNetPort: number;
 };
 
 export const DEFAULTCONFIG: BootConfig = {
@@ -24,6 +25,7 @@ export const DEFAULTCONFIG: BootConfig = {
     configFile: '',
     HiveNetServer: false,
     HiveNetIP: '',
+    HiveNetPort: 8082,
 };
 
 // TODO: help command
@@ -39,6 +41,7 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
     .addNewOption('-configFile <path>', 'path to config file (override by arguments)')
     .addNewOption('-HiveNetServer', 'Auto start HiveNet server')
     .addNewOption('-HiveNetIP <ip>', 'Auto connect to HiveNet')
+    .addNewOption('-HiveNetPort <port>', 'HiveNet port')
     .addNewArgument('[argv...]', 'arguments pass to main program', '')
     .setAction((args, opts) => {
         let config: Partial<BootConfig> = {
@@ -52,6 +55,7 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
             configFile: (opts['-configFile'] as string) || undefined,
             HiveNetServer: (opts['-HiveNetServer'] as boolean) || undefined,
             HiveNetIP: (opts['-HiveNetIP'] as string) || undefined,
+            HiveNetPort: Number.parseInt(opts['-HiveNetPort'] as string) || 8082,
         };
         return {
             config: config,

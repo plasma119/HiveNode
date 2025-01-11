@@ -2,9 +2,11 @@
     "name": "Client",
     "headless": false,
     "debug": true,
+    "debugDataIO": false,
     "HiveNodePath": "dist/",
     "bootLoaderFile": "",
     "programFile": "dist/tests/client.js",
     "HiveNetServer": false,
-    "HiveNetIP": "127.0.0.1"
+    "HiveNetIP": "127.0.0.1",
+    "HiveNetPort": 8082
 }

@@ -2,9 +2,11 @@
     "name": "Server",
     "headless": false,
     "debug": true,
+    "debugDataIO": false,
     "HiveNodePath": "dist/",
     "bootLoaderFile": "",
     "programFile": "",
     "HiveNetServer": true,
-    "HiveNetIP": ""
+    "HiveNetIP": "",
+    "HiveNetPort": 8082
 }

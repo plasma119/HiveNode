@@ -7,5 +7,6 @@
     "bootLoaderFile": "",
     "programFile": "",
     "HiveNetServer": false,
-    "HiveNetIP": ""
+    "HiveNetIP": "",
+    "HiveNetPort": 8082
 }
