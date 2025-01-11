@@ -97,6 +97,12 @@ export function duckTypeCheck(obj: any, model: any) {
 
 // check is obj in the format described by model
 export function typeCheck(obj: any, model: any): boolean {
+    if (typeof model === 'string') return typeCheckHelper(obj, model);
+    if (typeof obj === 'object' && typeof model === 'object') return typeCheckObject(obj, model);
+    return false;
+}
+
+function typeCheckObject(obj: any, model: any): boolean {
     for (let prop in model) {
         const type = model[prop];
         const data = obj[prop];
@@ -113,7 +119,7 @@ export function typeCheck(obj: any, model: any): boolean {
                 let pass = false;
                 for (let j = 0; j < type.length; j++) {
                     // check multiple possible types defined in model
-                    if (typeCheck(data[i], type[j])) {
+                    if (typeCheckObject(data[i], type[j])) {
                         pass = true;
                         break;
                     }
@@ -122,7 +128,7 @@ export function typeCheck(obj: any, model: any): boolean {
             }
         } else if (typeof type == 'object') {
             // recursive typecheck
-            if (!typeCheck(data, type)) return false;
+            if (!typeCheckObject(data, type)) return false;
         }
     }
     return true;

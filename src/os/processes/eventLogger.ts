@@ -36,12 +36,12 @@ export default class HiveProcessEventLogger extends HiveProcess {
             .addNewOption('-tag <tag>', 'filter selected tag')
             .addNewOption('-category <category>', 'filter selected category')
             .addNewOption('-event <event>', 'filter selected event')
-            .addNewOption('-item <item>', 'max items to display (default 50)')
+            .addNewOption('-item <item>', 'max items to display (default 200)')
             .setAction((_args, opts) => {
                 let tag = opts['-tag'] as string;
                 let cat = opts['-category'] as string;
                 let event = opts['-event'] as string;
-                let item = typeof opts['-item'] == 'string' ? Number.parseInt(opts['-item']) : 50;
+                let item = typeof opts['-item'] == 'string' ? Number.parseInt(opts['-item']) : 200;
                 if (item <= 0) return `Invalid item size`;
                 let events: EventLog[];
                 if (tag) {

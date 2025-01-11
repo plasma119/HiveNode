@@ -25,7 +25,11 @@ type PingInfo = {
     signatures: DataSignature[];
 };
 
-export default class HiveProcessNet extends HiveProcess {
+type HiveProcessNetEvent = {
+    newConnection: () => void;
+};
+
+export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
     infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
     nameMap: Map<string, string> = new Map(); // Map<name, UUID>
 
@@ -249,6 +253,7 @@ export default class HiveProcessNet extends HiveProcess {
 
         // TODO: rework with socket
         const socket = new HiveSocket('remote');
+        socket.setEventLogger(this.os.newEventLogger('net->socket[client]'));
         const socketDT = new DataTransformer(socket.dataIO);
         // socketDT.setInputTransform(DataSerialize);
         // socketDT.setOutputTransform(DataParsing);
@@ -308,6 +313,7 @@ export default class HiveProcessNet extends HiveProcess {
 
             // TODO: rework with socket
             const client = new HiveSocket('');
+            client.setEventLogger(this.os.newEventLogger('net->socket[server]'));
             const dt = new DataTransformer(client.dataIO);
             // dt.setInputTransform(DataSerialize);
             // dt.setOutputTransform(DataParsing);

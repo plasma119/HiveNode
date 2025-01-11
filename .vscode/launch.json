@@ -29,18 +29,6 @@
             ]
         },
         {
-            "name": "HiveSocket Test",
-            "request": "launch",
-            "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\socket_test.js",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
-        },
-        {
             "name": "Logger Test",
             "request": "launch",
             "type": "node",

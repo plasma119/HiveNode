@@ -4,14 +4,14 @@ import WebSocket from 'ws';
 
 import { version } from '../../index.js';
 import Encryption from '../../lib/encryption.js';
-import { sleep, typeCheck } from '../../lib/lib.js';
+import { sleep } from '../../lib/lib.js';
 import HiveComponent from '../lib/hiveComponent.js';
-import HiveCommand from '../lib/hiveCommand.js';
 import { DataParsing, DataSerialize, DataSignature } from './hiveNet.js';
 import DataIO from './dataIO.js';
+import HandShake from './handshake.js';
 
-const VERSION = 'V1.1';
-const BUILD = '2024-04-26';
+const VERSION = 'V1.2';
+const BUILD = '2025-01-11';
 const PEPPER = '458f4a35dd57';
 
 export type SocketStatus = {
@@ -52,7 +52,7 @@ const DEFAULTSOCKETSECRET: SocketSecret = {
 };
 
 type SocketHost = { host: string; port: number };
-type HiveSocketDataHeader = 'data' | 'buzz' | 'fuzz' | 'hive' | 'mind' | 'ready' | 'ping' | 'pong';
+type HiveSocketDataHeader = 'handshake' | 'data' | 'ping' | 'pong';
 type HiveSocketReason = 'timeout' | 'handshake' | 'ping' | 'closed' | 'restart' | 'unknown' | 'error';
 
 type HiveSocketEvent = {
@@ -67,11 +67,10 @@ export type HiveSocketOptions = {
     serialization: boolean; // serialize data for HiveNetPacket
     connectTimeout: number; // seconds to wait for timeout for connect attempts
     handshakeTimeout: number; // handshake step time
-    handshakeMax: number; // handshake max retries per step
+    // handshakeMax: number; // handshake max retries per step
     pingInterval: number; // seconds between ping
     pingTimeout: number; // seconds to wait for timeout for ping
     pingMax: number; // numbers of failed pings before closing socket
-    debug: boolean; // output debug info to stdIO
     HiveNodeName: string;
 };
 
@@ -80,11 +79,10 @@ export const DEFAULTHIVESOCKETOPTIONS: HiveSocketOptions = {
     serialization: true,
     connectTimeout: 20,
     handshakeTimeout: 5,
-    handshakeMax: 5,
+    // handshakeMax: 5,
     pingInterval: 60,
     pingTimeout: 5,
     pingMax: 5,
-    debug: false,
     HiveNodeName: 'null',
 };
 
@@ -94,18 +92,16 @@ export const DEFAULTHIVESOCKETOPTIONS: HiveSocketOptions = {
 */
 export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     options: HiveSocketOptions;
-    stdIO: DataIO;
     dataIO: DataIO;
     info: SocketStatus;
     private _ss: SocketSecret;
-    program: HiveCommand;
 
     ws?: WebSocket;
     socketHost?: SocketHost;
     socketReady: boolean = false;
     targetInfo: SocketStatus;
     handshakeDone: boolean = false;
-    _handshakeCallback?: (header: HiveSocketDataHeader, data: string) => void;
+    private _handshakeCallback?: (header: HiveSocketDataHeader, data: string) => void;
 
     pingCount: number = 0;
     pingReceived: boolean = false;
@@ -113,28 +109,20 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     constructor(name: string, options?: Partial<HiveSocketOptions>) {
         super(name);
         this.options = Object.assign({}, DEFAULTHIVESOCKETOPTIONS, options);
-        this.stdIO = new DataIO(this, 'HiveSocket-stdIO');
         this.dataIO = new DataIO(this, 'HiveSocket-dataIO');
         this.info = Object.assign({}, DEFAULTSOCKETINFO);
         this._ss = Object.assign({}, DEFAULTSOCKETSECRET);
         this.targetInfo = Object.assign({}, DEFAULTSOCKETINFO);
-        this.program = new HiveCommand('HiveSocket-Core');
 
-        this.stdIO.passThrough(this.program.stdIO);
         this.dataIO.on(
             'input',
             (data, signatures) => {
                 if (this.options.serialization) data = DataSerialize(data, signatures);
-                this.sendData(data);
+                this.send('data', data);
             },
             'write to socket'
         );
-        this._init();
         this._updateInfo();
-    }
-
-    _init() {
-        // const p = this.program;
     }
 
     _updateInfo() {
@@ -169,14 +157,15 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     // TODO: send reason to target?
     disconnect(reason?: HiveSocketReason) {
         this.socketReady = false;
-        if (!this.ws) return this.stdIO.output(`[Info]: Socket already disconnected.`);
+        if (!this.ws) return;
         this.ws.terminate(); // immediately destroys the connection
         this.ws = undefined;
-        this.stdIO.output(`[Info]: Socket disconnected.${reason ? ` Reason: ${reason}` : ''}`);
+        this.logEvent(`socket disconnected.${reason ? ` Reason: ${reason}` : ''}`, 'connect', 'socket');
         this.emit('disconnect', reason || 'unknown');
     }
 
     _connect(socket: WebSocket, isClient: boolean): Promise<SocketStatus> {
+        this.logEvent(`websocket init`, 'connect', 'socket');
         this._updateInfo();
         this._ss.noise = '';
         this._ss.noise2 = '';
@@ -197,8 +186,8 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
             let onReady = async () => {
                 // socket connected, to handshake phase
+                this.logEvent(`websocket ready`, 'connect', 'socket');
                 this.socketReady = true;
-                this.stdIO.output(`[Info]: WebSocket connected. Now exchanging secret key...`);
                 this._handshake(isClient)
                     .then((info) => {
                         // handshake done
@@ -210,7 +199,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
                         // handshake failed
                         // TODO: relay status/error back to controller
                         this._handshakeCallback = undefined;
-                        if (status instanceof Error) this.stdIO.output('[ERROR]: ' + status);
+                        this.logEvent(`Handshake failed: ${status}`, 'connect', 'socket');
                         let reason = typeof status == 'string' ? status : 'handshake failed.';
                         this.disconnect('handshake');
                         reject(reason);
@@ -224,7 +213,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
             }
             socket.on('message', this._recieveHandler.bind(this));
             socket.on('error', (e) => {
-                this.stdIO.output('[ERROR]: ' + e.message);
+                this.logEvent(`${e}`, 'connect', 'socket');
                 this.disconnect('error');
                 reject(e);
             });
@@ -233,181 +222,128 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
     _handshake(isClient: boolean): Promise<SocketStatus> {
         return new Promise(async (resolve, reject) => {
-            const flags: { [key: string]: boolean } = {};
-            let failed = false;
-
-            const shake = async (func: () => [HiveSocketDataHeader, any], flag: string) => {
-                let [header, data] = func();
-                let i = 0;
-                do {
-                    if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->shake: [${header}] for [${flag}]`);
-                    this.send(header, data);
-                    await sleep(this.options.handshakeTimeout * 1000);
-                } while (i++ < this.options.handshakeMax && !flags[flag] && !this.targetInfo.handshakeDone && !failed);
-                if (!flags[flag] && !this.targetInfo.handshakeDone && !failed) {
-                    failed = true;
-                    this.stdIO.output(`[ERROR]: handshake timeout: flag[${flag}]`);
-                    reject(`handshake timeout: flag[${flag}]`);
-                }
+            type states = 'C1' | 'C2' | 'C3' | 'S1' | 'S2' | 'ready';
+            const handshake = new HandShake<states>();
+            handshake.setEventLogger(this.logEvent);
+            handshake.timeout = this.options.handshakeTimeout * 1000;
+            const handshakeRespond = (data: any) => {
+                this.send('handshake', JSON.stringify(data));
             };
-
-            // client
-            const buzz: () => [HiveSocketDataHeader, any] = () => {
-                return [
-                    'buzz',
-                    JSON.stringify({
-                        info: this.info,
-                    }),
-                ];
-            };
-
-            // server
-            const fuzz: () => [HiveSocketDataHeader, any] = () => {
+            handshake.addPath('START', 'C1', () => {
+                // initial handshake
+                // basic client info
+                handshakeRespond({
+                    keyword: 'HiveNet',
+                    info: this.info,
+                });
+                return 'C2';
+            });
+            handshake.addPath('START', 'S1', async () => {
+                let json = await handshake.getNextData({
+                    keyword: 'string',
+                    info: 'object',
+                });
+                if (!json) return 'ERROR';
+                if (json.keyword !== 'HiveNet') return 'ERROR';
+                Object.assign(this.targetInfo, json.info);
                 this._ss.noise = Encryption.randomData().toString('base64');
-                return [
-                    'fuzz',
-                    JSON.stringify({
-                        info: this.info,
-                        noise: this._ss.noise,
-                    }),
-                ];
-            };
-
-            // client
-            const hive: () => [HiveSocketDataHeader, any] = () => {
+                // basic server info
+                // server noise
+                handshakeRespond({
+                    info: this.info,
+                    noise: this._ss.noise,
+                });
+                return 'S2';
+            });
+            handshake.addPath('C1', 'C2', async () => {
+                let json = await handshake.getNextData({
+                    info: 'object',
+                    noise: 'string',
+                });
+                if (!json) return 'ERROR';
+                Object.assign(this.targetInfo, json.info);
+                this._ss.noise = json.noise;
                 this._ss.noise2 = Encryption.randomData().toString('base64');
                 const proof = Encryption.hash(this._ss.noise);
                 proof.update(this._ss.salt);
                 proof.update(this._ss.secret);
                 const proofResult = proof.digest('base64');
-                return [
-                    'hive',
-                    JSON.stringify({
-                        proof: proofResult,
-                        noise2: this._ss.noise2,
-                    }),
-                ];
-            };
+                // client proof
+                // client noise
+                handshakeRespond({
+                    proof: proofResult,
+                    noise2: this._ss.noise2,
+                });
+                return 'C3';
+            });
+            handshake.addPath('S1', 'S2', async () => {
+                let json = await handshake.getNextData({
+                    proof: 'string',
+                    noise2: 'string',
+                });
+                if (!json) return 'ERROR';
 
-            // server
-            const mind: () => [HiveSocketDataHeader, any] = () => {
+                // check client proof
+                const proofCheck = Encryption.hash(this._ss.noise);
+                proofCheck.update(this._ss.salt);
+                proofCheck.update(this._ss.secret);
+                if (proofCheck.digest('base64') !== json.proof) return 'ERROR';
+                this._ss.noise2 = json.noise2;
+
+                // send server proof
                 const proof = Encryption.hash(this._ss.noise2);
                 proof.update(this._ss.salt2);
                 proof.update(this._ss.secret);
-                const proofResult = proof.digest('base64');
-                return [
-                    'mind',
-                    JSON.stringify({
-                        proof: proofResult,
-                    }),
-                ];
-            };
+                handshakeRespond({
+                    proof: proof.digest('base64'),
+                });
+                return 'ready';
+            });
+            handshake.addPath('C2', 'C3', async () => {
+                let json = await handshake.getNextData({
+                    proof: 'string',
+                });
+                if (!json) return 'ERROR';
 
-            // both
-            const ready: () => [HiveSocketDataHeader, any] = () => {
+                // check server proof
+                const proofCheck = Encryption.hash(this._ss.noise2);
+                proofCheck.update(this._ss.salt2);
+                proofCheck.update(this._ss.secret);
+                if (proofCheck.digest('base64') !== json.proof) return 'ERROR';
+                return 'ready';
+            });
+            const readyFunc = async () => {
+                // generate encryption key
                 const salt = Encryption.hash(this._ss.noise).update(this._ss.noise2).digest('base64');
                 this._ss.key = Encryption.genKey(this._ss.secret, salt);
                 this.handshakeDone = true;
-                return ['ready', ''];
+                handshakeRespond({
+                    ready: true,
+                });
+                let json = await handshake.getNextData({
+                    ready: 'boolean',
+                });
+                if (!json) return 'ERROR';
+                this.targetInfo.handshakeDone = true;
+                this._handshakeCallback = undefined;
+                resolve(this.targetInfo);
+                return 'END';
             };
+            handshake.addPath('S2', 'ready', readyFunc);
+            handshake.addPath('C3', 'ready', readyFunc);
+            handshake.addPath('ready', 'END', () => {});
 
-            // state machine mess
-            this._handshakeCallback = (header, data) => {
-                if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->handshakeCallback: recieved [${header}]`);
-                switch (header) {
-                    // both
-                    case 'ready':
-                        if (flags['ready']) break;
-                        flags['ready'] = true;
-                        this.targetInfo.handshakeDone = true;
-                        this._handshakeCallback = undefined;
-                        resolve(this.targetInfo);
-                        break;
-
-                    // client
-                    case 'fuzz':
-                        {
-                            if (flags['fuzz']) break;
-                            let json = this._parseJSON(data, {
-                                info: 'object',
-                                noise: 'string',
-                            });
-                            if (!json) break;
-                            Object.assign(this.targetInfo, json.info);
-                            this._ss.noise = json.noise;
-                            flags['fuzz'] = true;
-                            shake(hive, 'mind');
-                        }
-                        break;
-
-                    case 'mind':
-                        {
-                            if (flags['mind']) break;
-                            let json = this._parseJSON(data, {
-                                proof: 'string',
-                            });
-                            if (!json) break;
-                            const myproof = Encryption.hash(this._ss.noise2);
-                            myproof.update(this._ss.salt2);
-                            myproof.update(this._ss.secret);
-                            if (myproof.digest('base64') == json.proof) {
-                                flags['mind'] = true;
-                                shake(ready, 'ready');
-                            }
-                        }
-                        break;
-
-                    // server
-                    case 'buzz':
-                        {
-                            if (flags['buzz']) break;
-                            let json = this._parseJSON(data, {
-                                info: 'object',
-                            });
-                            if (!json) break;
-                            Object.assign(this.targetInfo, json.info);
-                            flags['buzz'] = true;
-                            shake(fuzz, 'hive');
-                        }
-                        break;
-
-                    case 'hive':
-                        {
-                            if (flags['hive']) break;
-                            let json = this._parseJSON(data, {
-                                proof: 'string',
-                                noise2: 'string',
-                            });
-                            if (!json) break;
-                            const myproof = Encryption.hash(this._ss.noise);
-                            myproof.update(this._ss.salt);
-                            myproof.update(this._ss.secret);
-                            if (myproof.digest('base64') == json.proof) {
-                                this._ss.noise2 = json.noise2;
-                                flags['hive'] = true;
-                                shake(mind, 'ready');
-                                shake(ready, 'ready');
-                            }
-                        }
-                        break;
+            this._handshakeCallback = (_header, data) => {
+                try {
+                    if (data.length > 10000) handshake.inputData(null); // no point to parse junk data
+                    handshake.inputData(JSON.parse(data));
+                } catch (e) {
+                    handshake.inputData(null);
                 }
             };
-
-            // client start handshake sequence
-            if (isClient) shake(buzz, 'fuzz');
+            await handshake.start(isClient ? 'C1' : 'S1');
+            if (handshake.status != 'OK') reject(handshake.message);
         });
-    }
-
-    // for _handshake only
-    _parseJSON(data: string, structure: any) {
-        try {
-            if (data.length > 10000) return null; // no point to parse junk data
-            const obj = JSON.parse(data);
-            if (!typeCheck(obj, structure)) return null;
-            return obj;
-        } catch (e) {
-            return null;
-        }
     }
 
     async _pingHandler() {
@@ -431,28 +367,20 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
     // seems ws can send binary data directly, if needed just prepend 'JSON' to JSON data and manually seperate the binary data
     send(header: HiveSocketDataHeader, data: any) {
-        if (!this.ws) {
-            this.stdIO.output(`[ERROR]: No target.`);
-            return;
-        }
-        if (!this.socketReady) {
-            this.stdIO.output(`[ERROR]: Socket not ready.`);
-            return;
-        }
-        if (data instanceof Error) data = data.message;
+        this.logEvent(`[${header}] ${data}`, 'send', 'socket');
+        if (!this.ws) return this.logEvent(`websocket not initiated.`, 'send', 'socket');
+        if (!this.socketReady) return this.logEvent(`websocket not ready.`, 'send', 'socket');
+        // if (data instanceof Error) data = data.message;
         if (typeof data != 'string') data = inspect(data, false, 4, true);
         this.ws.send(this._encodeData(`${header} ${Encryption.base64Encode(data)}`));
         return;
-    }
-
-    sendData(data: any) {
-        this.send('data', data);
     }
 
     _recieveHandler(encoded: WebSocket.Data) {
         const decoded = this._decodeData(encoded); // decoded: header [base64 data]
         const [header, base64] = decoded.split(' ') as [HiveSocketDataHeader, string];
         const data = Encryption.base64Decode(base64);
+        this.logEvent(`[${header}] ${data}`, 'recieve', 'socket');
         if (this.targetInfo.handshakeDone) {
             switch (header) {
                 case 'ping':
@@ -477,24 +405,22 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
             try {
                 this._handshakeCallback(header, data);
             } catch (e) {
-                this.stdIO.output(e);
+                this.logEvent(`${e}`, '_handshakeCallback', 'socket');
             }
         }
     }
 
     private _encodeData(data: string) {
-        if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->_encodeData: ${data}`);
         if (!this.targetInfo.handshakeDone) {
             return data;
         }
         if (!this._ss.key) {
-            this.stdIO.output(`[ERROR]: Encoding failed. Secret key not ready`);
+            this.logEvent(`Secret key not ready!`, 'encode', 'socket');
             return '';
         }
         const rand1 = HiveSocket._randomPaddingData();
         const rand2 = HiveSocket._randomPaddingData();
         const encoded = `${rand1.length}${rand2.length}${rand1}${data}${rand2}`;
-        //if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->_encodeData: partially encoded data: ${encoded}`);
         if (this._ss.algorithm == 'aes-256-gcm') {
             const [iv, encrypted, authTag] = Encryption.encryptGCM(this._ss.key, encoded);
             return `${iv} ${encrypted} ${authTag}`;
@@ -507,7 +433,6 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
     }
 
     private _decodeData(data: WebSocket.Data) {
-        if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->_decodeData: ${data}`);
         if (!this.targetInfo.handshakeDone) {
             return data.toString();
         }
@@ -517,24 +442,22 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
             const l1 = Number.parseInt(decrypted[0]);
             const l2 = Number.parseInt(decrypted[1]);
             const decoded = decrypted.slice(2 + l1, decrypted.length - l2);
-            if (this.options.debug) this.stdIO.output(`[DEBUG]: HiveSocket->_decodeData: decoded data: ${decoded}`);
             return decoded;
         } catch (e) {
-            this.stdIO.output(`[ERROR]: Failed to decrypt data.`);
-            this.stdIO.output(e);
+            this.logEvent(`${e}`, 'decode', 'socket');
         }
         return '';
     }
 
     private _decodeDataHelper(encrypted: string) {
         if (!this._ss.key) {
-            this.stdIO.output(`[ERROR]: Decoding failed. Secret key not ready`);
+            this.logEvent(`Secret key not ready!`, 'decode', 'socket');
             return '';
         }
         try {
             const tokens = encrypted.toString().split(' ');
             if (tokens.length != 3) {
-                this.stdIO.output(`[ERROR]: Incorrect encoded data format.`);
+                this.logEvent(`Invalid encoding format!`, 'decode', 'socket');
                 return '';
             }
             if (this._ss.algorithm == 'aes-256-gcm') {
@@ -543,14 +466,13 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
                 const hmac = Encryption.hmac(tokens[0], this._ss.secret);
                 hmac.update(tokens[1]);
                 if (hmac.digest().toString('base64') != tokens[2]) {
-                    this.stdIO.output(`[ERROR]: Data authentication failed.`);
+                    this.logEvent(`HMAC authentication failed!`, 'decode', 'socket');
                     return '';
                 }
                 return Encryption.decrypt(this._ss.algorithm, this._ss.key, tokens[0], tokens[1]);
             }
         } catch (e) {
-            this.stdIO.output(`[ERROR]: Failed to decrypt data.`);
-            this.stdIO.output(e);
+            this.logEvent(`${e}`, 'decode', 'socket');
         }
         return '';
     }
