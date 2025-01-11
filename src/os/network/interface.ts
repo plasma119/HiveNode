@@ -4,7 +4,7 @@ import { HIVENETADDRESS, HiveNetPacket, HIVENETPORT } from './hiveNet.js';
 import HTP from './protocol.js';
 import HiveNetSwitch from './switch.js';
 
-export class PortIO extends DataIO {
+export class PortIO extends DataIO<HiveNetPacket> {
     portID: number;
 
     constructor(owner: HiveComponent, name: string, portID: number) {

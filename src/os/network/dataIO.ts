@@ -5,26 +5,26 @@ import { DataSignature, DataSignaturesToString, HiveNetPacket } from './hiveNet.
 /*
     OSI model layer 1 - physical layer
 */
-export type DataLink = (data: any, signatures: DataSignature[]) => void;
+export type DataLink<Type = any> = (data: Type, signatures: DataSignature[]) => void;
 
 let debugMode = false;
 
-export type DataIOEvent = {
-    input: DataLink;
-    output: DataLink;
-    connect: (io: DataIO) => void;
-    disconnect: (io: DataIO) => void;
+export type DataIOEvent<Type = any> = {
+    input: DataLink<Type>;
+    output: DataLink<Type>;
+    connect: (io: DataIO<Type>) => void;
+    disconnect: (io: DataIO<Type>) => void;
     destroy: () => void;
 };
 
-export default class DataIO extends HiveComponent<DataIOEvent> {
+export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>> {
     owner: HiveComponent;
 
-    connectTable: Map<DataIO, boolean> = new Map();
-    passThroughTable: Map<DataIO, DataIO> = new Map(); // <targetIO, baseIO>
+    connectTable: Map<DataIO<Type>, boolean> = new Map();
+    passThroughTable: Map<DataIO<Type>, DataIO> = new Map(); // <targetIO, baseIO>
     destroyed: boolean = false;
-    inputBind: DataLink;
-    outputBind: DataLink;
+    inputBind: DataLink<Type>;
+    outputBind: DataLink<Type>;
 
     constructor(owner: HiveComponent, name: string) {
         super(name);
@@ -35,7 +35,7 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
     }
 
     // listen to dataIO.on('input') to get data
-    input(data: any, signatures: DataSignature[] = []) {
+    input(data: Type, signatures: DataSignature[] = []) {
         if (!this.destroyed) {
             if (debugMode) {
                 console.log(data);
@@ -50,7 +50,7 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
     }
 
     // write to dataIO.output() to send data
-    output(data: any, signatures: DataSignature[] = []) {
+    output(data: Type, signatures: DataSignature[] = []) {
         if (!this.destroyed) {
             if (debugMode) {
                 console.log(data);
@@ -65,7 +65,7 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
     }
 
     // between objects
-    connect(target: DataIO) {
+    connect(target: DataIO<Type>) {
         if (this.connectTable.has(target)) return;
         this.connectTable.set(target, true);
         target.connectTable.set(this, true);
@@ -76,7 +76,7 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
     }
 
     // between objects
-    disconnect(target: DataIO) {
+    disconnect(target: DataIO<Type>) {
         if (!this.connectTable.has(target)) return;
         this.connectTable.delete(target);
         target.connectTable.delete(this);
@@ -88,7 +88,7 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
 
     // inside object
     // !! directional: this -> I -> target -> O -> this
-    passThrough(target: DataIO) {
+    passThrough(target: DataIO<Type>) {
         if (this.passThroughTable.has(target)) return;
         this.passThroughTable.set(target, this);
         target.passThroughTable.set(this, this);
@@ -98,7 +98,7 @@ export default class DataIO extends HiveComponent<DataIOEvent> {
 
     // inside object
     // !! directional
-    unpassThrough(target: DataIO) {
+    unpassThrough(target: DataIO<Type>) {
         let base = this.passThroughTable.get(target);
         if (!base) return;
         this.passThroughTable.delete(target);

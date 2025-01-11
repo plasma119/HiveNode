@@ -149,7 +149,9 @@ export default class HiveProcessTerminal extends HiveProcess {
         this.os.on('sigint', () => {
             if (this.terminalDest != HIVENETADDRESS.LOCAL) {
                 this.terminalDest = HIVENETADDRESS.LOCAL;
-                port.output('Returning to local shell');
+                this.terminalDestPort = this.shellPort;
+                this.setPrompt('');
+                dt.stdIO.output('Returning to local shell');
             }
         });
 
