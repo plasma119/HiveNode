@@ -1,7 +1,7 @@
 {
     "name": "Client",
     "headless": false,
-    "debug": true,
+    "debug": false,
     "debugDataIO": false,
     "HiveNodePath": "dist/",
     "bootLoaderFile": "",

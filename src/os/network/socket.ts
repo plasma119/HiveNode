@@ -72,6 +72,8 @@ export type HiveSocketOptions = {
     pingTimeout: number; // seconds to wait for timeout for ping
     pingMax: number; // numbers of failed pings before closing socket
     HiveNodeName: string;
+    debugData: boolean; // log data during send/receive to event logger
+    debugRawData: boolean; // log raw data during send/receive to event logger
 };
 
 export const DEFAULTHIVESOCKETOPTIONS: HiveSocketOptions = {
@@ -84,6 +86,8 @@ export const DEFAULTHIVESOCKETOPTIONS: HiveSocketOptions = {
     pingTimeout: 5,
     pingMax: 5,
     HiveNodeName: 'null',
+    debugData: false,
+    debugRawData: false,
 };
 
 /*
@@ -117,6 +121,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         this.dataIO.on(
             'input',
             (data, signatures) => {
+                if (this.options.debugData) this.logEvent(`${data}`, 'input', 'socket');
                 if (this.options.serialization) data = DataSerialize(data, signatures);
                 this.send('data', data);
             },
@@ -367,7 +372,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
     // seems ws can send binary data directly, if needed just prepend 'JSON' to JSON data and manually seperate the binary data
     send(header: HiveSocketDataHeader, data: any) {
-        this.logEvent(`[${header}] ${data}`, 'send', 'socket');
+        if (this.options.debugRawData) this.logEvent(`[${header}] ${data}`, 'send', 'socket');
         if (!this.ws) return this.logEvent(`websocket not initiated.`, 'send', 'socket');
         if (!this.socketReady) return this.logEvent(`websocket not ready.`, 'send', 'socket');
         // if (data instanceof Error) data = data.message;
@@ -380,7 +385,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         const decoded = this._decodeData(encoded); // decoded: header [base64 data]
         const [header, base64] = decoded.split(' ') as [HiveSocketDataHeader, string];
         const data = Encryption.base64Decode(base64);
-        this.logEvent(`[${header}] ${data}`, 'recieve', 'socket');
+        if (this.options.debugRawData) this.logEvent(`[${header}] ${data}`, 'recieve', 'socket');
         if (this.targetInfo.handshakeDone) {
             switch (header) {
                 case 'ping':
@@ -396,8 +401,10 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
                     if (this.options.serialization) {
                         let signatures: DataSignature[] = [];
                         let parsed = DataParsing(data, signatures);
+                        if (this.options.debugData) this.logEvent(`${parsed}`, 'output', 'socket');
                         this.dataIO.output(parsed, signatures);
                     } else {
+                        if (this.options.debugData) this.logEvent(`${data}`, 'output', 'socket');
                         this.dataIO.output(data);
                     }
             }

@@ -1,6 +1,6 @@
 import HiveComponent from '../lib/hiveComponent.js';
 import DataIO from './dataIO.js';
-import { HIVENETADDRESS, HiveNetPacket, HIVENETPORT } from './hiveNet.js';
+import { HIVENETADDRESS, HiveNetPacket, HIVENETPORT, HIVENETPORTREVERSEMAP } from './hiveNet.js';
 import HTP from './protocol.js';
 import HiveNetSwitch from './switch.js';
 
@@ -93,7 +93,8 @@ export default class HiveNetInterface extends HiveComponent {
         if (this.ports.has(port)) throw new Error(`HiveNetInterface: port ${port} is in use already`);
         const io = new PortIO(owner, `portIO:${port}`, port);
         this.ports.set(port, io);
-        this.logEvent(`${owner.name} -> portIO:${port}`, 'create', 'portIO');
+        const reservedPort = HIVENETPORTREVERSEMAP.get(port);
+        this.logEvent(`${owner.name} -> portIO:${port}${reservedPort ? ` [${reservedPort}]` : ''}`, 'create', 'portIO');
         io.on(
             'input',
             (packet, signatures) => {

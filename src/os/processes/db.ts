@@ -20,6 +20,10 @@ export interface DBWrapper {
     getMasterRecord: () => MasterRecord;
 }
 
+/*
+TODO:
+recent transaction log
+*/
 export default class HiveProcessDB extends HiveProcess implements DBWrapper {
     databasePath = 'LevelDB';
     avaliable: boolean = false;
@@ -64,23 +68,28 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
 
     async main() {
         if (!fs.existsSync(this.databasePath)) {
-            this.os.log(`[DB]: Creating folder for Level DB: ${this.databasePath}`, 'info');
+            this.os.log(`[DB] Creating folder for Level DB: ${this.databasePath}`, 'info');
             fs.mkdirSync(this.databasePath, { recursive: true });
         }
 
+        // init DB
         this.database = new Level.Level(this.databasePath, { keyEncoding: 'utf8', valueEncoding: 'utf8' });
         let error = await this.database.open().catch((e) => e as Error);
         if (error) {
+            // @ts-ignore
+            if (error.code === 'LEVEL_LOCKED' || (error.cause && error.cause.code === 'LEVEL_LOCKED')) {
+                this.os.log(`[DB] Level DB is locked, perhaps this is client OS?`, 'error');
+            } else {
             this.os.log(error, 'error');
-            this.os.log(`[DB]: Failed to open Level DB, perhaps this is client OS?`, 'error');
-            this.os.log(`[DB]: Disabling DB`, 'error');
+            }
+            this.os.log(`[DB] Level DB not avaliable`, 'info');
             this.avaliable = false;
             return;
         }
 
         let MR = await this._readMasterRecord();
         if (!MR) {
-            this.os.log(`[DB]: Initializing Level DB`, 'info');
+            this.os.log(`[DB] Initializing Level DB`, 'info');
             MR = await this._initDatabase();
         }
         this.masterRecord = MR;
@@ -88,13 +97,13 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
             this.tableMap.set(table, true);
         });
 
-        this.os.log(`[DB]: Level DB ready with [${MR.tables.length}] tables`, 'info');
+        this.os.log(`[DB] Level DB ready with [${MR.tables.length}] tables`, 'info');
         this.avaliable = true;
     }
 
     // TODO: array get/put, complex chain of action
     async get(table: string, key: string) {
-        this.os.log(`[DB]: Get [${table}] [${key}]`, 'trace');
+        this.os.log(`[DB] Get [${table}] [${key}]`, 'trace');
         if (!this.tableMap.has(table)) return null;
         return await this.database.get(this._entry(table, key)).catch((e) => {
             this.os.log(e, 'trace');
@@ -103,16 +112,16 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
     }
 
     async put(table: string, key: string, value: string) {
-        this.os.log(`[DB]: Put [${table}] [${key}]`, 'trace');
+        this.os.log(`[DB] Put [${table}] [${key}]`, 'trace');
         if (!this.tableMap.has(table)) this.newTable(table);
         return await this.database.put(this._entry(table, key), value).catch((e) => {
-            this.os.log(`[DB]: Put failed, table[${table}] key[${key}] value[${value}]`, 'error');
+            this.os.log(`[DB] Put failed, table[${table}] key[${key}] value[${value}]`, 'error');
             this.os.log(e, 'error');
         });
     }
 
     async delete(table: string, key: string) {
-        this.os.log(`[DB]: Delete [${table}] [${key}]`, 'trace');
+        this.os.log(`[DB] Delete [${table}] [${key}]`, 'trace');
         if (!this.tableMap.has(table)) return;
         return await this.database.del(this._entry(table, key)).catch((e) => {
             this.os.log(e, 'trace');
@@ -121,10 +130,10 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
 
     async getTable(table: string) {
         if (!this.tableMap.has(table)) {
-            this.os.log(`[DB]: Get table [${table}] failed, table dose not exist!`, 'warn');
+            this.os.log(`[DB] Get table [${table}] failed, table dose not exist!`, 'warn');
             return null;
         }
-        this.os.log(`[DB]: Get table [${table}]`, 'trace');
+        this.os.log(`[DB] Get table [${table}]`, 'trace');
         const header = `T[${table}]-`;
         const values = [];
         for await (const value of this.database.values({ gt: header, lt: header + '\xFF' })) {
@@ -135,10 +144,10 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
 
     async newTable(table: string) {
         if (this.tableMap.has(table)) {
-            this.os.log(`[DB]: New table [${table}] failed, table already exist!`, 'warn');
+            this.os.log(`[DB] New table [${table}] failed, table already exist!`, 'warn');
             return;
         }
-        this.os.log(`[DB]: New table [${table}]`, 'debug');
+        this.os.log(`[DB] New table [${table}]`, 'debug');
         this.masterRecord.tables.push(table);
         this.tableMap.set(table, true);
         return await this._putMasterRecord();
@@ -146,10 +155,10 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
 
     async deleteTable(table: string) {
         if (!this.tableMap.has(table)) {
-            this.os.log(`[DB]: Delete table [${table}] failed, table dose not exist!`, 'warn');
+            this.os.log(`[DB] Delete table [${table}] failed, table dose not exist!`, 'warn');
             return;
         }
-        this.os.log(`[DB]: Delete table [${table}]`, 'debug');
+        this.os.log(`[DB] Delete table [${table}]`, 'debug');
         this.masterRecord.tables = this.masterRecord.tables.filter((t) => t != table);
         this.tableMap.delete(table);
         return await this._putMasterRecord();
@@ -209,7 +218,7 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         await this.database.put('_MasterRecord', str);
         let v = await this.database.get('_MasterRecord').catch(() => null);
         if (str != v) {
-            this.os.log(`[DB]: Master Record readback failed during creation`, 'warn');
+            this.os.log(`[DB] Master Record readback failed during creation`, 'warn');
         }
         return MR;
     }
@@ -221,7 +230,7 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
             let MR = JSON.parse(v);
             return MR as MasterRecord;
         } catch (e) {
-            this.os.log(`[DB]: Failed to parse MasterRecord: [${v}]`, 'error');
+            this.os.log(`[DB] Failed to parse MasterRecord: [${v}]`, 'error');
             return null;
         }
     }

@@ -17,6 +17,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
     }
 
     newIO(label = 'SwitchIO') {
+        this.logEvent(`[${label}]`, 'newIO', 'IO');
         const io = new DataIO(this, label);
         this.IOs.push(io);
         io.on('input', this.routePacket.bind(this, io), 'switch input');
@@ -24,6 +25,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
     }
 
     connect(target: HiveNetSwitch | DataIO, label?: string) {
+        this.logEvent(`${target.name} [${label}]`, 'connect', 'IO');
         let targetIO = target instanceof HiveNetSwitch ? target.newIO(label) : target;
         const io = this.newIO(label);
         io.connect(targetIO);
@@ -31,6 +33,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
     }
 
     disconnect(target: HiveNetSwitch | DataIO) {
+        this.logEvent(`${target.name}`, 'disconnect', 'IO');
         this.IOsTarget.forEach((o) => {
             if (o.target === target) o.io.disconnect(o.targetIO);
         });
@@ -54,9 +57,11 @@ export default class HiveNetSwitch extends HiveNetDevice {
         if (packet.dest === this.UUID || packet.dest === '' || packet.dest === HIVENETADDRESS.BROADCAST) {
             if (packet.flags.ping) {
                 // ping
+                this.logEvent(`ping`, 'receive', 'switchIO');
                 this._returnPacket(sender, packet, Date.now());
             } else if (packet.dport === HIVENETPORT.INFO) {
                 // info
+                this.logEvent(`info`, 'receive', 'switchIO');
                 this._returnPacket(sender, packet, this.getDeviceInfo());
             }
             // forward broadcast packet
@@ -78,7 +83,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
         // loopback prevention for broadcast
         if (packet.dest === HIVENETADDRESS.BROADCAST) {
             for (let signature of signatures) {
-                if (signature.UUID === this.UUID) return;
+                if (signature.UUID === this.UUID) return this.logEvent(`loopback broadcast detected!`, 'route', 'switchIO');
             }
         }
 
@@ -101,6 +106,8 @@ export default class HiveNetSwitch extends HiveNetDevice {
                 target.io.output(packet, signatures.slice());
                 return;
             }
+        } else {
+            // this.logEvent(`cache missed`, 'route', 'switchIO');
         }
 
         // flood
@@ -114,7 +121,7 @@ export default class HiveNetSwitch extends HiveNetDevice {
             new HiveNetPacket({
                 data: data,
                 src: this.UUID,
-                sport: 0,
+                sport: packet.dport,
                 dest: packet.src,
                 dport: packet.sport,
                 flags: flags,

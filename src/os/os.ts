@@ -43,6 +43,8 @@ import HiveProcessTerminal from './processes/terminal.js';
 // TODO: central server control system - hiveMind
 // TODO: update system
 // TODO: boot option select menu
+// TODO: fix bootConfig editor not able to set flag to false
+// TODO: add special flag to HiveCommand to specify stop parsing for option
 
 // TODO: dataIO connection to HiveOS for worker - done, but multi-layer is not supported yet
 

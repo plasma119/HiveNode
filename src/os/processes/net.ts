@@ -29,6 +29,11 @@ type HiveProcessNetEvent = {
     newConnection: () => void;
 };
 
+/*
+TODO:
+event logging
+use new socket system?
+*/
 export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
     infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
     nameMap: Map<string, string> = new Map(); // Map<name, UUID>
@@ -142,8 +147,8 @@ export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
     }
 
     main() {
-        this.os.netInterface.connect(this.switch, 'net');
         this.switch.setEventLogger(this.os.newEventLogger('net->switch'));
+        this.os.netInterface.connect(this.switch, 'net');
     }
 
     message(dest: string, data: any) {
