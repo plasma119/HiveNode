@@ -79,16 +79,62 @@ export function timeFormat(
     }
 }
 
-export function timeConvert(time: number, target: 'auto' | 'minute' | 'hour' = 'auto') {
-    let seconds = time % 60;
-    let minutes = Math.floor(time / 60);
-    if (target == 'hour' || (target == 'auto' && minutes >= 60)) {
-        let hours = Math.floor(minutes / 60);
-        minutes = minutes % 60;
-        return `${hours}:${minutes}:${seconds}`;
-    } else {
-        return `${minutes}:${seconds}`;
+export function timeConvert(
+    time: number, // ms
+    format: 'short' | 'long' | 'longs' | 'clock' = 'short',
+    unit: 'auto' | 'second' | 'minute' | 'hour' = 'auto'
+) {
+    let seconds = Math.floor(time / 1000);
+    let ms = _ms(time % 1000);
+    if (unit == 'second' || (unit == 'auto' && seconds < 60)) {
+        switch (format) {
+            case 'short':
+            default:
+                return `${seconds}.${ms}s`;
+            case 'long':
+                return `${seconds} second${_s(seconds)}`;
+            case 'longs':
+                return `${seconds} seconds`;
+            case 'clock':
+                return `${seconds}.${ms}`;
+        }
     }
+    let minutes = Math.floor(seconds / 60);
+    seconds = seconds % 60;
+    if (unit == 'hour' || (unit == 'auto' && minutes < 60)) {
+        switch (format) {
+            case 'short':
+            default:
+                return `${minutes}min ${seconds}.${ms}s`;
+            case 'long':
+                return `${minutes} minute${_s(minutes)} ${seconds} second${_s(seconds)}`;
+            case 'longs':
+                return `${minutes} minutes ${seconds} seconds`;
+            case 'clock':
+                return `${minutes}:${seconds}.${ms}`;
+        }
+    }
+    let hours = Math.floor(minutes / 60);
+    minutes = minutes % 60;
+    switch (format) {
+        case 'short':
+        default:
+            return `${hours}h ${minutes}min ${seconds}.${ms}s`;
+        case 'long':
+            return `${hours} hour${_s(hours)} ${minutes} minute${_s(minutes)} ${seconds} second${_s(seconds)}`;
+        case 'longs':
+            return `${hours} hours ${minutes} minutes ${seconds} seconds`;
+        case 'clock':
+            return `${hours}:${minutes}:${seconds}.${ms}`;
+    }
+}
+
+function _s(t: number) {
+    return t > 1 ? 's' : '';
+}
+
+function _ms(t: number) {
+    return `${t < 100 ? '0' : ''}${t < 10 ? '0' : ''}${t}`;
 }
 
 // https://stackoverflow.com/questions/57118453/structural-type-checking-in-javascript

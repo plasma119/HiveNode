@@ -9,3 +9,4 @@ dump/*
 LevelDB
 LevelDB/*
 package-lock.json
+export*

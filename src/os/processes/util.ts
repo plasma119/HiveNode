@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 
 import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
-import { uuidv7 } from '../../lib/lib.js';
+import { timeConvert, uuidv7 } from '../../lib/lib.js';
 
 type copyFolder = {
     name: string;
@@ -40,6 +40,14 @@ type copyListItem = {
 export default class HiveProcessUtil extends HiveProcess {
     initProgram(): HiveCommand {
         const program = new HiveCommand('util', 'utility commands');
+
+        const test = program.addNewCommand('test', 'tools for testing');
+        test.addNewCommand('timeConvert')
+        .addNewOption('-format <format>', `short' | 'long' | 'longs' | 'clock' = 'short'`)
+        .addNewOption('-unit <unit>', `'auto' | 'second' | 'minute' | 'hour' = 'auto'`)
+            .addNewArgument('<time>', 'ms')
+            // @ts-ignore
+            .setAction((args, opts) => timeConvert(Number.parseInt(args['time']), opts['-format'], opts['-unit']));
 
         program
             .addNewCommand('uuid', 'return new uuid, default v7')
