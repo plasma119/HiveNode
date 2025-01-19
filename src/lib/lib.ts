@@ -137,6 +137,22 @@ function _ms(t: number) {
     return `${t < 100 ? '0' : ''}${t < 10 ? '0' : ''}${t}`;
 }
 
+export function sizeConvert(size: number) {
+    if (size < 1024) {
+        return `${size}B`;
+    }
+    size /= 1024;
+    if (size < 1024) {
+        return `${size.toPrecision(3)}KB`;
+    }
+    size /= 1024;
+    if (size < 1024) {
+        return `${size.toPrecision(3)}MB`;
+    }
+    size /= 1024;
+    return `${size.toPrecision(3)}GB`;
+}
+
 // https://stackoverflow.com/questions/57118453/structural-type-checking-in-javascript
 // this one is for simple object checking only
 export function duckTypeCheck(obj: any, model: any) {

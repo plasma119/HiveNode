@@ -4,7 +4,7 @@ import Level from 'level';
 
 import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
-import { formatTab, timeConvert } from '../../lib/lib.js';
+import { formatTab, sizeConvert, timeConvert } from '../../lib/lib.js';
 import { createInterface } from 'readline/promises';
 
 type MasterRecord = {
@@ -330,11 +330,13 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
     // TODO: export/import
     exportToFile(filename: string) {
         this.logEvent(`[${filename}]`, 'ALL', 'export file');
+        this.os.log(`[DB] Export: exporting to file [${filename}]...`, 'info');
         return this._exportToFile(filename, this.iterator());
     }
 
     exportTableToFile(filename: string, table: string) {
         this.logEvent(`[${filename}]`, 'TABLE', 'export file');
+        this.os.log(`[DB] Export: exporting Table[${table}] to file [${filename}]...`, 'info');
         return this._exportToFile(filename, this.tableIterator(table));
     }
 
@@ -347,8 +349,14 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         const t1 = Date.now();
         const stream = fs.createWriteStream(filename);
 
+        let keys = 0;
+        let size = 0;
+
         for await (const [key, value] of iterator) {
-            const ableToWrite = stream.write(`["${key}",${value}]\r\n`);
+            // TODO: maybe better formatting to skip encode/decode value?
+            const ableToWrite = stream.write(`["${key}",${JSON.stringify(value)}]\r\n`);
+            keys++;
+            size += value.length;
             if (!ableToWrite) {
                 await new Promise((resolve) => {
                     stream.once('drain', resolve);
@@ -360,11 +368,15 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         await new Promise((resolve) => {
             stream.close(resolve);
         });
+        this.logEvent(`[${keys}] entries ${sizeConvert(size)}`, '_export', 'export file');
+        this.os.log(`[DB] Export: [${keys}] entries ${sizeConvert(size)}`, 'info');
         this.logEvent(`export finished in ${timeConvert(Date.now() - t1)}.`, '_export', 'export file');
+        this.os.log(`[DB] Export: finished in ${timeConvert(Date.now() - t1)}.`, 'info');
     }
 
     async importFile(filename: string) {
         this.logEvent(`[${filename}]`, 'import', 'import file');
+        this.os.log(`[DB] Import: importing from file [${filename}]...`, 'info');
         if (!fs.existsSync(filename)) throw new Error(`[DB] Import: file [${filename}] dose not exist!`);
         const t1 = Date.now();
         const stream = fs.createReadStream(filename);
@@ -374,31 +386,66 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
             crlfDelay: Infinity, // to recognize all CR LF ('\r\n') as single line break.
         });
 
+        let MR: MasterRecord | undefined;
+        let tableMap: Map<string, { keys: number; size: number }> = new Map();
+        let keys = 0;
+        let tables = 0;
+        let size = 0;
+
         for await (const line of rl) {
             try {
                 let [K, value]: [string, string] = JSON.parse(line);
-                let index = K.indexOf(']', 2);
+                let index = K.indexOf(']-K[', 2);
                 if (index > 0) {
+                    // normal entry
                     let table = K.slice(2, index);
                     let key = K.slice(index + 4, -1);
-                    this.os.log(`DEBUG: Table[${table}] Key[${key}] Value[${value}]`, 'info');
+                    await this.put(table, key, value); // slower but have item counter and logging
+                    let record = tableMap.get(table);
+                    if (!record) {
+                        record = { keys: 0, size: 0 };
+                        tableMap.set(table, record);
+                        tables++;
+                    }
+                    record.keys++;
+                    record.size += value.length;
+                    keys++;
+                    size += value.length;
+                    // this.database.put(K, value);
                 } else if (K == MasterRecordKey) {
-                    this.os.log(`DEBUG: Master Record[${value}]`, 'info');
+                    // master record
+                    MR = JSON.parse(value);
+                } else if (K.startsWith('_')) {
+                    // db record
+                    this.os.log(`[DB] import: skipping DB record Key[${K}] Value[${value}]`, 'info');
                 } else {
-                    this.os.log(`DEBUG: unknown Key[${K}] Value[${value}]`, 'info');
+                    // unknown
+                    this.os.log(`[DB] import: unknown Key[${K}] Value[${value}]`, 'warn');
                 }
-                // this.database.put(K, value);
             } catch (e) {
                 this.os.log('[DB] import: failed to parse line:', 'warn');
                 this.os.log(line, 'warn');
                 this.os.log((e as Error).message, 'warn');
             }
         }
-
         await new Promise((resolve) => {
             stream.close(resolve);
         });
+
+        if (MR) {
+            this.masterRecord = MR;
+            this._putMasterRecord();
+        }
+        let arr: string[] = ['[Table name]\t[Entries]\t[Size]'];
+        for (const [table, record] of tableMap.entries()) {
+            arr.push(`${table}\t${record.keys}\t${sizeConvert(record.size)}`);
+        }
+        arr.push(`Total\t${keys}\t${sizeConvert(size)}`);
+        let result = formatTab(arr, '   ', '\t');
+        this.logEvent(`${result}`, 'import', 'import file');
+        this.os.log(`[DB] Import: \n${result}`, 'info');
         this.logEvent(`import finished in ${timeConvert(Date.now() - t1)}.`, 'import', 'import file');
+        this.os.log(`[DB] Import: finished in ${timeConvert(Date.now() - t1)}.`, 'info');
     }
 
     _entry(table: string, key: string) {
