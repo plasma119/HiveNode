@@ -8,12 +8,13 @@ export default class LRUMap<K, V> {
     size: number = 0;
     limit: number;
 
-    _map: Map<K, Node<K, V>> = new Map();
+    private _map: Map<K, Node<K, V>> = new Map();
     head?: Node<K, V>; // newest node
     tail?: Node<K, V>; // oldest node
 
     constructor(limit?: number, iterable?: Iterable<[K, V]>) {
         this.limit = limit || Infinity;
+        if (this.limit < 0) this.limit = 0;
         if (iterable) {
             if (limit === undefined) this.limit = Infinity;
             this.assign(iterable);
@@ -131,27 +132,21 @@ export default class LRUMap<K, V> {
     }
 
     resize(limit: number) {
-        if (limit < this.size) {
-            let i = 0;
-            let node = this.head;
-            while (node) {
-                if (i++ >= limit) break;
-                if (!node.next) break;
-                node = node.next;
-            }
-            if (node && node.next) {
-                // resizing list
-                node.next.prev = undefined;
-                node.next = undefined;
-                this.tail = node;
-                this.size = i;
+        if (limit < 0) limit = 0;
+        if (limit == 0) {
+            this.clear();
+        } else if (limit < this.size) {
+            // chop off tail
+            let t = this.size - limit;
+            for (let i = 0; i < t; i++) {
+                this.pop();
             }
         }
         this.limit = limit;
     }
 
     clear() {
-        // Not clearing links should be safe, as we don't expose live links to user
+        // Not clearing links should be safe, as long as user don't grab and hold node
         this.head = this.tail = undefined;
         this.size = 0;
         this._map.clear();
@@ -211,16 +206,16 @@ class Node<K, V> {
 
 class NodeIterator<K, V, R> implements Iterator<R> {
     private node?: Node<K, V>;
-    private callbackfn: (node: Node<K, V>) => R;
-    constructor(node: Node<K, V> | undefined, callbackfn: (node: Node<K, V>) => R) {
+    private valueWrapper: (node: Node<K, V>) => R;
+    constructor(node: Node<K, V> | undefined, valueWrapper: (node: Node<K, V>) => R) {
         this.node = node;
-        this.callbackfn = callbackfn;
+        this.valueWrapper = valueWrapper;
     }
     next(): IteratorResult<R> {
         const node = this.node;
         if (node) {
             this.node = node.next;
-            return { done: false, value: this.callbackfn(node) };
+            return { done: false, value: this.valueWrapper(node) };
         } else {
             return { done: true, value: undefined };
         }

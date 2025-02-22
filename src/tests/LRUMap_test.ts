@@ -47,6 +47,44 @@ export const test: Test = {
         },
 
         {
+            name: 'resize',
+            testItem: (assert) => {
+                let LRU = new LRUMap(2, [
+                    ['adam', 29],
+                    ['john', 26],
+                    ['angela', 24],
+                    ['bob', 48],
+                ]);
+                assert(LRU.size);
+                assert(LRU.limit);
+                assert(LRU.toString());
+
+                LRU.resize(4);
+                assert(LRU.size);
+                assert(LRU.limit);
+                assert(LRU.toString());
+
+                LRU.resize(1);
+                assert(LRU.size);
+                assert(LRU.limit);
+                assert(LRU.toString());
+
+                LRU.resize(0);
+                assert(LRU.size);
+                assert(LRU.limit);
+                assert(LRU.toString());
+
+                LRU.resize(-1);
+                assert(LRU.size);
+                assert(LRU.limit);
+                assert(LRU.toString());
+                assert(LRU.get('angela'));
+                LRU.set('angela', 11);
+                assert(LRU.get('angela'));
+            },
+        },
+
+        {
             name: 'construct with iterator',
             testItem: (assert) => {
                 let verifyEntries = function (LRU: LRUMap<string, number>) {
