@@ -4,7 +4,8 @@ import { randomUUID } from 'crypto';
 
 import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
-import { timeConvert, uuidv7 } from '../../lib/lib.js';
+import { uuidv7 } from '../../lib/lib.js';
+import { timeFormat } from '../../lib/unitFormat.js';
 
 type copyFolder = {
     name: string;
@@ -43,11 +44,12 @@ export default class HiveProcessUtil extends HiveProcess {
 
         const test = program.addNewCommand('test', 'tools for testing');
         test.addNewCommand('timeConvert')
-        .addNewOption('-format <format>', `short' | 'long' | 'longs' | 'clock' = 'short'`)
-        .addNewOption('-unit <unit>', `'auto' | 'second' | 'minute' | 'hour' = 'auto'`)
+            .addNewOption('-format <format>', `short' | 'long' | 'longs' | 'clock' = 'short'`)
+            .addNewOption('-unit <unit>', `'auto' | 'second' | 'minute' | 'hour' = 'auto'`)
+            .addNewOption('-pre <precision>', `number`)
             .addNewArgument('<time>', 'ms')
             // @ts-ignore
-            .setAction((args, opts) => timeConvert(Number.parseInt(args['time']), opts['-format'], opts['-unit']));
+            .setAction((args, opts) => timeFormat(Number.parseInt(args['time']), opts['-format'], opts['-unit'], Number.parseInt(opts['-pre'])));
 
         program
             .addNewCommand('uuid', 'return new uuid, default v7')

@@ -4,8 +4,9 @@ import Level from 'level';
 
 import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
-import { formatTab, sizeConvert, timeConvert } from '../../lib/lib.js';
+import { formatTab } from '../../lib/lib.js';
 import { createInterface } from 'readline/promises';
+import { byteFormat, timeFormat } from '../../lib/unitFormat.js';
 
 type MasterRecord = {
     tables: string[];
@@ -368,10 +369,10 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         await new Promise((resolve) => {
             stream.close(resolve);
         });
-        this.logEvent(`[${keys}] entries ${sizeConvert(size)}`, '_export', 'export file');
-        this.os.log(`[DB] Export: [${keys}] entries ${sizeConvert(size)}`, 'info');
-        this.logEvent(`export finished in ${timeConvert(Date.now() - t1)}.`, '_export', 'export file');
-        this.os.log(`[DB] Export: finished in ${timeConvert(Date.now() - t1)}.`, 'info');
+        this.logEvent(`[${keys}] entries ${byteFormat(size)}`, '_export', 'export file');
+        this.os.log(`[DB] Export: [${keys}] entries ${byteFormat(size)}`, 'info');
+        this.logEvent(`export finished in ${timeFormat(Date.now() - t1)}.`, '_export', 'export file');
+        this.os.log(`[DB] Export: finished in ${timeFormat(Date.now() - t1)}.`, 'info');
     }
 
     async importFile(filename: string) {
@@ -438,14 +439,14 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         }
         let arr: string[] = ['[Table name]\t[Entries]\t[Size]'];
         for (const [table, record] of tableMap.entries()) {
-            arr.push(`${table}\t${record.keys}\t${sizeConvert(record.size)}`);
+            arr.push(`${table}\t${record.keys}\t${byteFormat(record.size)}`);
         }
-        arr.push(`Total\t${keys}\t${sizeConvert(size)}`);
+        arr.push(`Total\t${keys}\t${byteFormat(size)}`);
         let result = formatTab(arr, '   ', '\t');
         this.logEvent(`${result}`, 'import', 'import file');
         this.os.log(`[DB] Import: \n${result}`, 'info');
-        this.logEvent(`import finished in ${timeConvert(Date.now() - t1)}.`, 'import', 'import file');
-        this.os.log(`[DB] Import: finished in ${timeConvert(Date.now() - t1)}.`, 'info');
+        this.logEvent(`import finished in ${timeFormat(Date.now() - t1)}.`, 'import', 'import file');
+        this.os.log(`[DB] Import: finished in ${timeFormat(Date.now() - t1)}.`, 'info');
     }
 
     _entry(table: string, key: string) {

@@ -4,7 +4,7 @@ import { inspect } from 'util';
 
 import DataIO from '../network/dataIO.js';
 import HiveComponent from './hiveComponent.js';
-import { timeFormat } from '../../lib/lib.js';
+import { dateTimeFormat } from '../../lib/unitFormat.js';
 
 type LoggerOptions = {
     name: string;
@@ -74,7 +74,7 @@ export default class Logger extends HiveComponent {
     }
 
     _stamp(message: string) {
-        return `[${timeFormat('full')}] ` + (this.options.appendLoggerName ? `[${this.options.name}]: ${message}` : message);
+        return `[${dateTimeFormat('full')}] ` + (this.options.appendLoggerName ? `[${this.options.name}]: ${message}` : message);
     }
 
     _echo(log: string) {
@@ -93,10 +93,10 @@ export default class Logger extends HiveComponent {
 
     _newLogFile() {
         this._closeLogFile();
-        this.logFileTimestamp = timeFormat('date');
+        this.logFileTimestamp = dateTimeFormat('date');
         let fileName = '';
         if (this.options.logFileName) fileName += this.options.logFileName + '_';
-        fileName += `${timeFormat(this.options.logFileTimestamp, '_', '_', '_')}.txt`;
+        fileName += `${dateTimeFormat(this.options.logFileTimestamp, '_', '_', '_')}.txt`;
         this.logFileName = fileName;
         const filePath = path.join(this.options.logFolder, '/', fileName);
         this.logFilePath = filePath;
@@ -114,7 +114,7 @@ export default class Logger extends HiveComponent {
 
     _updateLogFile() {
         if (!this.logFileName) return false;
-        if (timeFormat('date') != this.logFileTimestamp) return this._closeLogFile();
+        if (dateTimeFormat('date') != this.logFileTimestamp) return this._closeLogFile();
         return false;
     }
 

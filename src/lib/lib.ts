@@ -1,5 +1,3 @@
-import dateFormat from 'dateformat';
-
 export function randomInt(range: number = 32768) {
     return Math.floor(Math.random() * range);
 }
@@ -55,102 +53,6 @@ export function sleep(ms: number) {
 
 export function isFunction(target: any): boolean {
     return target && (Object.prototype.toString.call(target) === '[object Function]' || 'function' === typeof target || target instanceof Function);
-}
-
-export function timeFormat(
-    format: 'date' | 'time' | 'full',
-    dateSeperator: string = '-',
-    timeSeperator: string = ':',
-    seperator: string = ' ',
-    time?: number,
-    utc?: boolean
-) {
-    let dateString = `yyyy'${dateSeperator}'mm'${dateSeperator}'dd`;
-    let timeString = `HH'${timeSeperator}'MM'${timeSeperator}'ss`;
-    let date = time || Date.now();
-    switch (format) {
-        case 'date':
-            return dateFormat(date, dateString, utc);
-        case 'time':
-            return dateFormat(date, timeString, utc);
-        case 'full':
-        default:
-            return dateFormat(date, `${dateString}${seperator}${timeString}`, utc);
-    }
-}
-
-export function timeConvert(
-    time: number, // ms
-    format: 'short' | 'long' | 'longs' | 'clock' = 'short',
-    unit: 'auto' | 'second' | 'minute' | 'hour' = 'auto'
-) {
-    let seconds = Math.floor(time / 1000);
-    let ms = _ms(time % 1000);
-    if (unit == 'second' || (unit == 'auto' && seconds < 60)) {
-        switch (format) {
-            case 'short':
-            default:
-                return `${seconds}.${ms}s`;
-            case 'long':
-                return `${seconds} second${_s(seconds)}`;
-            case 'longs':
-                return `${seconds} seconds`;
-            case 'clock':
-                return `${seconds}.${ms}`;
-        }
-    }
-    let minutes = Math.floor(seconds / 60);
-    seconds = seconds % 60;
-    if (unit == 'hour' || (unit == 'auto' && minutes < 60)) {
-        switch (format) {
-            case 'short':
-            default:
-                return `${minutes}min ${seconds}.${ms}s`;
-            case 'long':
-                return `${minutes} minute${_s(minutes)} ${seconds} second${_s(seconds)}`;
-            case 'longs':
-                return `${minutes} minutes ${seconds} seconds`;
-            case 'clock':
-                return `${minutes}:${seconds}.${ms}`;
-        }
-    }
-    let hours = Math.floor(minutes / 60);
-    minutes = minutes % 60;
-    switch (format) {
-        case 'short':
-        default:
-            return `${hours}h ${minutes}min ${seconds}.${ms}s`;
-        case 'long':
-            return `${hours} hour${_s(hours)} ${minutes} minute${_s(minutes)} ${seconds} second${_s(seconds)}`;
-        case 'longs':
-            return `${hours} hours ${minutes} minutes ${seconds} seconds`;
-        case 'clock':
-            return `${hours}:${minutes}:${seconds}.${ms}`;
-    }
-}
-
-function _s(t: number) {
-    return t > 1 ? 's' : '';
-}
-
-function _ms(t: number) {
-    return `${t < 100 ? '0' : ''}${t < 10 ? '0' : ''}${t}`;
-}
-
-export function sizeConvert(size: number) {
-    if (size < 1024) {
-        return `${size}B`;
-    }
-    size /= 1024;
-    if (size < 1024) {
-        return `${size.toPrecision(3)}KB`;
-    }
-    size /= 1024;
-    if (size < 1024) {
-        return `${size.toPrecision(3)}MB`;
-    }
-    size /= 1024;
-    return `${size.toPrecision(3)}GB`;
 }
 
 // https://stackoverflow.com/questions/57118453/structural-type-checking-in-javascript
