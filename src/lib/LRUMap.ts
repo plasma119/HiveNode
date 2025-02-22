@@ -13,7 +13,7 @@ export default class LRUMap<K, V> {
     tail?: Node<K, V>; // oldest node
 
     constructor(limit?: number, iterable?: Iterable<[K, V]>) {
-        this.limit = limit || Infinity;
+        this.limit = typeof limit == 'number' ? limit : Infinity;
         if (this.limit < 0) this.limit = 0;
         if (iterable) {
             if (limit === undefined) this.limit = Infinity;
@@ -44,9 +44,11 @@ export default class LRUMap<K, V> {
     }
 
     assign(iterable: Iterable<[K, V]>) {
+        if (this.limit == 0) return this;
         for (let [key, value] of iterable) {
             this.set(key, value);
         }
+        return this;
     }
 
     get(key: K) {
@@ -56,6 +58,7 @@ export default class LRUMap<K, V> {
     }
 
     set(key: K, value: V) {
+        if (this.limit == 0) return this;
         let node = this._getNode(key);
         if (node) {
             // cached
