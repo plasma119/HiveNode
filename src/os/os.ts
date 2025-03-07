@@ -23,6 +23,7 @@ import { timeFormat, dateTimeFormat } from '../lib/unitFormat.js';
 // TODO: job scheduler
 
 // TODO: add log/trace to all core/important steps for debugging
+// TODO: catalog all event/category/tag types for event logger
 // TODO: standardize error emit/handling
 // TODO: actually use DataIOBuffer
 // TODO: define os.debugMode
@@ -82,7 +83,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
 
     kernel: HiveProcessKernel;
     //@ts-ignore
-    shell: HiveCommand;
+    shell: HiveCommand; // should be init by kernel
     coreServices: Partial<CoreServices> = {};
 
     processes: Map<number, HiveProcess>;
@@ -246,7 +247,6 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
         return process;
     }
 
-    // maybe move these into kernel?
     registerShellProgram(program: HiveCommand) {
         this.getCoreService('shelld').registerShellProgram(program);
     }

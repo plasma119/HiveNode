@@ -128,6 +128,9 @@ export default class HiveProcessKernel extends HiveProcess {
         const logger = await this._spawnCoreService(HiveProcessLogger, 'logger'); // must be first service to be loaded
         await this._spawnCoreService(HiveProcessEventLogger, 'event', ['OS']);
         this.os.setEventLogger(this.os.newEventLogger('os'));
+
+        logger.log(`HiveNode OS[${this.os.NodeName}] version ${version}`, 'info');
+
         this.os.netInterface.setEventLogger(this.os.newEventLogger('os->netInterface'));
         this.os.HTP.setEventLogger(this.os.newEventLogger('os->HTP'));
 

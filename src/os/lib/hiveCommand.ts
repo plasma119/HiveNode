@@ -20,7 +20,7 @@ export type HiveCommandInfo = {
     currentInput: string;
     programChain: HiveCommand[];
     terminalControl?: TerminalControlPacket;
-    reply: (message: any, forceReply?: boolean) => void;
+    reply: (message: any, forceReplyEmpty?: boolean) => void;
 };
 
 export type HiveCommandExport = {
@@ -114,8 +114,8 @@ export default class HiveCommand extends HiveComponent {
             currentProgram: this,
             currentInput: input,
             programChain: [],
-            reply: (message, forceReply) => {
-                if (!forceReply && (message === undefined || message === null)) return;
+            reply: (message, forceReplyEmpty) => {
+                if (!forceReplyEmpty && (message === undefined || message === null)) return;
                 let returnData: any;
                 if (data instanceof HiveNetPacket) {
                     // re-pack data
@@ -144,6 +144,7 @@ export default class HiveCommand extends HiveComponent {
                 info.terminalControl = input as TerminalControlPacket;
                 info.rawInput = typeof info.terminalControl.input == 'string' ? info.terminalControl.input : '';
             }
+            // TODO: shell execution packet: enable special reply mode
             if (typeof info.rawInput != 'string') {
                 throw new HiveCommandError('Cannot recognize input data format');
             }
