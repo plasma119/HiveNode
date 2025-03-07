@@ -227,6 +227,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
     _handshake(isClient: boolean): Promise<SocketStatus> {
         return new Promise(async (resolve, reject) => {
+            // TODO: output handshake error reason
             type states = 'C1' | 'C2' | 'C3' | 'S1' | 'S2' | 'ready';
             const handshake = new HandShake<states>();
             handshake.setEventLogger(this.logEvent);
@@ -340,7 +341,7 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
 
             this._handshakeCallback = (_header, data) => {
                 try {
-                    if (data.length > 10000) handshake.inputData(null); // no point to parse junk data
+                    if (data.length > 10000) return handshake.inputData(null); // no point to parse junk data
                     handshake.inputData(JSON.parse(data));
                 } catch (e) {
                     handshake.inputData(null);
