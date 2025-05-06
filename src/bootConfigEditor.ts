@@ -1,17 +1,26 @@
 import * as fs from 'fs';
+import path from 'path';
 
 import HiveCommand, { HiveSubCommand } from './os/lib/hiveCommand.js';
 import Terminal from './os/lib/terminal.js';
 import { BootConfig, BootConfigParserProgram, DEFAULTCONFIG, mergeBIOSConfig } from './os/bootConfig.js';
 
-let terminal = new Terminal();
-
-let program = new HiveCommand('bootConfigEditor');
-program.stdIO.connect(terminal.stdIO);
-
+const configFolder = './config';
 let currentConfig: Partial<BootConfig> = DEFAULTCONFIG;
 let currentFile = '';
 
+// init editor program
+let terminal = new Terminal();
+let program = new HiveCommand('bootConfigEditor');
+program.stdIO.connect(terminal.stdIO);
+
+// check config folder
+if (!fs.existsSync(configFolder)) {
+    program.stdIO.output(`Config folder not found. Creating config folder...`);
+    fs.mkdirSync(configFolder);
+}
+
+// init commands
 program.addNewCommand('ls', 'display config files').setAction(() => {
     let files = getConfigFiles();
     let str = `Found ${files.length} config files.`;
@@ -40,7 +49,7 @@ program
     .addNewCommand('load', 'load config from file')
     .addNewArgument('<file>')
     .setAction((args, _opts, info) => {
-        let file = args['file'];
+        let file = getFilePath(args['file']);
         if (!fs.existsSync(file)) return 'File does not exist!';
         currentFile = file;
         info.reply(`Loading config file: ${currentFile}`);
@@ -53,7 +62,7 @@ program
     .addNewCommand('save', 'save config to file')
     .addNewArgument('[file]')
     .setAction((args, _opts, info) => {
-        let file = args['file'];
+        let file = getFilePath(args['file']);
         if (!file) file = currentFile;
         if (!file) return 'Please specify file to save to';
         info.reply(`Saving to config file: ${file}`);
@@ -70,14 +79,16 @@ program.addNewCommand('clear', 'clear current config').setAction(() => {
 let excludeList: string[] = ['package.json', 'package-lock.json', 'tsconfig.json'];
 function getConfigFiles() {
     let configFiles = [];
-    let files = fs.readdirSync(process.cwd(), { withFileTypes: true });
+    let files = fs.readdirSync(configFolder, { withFileTypes: true });
     for (let file of files) {
         try {
             if (!file.isFile()) continue;
             if (!file.name.endsWith('.json')) continue;
             if (excludeList.includes(file.name)) continue;
-            if (fs.statSync(file.name).size > 10 * 1024) continue; // big file, should not be config file
-            let json = JSON.parse(fs.readFileSync(file.name).toString());
+            if (fs.statSync(getFilePath(file.name)).size > 10 * 1024) continue; // big file, should not be config file
+
+            // load config file
+            let json = JSON.parse(fs.readFileSync(getFilePath(file.name)).toString());
             let checkPass = false;
             for (let prop in DEFAULTCONFIG) {
                 // @ts-ignore
@@ -91,3 +102,13 @@ function getConfigFiles() {
     }
     return configFiles;
 }
+
+function getFilePath(filename: string) {
+    return path.join(configFolder, '/', filename);
+}
+
+// init completed, display help info
+(async () => {
+    await program.execute('help', (data) => program.stdIO.output(data));
+    program.stdIO.output(`Current config folder: ${path.resolve(configFolder)}`);
+})();
