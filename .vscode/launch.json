@@ -54,18 +54,6 @@
             ]
         },
         {
-            "name": "lib Test",
-            "request": "launch",
-            "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\lib_test.js",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
-        },
-        {
             "name": "circularBuffer Test",
             "request": "launch",
             "type": "node",
