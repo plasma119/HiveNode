@@ -2,6 +2,19 @@
 // argument value persistent bug is the main reason to write this whole thing
 // also it just too messy to work with customizing Commander.js
 
+/**
+ * HiveCommand module
+ * Core of CLI/program system
+ * - parsing string command into arguments and options
+ * - subcommand hierarchy
+ *   - auto help command
+ * - auto unpacking/repacking HiveNet Packet
+ * - progress data/reply handler
+ * - auto completion helper
+ * 
+ * TODO: special progress update function for terminal display
+ */
+
 import HiveComponent from './hiveComponent.js';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
@@ -23,6 +36,7 @@ export type HiveCommandInfo = {
     reply: (message: any, forceReplyEmpty?: boolean) => void;
 };
 
+// TODO: export/import system work in progress
 export type HiveCommandExport = {
     name: string;
     description: string;
