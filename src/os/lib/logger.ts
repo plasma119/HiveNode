@@ -13,6 +13,7 @@ type LoggerOptions = {
     logFileTimestamp: 'date' | 'full';
     newFilePerDay: boolean;
     appendLoggerName: boolean;
+    toStdIO: boolean;
     toConsole: boolean;
 };
 
@@ -35,6 +36,7 @@ export default class Logger extends HiveComponent {
                 logFileTimestamp: 'date',
                 newFilePerDay: true,
                 appendLoggerName: false,
+                toStdIO: true,
                 toConsole: true,
             },
             options
@@ -48,7 +50,7 @@ export default class Logger extends HiveComponent {
         }
     }
 
-    async log(message: any, mute: boolean = false) {
+    log(message: any, mute: boolean = false) {
         if (typeof message != 'string') message = inspect(message, false, 2, false);
         const log = this._stamp(message);
         if (!this.logFileHandle) {
@@ -79,11 +81,8 @@ export default class Logger extends HiveComponent {
 
     _echo(log: string) {
         // copy to console/stdIO
-        if (this.options.toConsole) {
-            console.log(log);
-        } else {
-            this.stdIO.output(log);
-        }
+        if (this.options.toStdIO) this.stdIO.output(log);
+        if (this.options.toConsole) console.log(log);
     }
 
     _newLogFileHandle() {

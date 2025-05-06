@@ -34,7 +34,7 @@ export const logLevel: Record<logLevelKeyType, number> = {
 };
 
 export default class HiveProcessLogger extends HiveProcess {
-    logger: Logger;
+    logger: LoggerStream;
     crashLogger: Logger;
 
     logLevel: number = 4;
