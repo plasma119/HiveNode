@@ -2,9 +2,9 @@
 // argument value persistent bug is the main reason to write this whole thing
 // also it just too messy to work with customizing Commander.js
 
+import HiveComponent from './hiveComponent.js';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
-import HiveComponent from './hiveComponent.js';
 import { commonPrefix, findFirstWord, formatTab, typeCheck } from '../../lib/lib.js';
 
 // this includes both '-var' and '-var boo'
@@ -389,34 +389,42 @@ export class HiveSubCommand extends HiveCommand {
         this.reset();
         let argumentCount = 0;
         let argumentArr = Array.from(this.arguments.values());
+        let optionTerminate = false;
 
         // parse command
-        let start = 0;
+        let cursor = 0;
         do {
-            const positions = findFirstWord(str, start);
+            // find next word
+            const positions = findFirstWord(str, cursor);
             if (!positions) break;
             const arg = str.substring(positions[0], positions[1]);
-            start = positions[1] + 1;
+            cursor = positions[1] + 1;
+
+            // option terminate symbol
+            if (arg === '--') {
+                optionTerminate = true;
+                continue;
+            }
 
             // check option
-            if (arg.length > 1 && arg[0] === '-') {
+            if (!optionTerminate && arg.length > 1 && arg[0] === '-') {
                 const option = this.findOption(arg);
                 if (!option) throw new HiveCommandError(`Invalid Option: ${arg}`);
                 if (option.argument) {
-                    // try to get argument for flag
-                    const nextPositions = findFirstWord(str, start);
+                    // try to get argument for option
+                    const nextPositions = findFirstWord(str, cursor);
                     const nextArg = nextPositions ? str.substring(nextPositions[0], nextPositions[1]) : '';
                     if (option.argument.required) {
                         // required argument
-                        if (!nextArg) throw new HiveCommandError(`Missing required argument for option: ${option.name}`);
+                        if (nextArg === '--' || !nextArg) throw new HiveCommandError(`Missing required argument for option: ${option.name}`);
                         option.setValue(nextArg);
-                        if (nextPositions) start = nextPositions[1] + 1;
+                        if (nextPositions) cursor = nextPositions[1] + 1;
                     } else {
                         // optional argument
-                        if (nextArg && !this.findOption(nextArg)) {
-                            // next string is not option flag, so must be argument
+                        if (nextArg != '--' && nextArg && !this.findOption(nextArg)) {
+                            // next string is not option flag, so must be argument for current option
                             option.setValue(nextArg);
-                            if (nextPositions) start = nextPositions[1] + 1;
+                            if (nextPositions) cursor = nextPositions[1] + 1;
                         } else {
                             // no argument
                             option.setValue(true);
@@ -444,7 +452,7 @@ export class HiveSubCommand extends HiveCommand {
 
             // ran out of defined arguments
             break;
-        } while (start < str.length);
+        } while (cursor < str.length);
 
         // check required arguments
         let required = 0;
