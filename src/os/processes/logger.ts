@@ -1,6 +1,6 @@
 import { inspect } from 'util';
 
-import { CircularBuffer } from '../../lib/circularBuffer.js';
+import { CircularArray } from '../../lib/circularArray.js';
 import exitHelper from '../lib/exitHelper.js';
 import HiveCommand from '../lib/hiveCommand.js';
 import Logger, { LoggerStream } from '../lib/logger.js';
@@ -38,7 +38,7 @@ export default class HiveProcessLogger extends HiveProcess {
     crashLogger: Logger;
 
     logLevel: number = 4;
-    buffer: CircularBuffer<{ message: any; level: keyof typeof logLevel }> = new CircularBuffer(1000);
+    buffer: CircularArray<{ message: any; level: keyof typeof logLevel }> = new CircularArray(1000);
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number, argv: string[]) {
         super(name, os, pid, ppid, argv);

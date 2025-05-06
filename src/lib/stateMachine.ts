@@ -1,5 +1,5 @@
 import BasicEventEmitter from './basicEventEmitter.js';
-import { CircularBuffer } from './circularBuffer.js';
+import { CircularArray } from './circularArray.js';
 
 export type StateMachineAction<states extends string> = (state: states, prev: states) => states | void | Promise<states | void>;
 export type StateMachineNode<states extends string> = Record<states, StateMachineAction<states> | undefined>;
@@ -17,7 +17,7 @@ export default class StateMachine<states extends string> extends BasicEventEmitt
 
     state: states;
     prevState: states;
-    history: CircularBuffer<states> = new CircularBuffer(1000); // for debugging purpose
+    history: CircularArray<states> = new CircularArray(1000); // for debugging purpose
 
     endState: states | null;
 

@@ -1,4 +1,4 @@
-import { CircularBuffer } from '../../lib/circularBuffer.js';
+import { CircularArray } from '../../lib/circularArray.js';
 import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
 
@@ -8,15 +8,15 @@ type EventLog = { log: string; event: string; category: string; tag: string };
 // TODO: maybe add timestamp?
 // DO NOT capture event for logger/console.log as loglevel 'trace' would cause feedback loop
 export default class HiveProcessEventLogger extends HiveProcess {
-    events: Map<string, CircularBuffer<EventLog>> = new Map();
-    history: CircularBuffer<EventLog> = new CircularBuffer(1000);
+    events: Map<string, CircularArray<EventLog>> = new Map();
+    history: CircularArray<EventLog> = new CircularArray(1000);
 
     root: string = 'undefined';
 
     private _log = (tag: string, log: string, event: string, category: string) => {
         let arr = this.events.get(category);
         if (arr == undefined) {
-            arr = new CircularBuffer(1000);
+            arr = new CircularArray(1000);
             this.events.set(category, arr);
         }
         let eventLog: EventLog = {
