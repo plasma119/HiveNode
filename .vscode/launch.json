@@ -8,7 +8,7 @@
             "name": "DataIO Test",
             "request": "launch",
             "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\dataIO_test.js",
+            "program": "${workspaceFolder}/dist/tests/dataIO_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -20,7 +20,7 @@
             "name": "HiveCommand Test",
             "request": "launch",
             "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\hiveCommand_test.js",
+            "program": "${workspaceFolder}/dist/tests/hiveCommand_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -32,7 +32,7 @@
             "name": "Logger Test",
             "request": "launch",
             "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\logger_test.js",
+            "program": "${workspaceFolder}/dist/tests/logger_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -45,7 +45,7 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\tests\\exitHelper_test.js",
+            "program": "${workspaceFolder}/dist/tests/exitHelper_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -57,7 +57,7 @@
             "name": "circularBuffer Test",
             "request": "launch",
             "type": "node",
-            "program": "${workspaceFolder}\\dist\\tests\\circularBuffer_test.js",
+            "program": "${workspaceFolder}/dist/tests/circularBuffer_test.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -70,8 +70,8 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\os\\bios.js",
-            "args": ["-configFile config.json -name OS_Test"],
+            "program": "${workspaceFolder}/dist/os/bios.js",
+            "args": ["-configFile config/os.json -name OS_Test"],
             "skipFiles": [
                 "<node_internals>/**",
                 "${workspaceFolder}/src/lib/basicEventEmitter.ts",
@@ -88,8 +88,8 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\os\\bios.js",
-            "args": ["-configFile server.json"],
+            "program": "${workspaceFolder}/dist/os/bios.js",
+            "args": ["-configFile config/server.json"],
             "skipFiles": [
                 "<node_internals>/**",
                 "${workspaceFolder}/src/lib/basicEventEmitter.ts",
@@ -106,8 +106,8 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\os\\bios.js",
-            "args": ["-configFile client.json"],
+            "program": "${workspaceFolder}/dist/os/bios.js",
+            "args": ["-configFile config/client.json"],
             "skipFiles": [
                 "<node_internals>/**",
                 "${workspaceFolder}/src/lib/basicEventEmitter.ts",
@@ -124,7 +124,7 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\bootConfigEditor.js",
+            "program": "${workspaceFolder}/dist/bootConfigEditor.js",
             "skipFiles": [
                 "<node_internals>/**",
                 "${workspaceFolder}/src/lib/basicEventEmitter.ts",
@@ -141,7 +141,7 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\os\\bios.js",
+            "program": "${workspaceFolder}/dist/os/bios.js",
             "args": ["-configFile config.json -name OS_Test -programFile dist/tests/worker_test.js"],
             "skipFiles": [
                 "<node_internals>/**",
@@ -158,7 +158,7 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\tool\\autoBuildVersion.js",
+            "program": "${workspaceFolder}/dist/tool/autoBuildVersion.js",
             "args": ["-build"],
             "skipFiles": [
                 "<node_internals>/**",
@@ -172,8 +172,8 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\tool\\testHelper.js",
-            "args": ["-runTest", "${workspaceFolder}\\dist\\tests\\LRUMap_test.js"],
+            "program": "${workspaceFolder}/dist/tool/testHelper.js",
+            "args": ["-runTest", "${workspaceFolder}/dist/tests/LRUMap_test.js"],
             "skipFiles": [
                 "<node_internals>/**",
             ],
@@ -186,8 +186,8 @@
             "request": "launch",
             "type": "node",
             "console": "integratedTerminal",
-            "program": "${workspaceFolder}\\dist\\tool\\testHelper.js",
-            "args": ["-genTest", "${workspaceFolder}\\dist\\tests\\LRUMap_test.js"],
+            "program": "${workspaceFolder}/dist/tool/testHelper.js",
+            "args": ["-genTest", "${workspaceFolder}/dist/tests/LRUMap_test.js"],
             "skipFiles": [
                 "<node_internals>/**",
             ],
