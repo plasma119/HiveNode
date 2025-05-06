@@ -24,7 +24,12 @@ export function setLoader(loader: Loader) {
     currentLoader = loader;
 }
 
+export function hasLoader() {
+    return !!currentLoader;
+}
+
 export function getLoader() {
+    if (!currentLoader) throw new Error('Loader not set!');
     return currentLoader;
 }
 

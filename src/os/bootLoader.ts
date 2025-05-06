@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import HiveOS from './os.js';
 import DataIO from './network/dataIO.js';
 import { sleep } from '../lib/lib.js';
-import { getLoader, resolveFileImport, setLoader } from './loader.js';
+import { hasLoader, resolveFileImport, setLoader } from './loader.js';
 import { BootConfig } from './bootConfig.js';
 
 export const BOOTLOADERVERSION = 'v1.26';
@@ -28,7 +28,7 @@ process.on('message', async (message) => {
     console.log(`[Boot Loader]: Boot config recieved.`);
 
     // set loader data
-    if (getLoader()) {
+    if (hasLoader()) {
         console.log(`[Boot Loader]: ERROR: Loader already set!`);
         return;
     }

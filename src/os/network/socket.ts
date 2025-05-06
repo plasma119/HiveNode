@@ -3,6 +3,7 @@ import { inspect } from 'util';
 import WebSocket from 'ws';
 
 import { version } from '../../index.js';
+import { getLoader } from '../loader.js';
 import Encryption from '../../lib/encryption.js';
 import { sleep } from '../../lib/lib.js';
 import HiveComponent from '../lib/hiveComponent.js';
@@ -118,6 +119,11 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         this._ss = Object.assign({}, DEFAULTSOCKETSECRET);
         this.targetInfo = Object.assign({}, DEFAULTSOCKETINFO);
 
+        const loder = getLoader();
+        const bootConfig = loder.bootConfig;
+        // TODO: add new method to inject secret into socket
+        this.setSecret(bootConfig.HiveNetSecret, bootConfig.HiveNetSalt, bootConfig.HiveNetSalt2);
+
         this.dataIO.on(
             'input',
             (data, signatures) => {
@@ -137,7 +143,6 @@ export default class HiveSocket extends HiveComponent<HiveSocketEvent> {
         this.info.socketVersion = `version ${VERSION} build ${BUILD}`;
     }
 
-    // TODO: use this
     setSecret(secret: string, salt: string, salt2: string) {
         this._ss.secret = Encryption.hash(secret).update(PEPPER).digest('base64');
         this._ss.salt = Encryption.hash(salt).update(PEPPER).digest('base64');

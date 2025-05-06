@@ -54,8 +54,7 @@ export function CreateNewProcess(workerConfig: WorkerConfig) {
     if (!fs.existsSync(workerConfig.workerFile)) throw new Error(`[Worker]: Cannot find worker file ${workerConfig.workerFile}`);
 
     const loder = getLoader();
-    const bootConfig = loder?.bootConfig;
-    if (!bootConfig) throw new Error(`[Worker]: Failed to get boot config!`);
+    const bootConfig = loder.bootConfig;
 
     workerConfig.depth = 1;
     if (loder.type == 'workerProcess' && loder.workerConfig.depth) workerConfig.depth = loder.workerConfig.depth + 1;

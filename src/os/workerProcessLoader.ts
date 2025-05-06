@@ -2,7 +2,7 @@ import HiveComponent from './lib/hiveComponent.js';
 import DataIO from './network/dataIO.js';
 import { DataParsing, DataSerialize, DataSignature } from './network/hiveNet.js';
 import { WorkerData, WorkerConfig } from './worker.js';
-import { getLoader, resolveFileImport, setLoader } from './loader.js';
+import { hasLoader, resolveFileImport, setLoader } from './loader.js';
 import { sleep } from '../lib/lib.js';
 import HiveNetInterface from './network/interface.js';
 import { BootConfig } from './bootConfig.js';
@@ -57,7 +57,7 @@ process.on('message', (message) => {
                 bootConfig = data.bootConfig;
                 workerConfig = data.workerConfig;
                 waitHiveOS = workerConfig.hiveOS || false;
-                if (getLoader()) throw new Error(`Loader already set!`);
+                if (hasLoader()) throw new Error(`Loader already set!`);
                 setLoader({
                     type: 'workerProcess',
                     bootConfig,

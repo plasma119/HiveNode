@@ -1,12 +1,13 @@
 import { version } from '../../index.js';
+import { getLoader } from '../loader.js';
+import { CoreServices } from '../os.js';
+import HiveProcess from '../process.js';
 import exitHelper from '../lib/exitHelper.js';
 import HiveCommand from '../lib/hiveCommand.js';
 import { Constructor, format, sleep } from '../../lib/lib.js';
 import DataIO from '../network/dataIO.js';
 import { HIVENETPORT } from '../network/hiveNet.js';
 import { VERSION } from '../../tool/autoBuildVersion.js';
-import { CoreServices } from '../os.js';
-import HiveProcess from '../process.js';
 import HiveProcessDB from './db.js';
 import HiveProcessEventLogger from './eventLogger.js';
 import HiveProcessLogger from './logger.js';
@@ -16,6 +17,7 @@ import HiveProcessSocketDaemon from './socket.js';
 import HiveProcessTerminal from './terminal.js';
 import HiveProcessUtil from './util.js';
 import HiveProcessProcessManager from './processManager.js';
+import { DEFAULTCONFIG } from '../bootConfig.js';
 
 export default class HiveProcessKernel extends HiveProcess {
     systemShell?: HiveCommand;
@@ -155,6 +157,15 @@ export default class HiveProcessKernel extends HiveProcess {
         await this._spawnShellProgram(HiveProcessProcessManager, 'top');
 
         // other init
+        const loder = getLoader();
+        const bootConfig = loder.bootConfig;
+        if (
+            bootConfig.HiveNetSecret == DEFAULTCONFIG.HiveNetSecret ||
+            bootConfig.HiveNetSalt == DEFAULTCONFIG.HiveNetSalt ||
+            bootConfig.HiveNetSalt2 == DEFAULTCONFIG.HiveNetSalt2
+        ) {
+            logger.log('Default Socket Secret Detected!', 'warn');
+        }
 
         // TODO: maybe move terminal.build and other init from bootLoader to here?
     }

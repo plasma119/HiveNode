@@ -12,6 +12,9 @@ export type BootConfig = {
     HiveNetServer: boolean;
     HiveNetIP: string;
     HiveNetPort: number;
+    HiveNetSecret: string;
+    HiveNetSalt: string;
+    HiveNetSalt2: string;
 };
 
 export const DEFAULTCONFIG: BootConfig = {
@@ -26,6 +29,9 @@ export const DEFAULTCONFIG: BootConfig = {
     HiveNetServer: false,
     HiveNetIP: '',
     HiveNetPort: 8082,
+    HiveNetSecret: 'Secret',
+    HiveNetSalt: 'Salt',
+    HiveNetSalt2: 'Salt2'
 };
 
 // TODO: help command
