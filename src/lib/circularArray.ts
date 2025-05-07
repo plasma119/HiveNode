@@ -19,30 +19,28 @@ export class CircularArray<T> {
     }
 
     pop() {
-        if (this.maxSize == 0) return undefined;
+        if (this._size == 0) return undefined;
         this._pointer--;
         if (this._pointer < 0) this._pointer = this.maxSize - 1;
         const item = this._array[this._pointer];
         delete this._array[this._pointer];
+        this._size--;
         return item;
     }
 
     get(index: number) {
-        if (index < 0 || index >= this.maxSize) return undefined;
+        if (index < 0 || index >= this.maxSize || index >= this._size) return undefined;
         let j = this._pointer - this._size + index;
         if (j < 0) j += this.maxSize;
         return this._array[j];
     }
 
     slice(start?: number, end?: number) {
-        if (this._array.length < this.maxSize) {
-            return this._array.slice(start, end);
-        } else {
-            let segment1 = this._array.slice(this._pointer);
-            let segment2 = this._array.slice(0, this._pointer);
-            let result = segment1.concat(...segment2);
-            return result.slice(start, end);
-        }
+        let segment1 = this._array.slice(this._pointer); // after pointer
+        let segment2 = this._array.slice(0, this._pointer); // before pointer
+        let arr = segment1.concat(...segment2); // full array
+        let result = arr.slice(this.maxSize - this._size); // remove empty spaces
+        return result.slice(start, end);
     }
 
     clear() {
@@ -58,13 +56,14 @@ export class CircularArray<T> {
     resize(size: number) {
         let currentArray = this.slice();
         this.maxSize = size;
-        if (size < currentArray.length) {
-            this._array = currentArray.slice(currentArray.length - size);
+        if (size < this._size) {
+            // chop off items in front
+            this._array = currentArray.slice(this._size - size);
             this._pointer = 0;
             this._size = size;
         } else {
             this._array = currentArray;
-            this._pointer = currentArray.length;
+            this._pointer = this._size;
         }
         if (this._pointer >= this.maxSize) this._pointer = 0;
     }
