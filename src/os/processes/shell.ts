@@ -74,16 +74,16 @@ export class HiveProcessShell extends HiveProcess {
 
         const util = shell.addNewCommand('util', 'For testing purpose');
 
-        util.addNewCommand('ls', 'list all running shells').setAction((_args, _opts, info) => {
+        util.addNewCommand('ls', 'list all running shells').setAction(async (_args, _opts, info) => {
             if (!this.shelld) {
                 return `WHAT? CAN'T FIND SHELLD!`;
             }
-            this.shelld.shells.forEach((s) => {
-                s.program.execute('shell info').then((data) => {
+            for (let s of this.shelld.shells.values()) {
+                await s.program.execute('shell info').then((data) => {
                     info.reply(data.join('\n'));
                 });
-            });
-            return null;
+            }
+            return;
         });
 
         // very wacky way to extract info from portIO system

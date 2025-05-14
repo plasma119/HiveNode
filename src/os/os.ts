@@ -39,6 +39,8 @@ import { timeFormat, dateTimeFormat } from '../lib/unitFormat.js';
 // TODO: HiveCommand import broken
 // TODO: fix the confusing UUID for HivePacket destination interface UUID
 
+// TODO: standardize program execution protocol, especially data reply rules(should not reply after EOC)
+
 // TODO: worker thread
 // TODO: refactor worker -> HiveNet connection mess
 

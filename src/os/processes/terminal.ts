@@ -129,7 +129,7 @@ export default class HiveProcessTerminal extends HiveProcess {
         dt.setOutputTransform((packet) => {
             // shell -> os -> terminal
             const data = packet instanceof HiveNetPacket ? packet.data : packet;
-            if (typeof data == 'object' && data.terminalControl && this.terminal) {
+            if (data && typeof data == 'object' && data.terminalControl && this.terminal) {
                 // terminal control system
                 const control = data as TerminalControlPacket;
                 if (this.completerCallback && control.completer && Array.isArray(control.completer)) {
