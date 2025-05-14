@@ -39,7 +39,7 @@ export class CircularArray<T> {
         let segment1 = this._array.slice(this._pointer); // after pointer
         let segment2 = this._array.slice(0, this._pointer); // before pointer
         let arr = segment1.concat(...segment2); // full array
-        let result = arr.slice(this.maxSize - this._size); // remove empty spaces
+        let result = arr.slice(-this._size); // remove empty spaces
         return result.slice(start, end);
     }
 
