@@ -62,9 +62,14 @@ program
     .addNewCommand('save', 'save config to file')
     .addNewArgument('[file]')
     .setAction((args, _opts, info) => {
-        let file = getFilePath(args['file']);
-        if (!file) file = currentFile;
-        if (!file) return 'Please specify file to save to';
+        let file = args['file'];
+        if (file) {
+            file = getFilePath(file);
+        } else {
+            file = currentFile;
+            info.reply(`Overwriting loaded config file.`);
+        }
+        if (!file) return 'Please specify file name.';
         info.reply(`Saving to config file: ${file}`);
         fs.writeFileSync(file, JSON.stringify(currentConfig, undefined, 2));
         return 'Done!';
