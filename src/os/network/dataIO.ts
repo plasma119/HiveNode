@@ -1,30 +1,30 @@
 import HiveComponent from '../lib/hiveComponent.js';
-import { StopPropagation } from '../lib/signals.js';
+import { Signal, StopPropagation } from '../lib/signals.js';
 import { DataSignature, DataSignaturesToString, HiveNetPacket } from './hiveNet.js';
 
 /*
     OSI model layer 1 - physical layer
 */
-export type DataLink<Type = any> = (data: Type, signatures: DataSignature[]) => void;
+export type DataLink<DataType = any> = (data: DataType, signatures: DataSignature[]) => void;
 
 let debugMode = false;
 
-export type DataIOEvent<Type = any> = {
-    input: DataLink<Type>;
-    output: DataLink<Type>;
-    connect: (io: DataIO<Type>) => void;
-    disconnect: (io: DataIO<Type>) => void;
+export type DataIOEvent<DataType = any> = {
+    input: DataLink<DataType>;
+    output: DataLink<DataType>;
+    connect: (io: DataIO<DataType>) => void;
+    disconnect: (io: DataIO<DataType>) => void;
     destroy: () => void;
 };
 
-export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>> {
+export default class DataIO<DataType = any> extends HiveComponent<DataIOEvent<DataType>> {
     owner: HiveComponent;
 
-    connectTable: Map<DataIO<Type>, boolean> = new Map();
-    passThroughTable: Map<DataIO<Type>, DataIO> = new Map(); // <targetIO, baseIO>
+    connectTable: Map<DataIO<DataType>, boolean> = new Map();
+    passThroughTable: Map<DataIO<DataType>, DataIO> = new Map(); // <targetIO, baseIO>
     destroyed: boolean = false;
-    inputBind: DataLink<Type>;
-    outputBind: DataLink<Type>;
+    inputBind: DataLink<DataType>;
+    outputBind: DataLink<DataType>;
 
     constructor(owner: HiveComponent, name: string) {
         super(name);
@@ -35,7 +35,7 @@ export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>>
     }
 
     // listen to dataIO.on('input') to get data
-    input(data: Type, signatures: DataSignature[] = []) {
+    input(data: DataType, signatures: DataSignature[] = []) {
         if (!this.destroyed) {
             if (debugMode) {
                 console.log(data);
@@ -50,7 +50,7 @@ export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>>
     }
 
     // write to dataIO.output() to send data
-    output(data: Type, signatures: DataSignature[] = []) {
+    output(data: DataType, signatures: DataSignature[] = []) {
         if (!this.destroyed) {
             if (debugMode) {
                 console.log(data);
@@ -65,7 +65,7 @@ export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>>
     }
 
     // between objects
-    connect(target: DataIO<Type>) {
+    connect(target: DataIO<DataType>) {
         if (this.connectTable.has(target)) return;
         this.connectTable.set(target, true);
         target.connectTable.set(this, true);
@@ -76,7 +76,7 @@ export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>>
     }
 
     // between objects
-    disconnect(target: DataIO<Type>) {
+    disconnect(target: DataIO<DataType>) {
         if (!this.connectTable.has(target)) return;
         this.connectTable.delete(target);
         target.connectTable.delete(this);
@@ -88,7 +88,7 @@ export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>>
 
     // inside object
     // !! directional: this -> I -> target -> O -> this
-    passThrough(target: DataIO<Type>) {
+    passThrough(target: DataIO<DataType>) {
         if (this.passThroughTable.has(target)) return;
         this.passThroughTable.set(target, this);
         target.passThroughTable.set(this, this);
@@ -98,7 +98,7 @@ export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>>
 
     // inside object
     // !! directional
-    unpassThrough(target: DataIO<Type>) {
+    unpassThrough(target: DataIO<DataType>) {
         let base = this.passThroughTable.get(target);
         if (!base) return;
         this.passThroughTable.delete(target);
@@ -147,48 +147,68 @@ export default class DataIO<Type = any> extends HiveComponent<DataIOEvent<Type>>
     }
 }
 
-export class DataTransformer extends HiveComponent {
-    stdIO: DataIO;
-    targetIO: DataIO;
-    inputTransform: (data: any, _signatures: DataSignature[]) => any;
-    outputTransform: (data: any, _signatures: DataSignature[]) => any;
+export class DataTransformer<DataType extends any, TransformedDataType = any> extends HiveComponent {
+    stdIO: DataIO<TransformedDataType>;
+    targetIO: DataIO<DataType>;
+    inputTransform?: (data: TransformedDataType, _signatures: DataSignature[]) => DataType | Signal;
+    outputTransform?: (data: DataType, _signatures: DataSignature[]) => TransformedDataType | Signal;
 
-    constructor(targetIO: DataIO) {
+    constructor(targetIO: DataIO<DataType>) {
         super('DataTransformer');
-        this.stdIO = new DataIO(targetIO.owner, 'DT');
+        this.stdIO = new DataIO<TransformedDataType>(targetIO.owner, 'DT');
         this.targetIO = targetIO;
-        this.inputTransform = (data) => data;
-        this.outputTransform = (data) => data;
 
         this.stdIO.on(
             'input',
-            (data: any, signatures: DataSignature[]) => {
+            (data: TransformedDataType, signatures: DataSignature[]) => {
+                if (!this.inputTransform) return;
                 this._sign(signatures);
                 const result = this.inputTransform(data, signatures);
-                if (result === StopPropagation) return;
-                this.targetIO.input(result, signatures);
+                if (result instanceof Signal) {
+                    if (result === StopPropagation) return;
+                } else {
+                    this.targetIO.input(result, signatures);
+                }
             },
-            'DT'
+            'DT',
         );
         this.targetIO.on(
             'output',
-            (data: any, signatures: DataSignature[]) => {
+            (data: DataType, signatures: DataSignature[]) => {
+                if (!this.outputTransform) return;
                 this._sign(signatures);
                 const result = this.outputTransform(data, signatures);
-                if (result === StopPropagation) return;
+                if (result instanceof Signal) {
+                    if (result === StopPropagation) return;
+                } else {
                 this.stdIO.output(result, signatures);
+                }
             },
-            'DT'
+            'DT',
         );
+
         this.targetIO.on('destroy', () => this.stdIO.destroy());
     }
 
-    setInputTransform(inputTransform: (data: any, _signatures: DataSignature[]) => any) {
+    setInputTransform(inputTransform: (data: TransformedDataType, _signatures: DataSignature[]) => DataType) {
         this.inputTransform = inputTransform;
     }
 
-    setOutputTransform(outputTransform: (data: any, _signatures: DataSignature[]) => any) {
+    setOutputTransform(outputTransform: (data: DataType, _signatures: DataSignature[]) => TransformedDataType) {
         this.outputTransform = outputTransform;
+    }
+
+    /**
+     * WARNING: data type maybe incompatible
+     */
+    setPassThroughTransform() {
+        this.inputTransform = (data) => data as any as DataType;
+        this.outputTransform = (data) => data as any as TransformedDataType;
+    }
+
+    clearTransform() {
+        this.inputTransform = undefined;
+        this.outputTransform = undefined;
     }
 
     private _sign(signatures: DataSignature[]) {

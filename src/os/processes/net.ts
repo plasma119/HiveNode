@@ -262,6 +262,7 @@ export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
         const socketDT = new DataTransformer(socket.dataIO);
         // socketDT.setInputTransform(DataSerialize);
         // socketDT.setOutputTransform(DataParsing);
+        socketDT.setPassThroughTransform();
 
         if (directSSH) {
             // TODO: fix input routing
@@ -322,6 +323,7 @@ export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
             const dt = new DataTransformer(client.dataIO);
             // dt.setInputTransform(DataSerialize);
             // dt.setOutputTransform(DataParsing);
+            dt.setPassThroughTransform();
 
             // connect socket to netInterface
             if (directSSH) {
