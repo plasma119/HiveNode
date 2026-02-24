@@ -52,6 +52,8 @@ import { timeFormat, dateTimeFormat } from '../lib/unitFormat.js';
 
 // TODO: dataIO connection to HiveOS for worker - done, but multi-layer is not supported yet
 
+// TODO: maybe a system of direct plaintext WebSocket to another HiveNode for stable terminal output related debugging?
+
 // NAT might cause boradcast storm if reaching to inter-OS HiveNet, need to investigate further
 // worker/main script entry point could be specified as option
 

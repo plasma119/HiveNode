@@ -21,6 +21,7 @@ export default class HiveProcessTerminal extends HiveProcess {
     initProgram() {
         const program = new HiveCommand('terminal', 'Terminal Controller');
 
+        // should be only called on system boot up
         program
             .addNewCommand('buildTerminal', 'initialize terminal')
             .addNewOption('-headless', 'disable user input for server node', false)
@@ -29,17 +30,19 @@ export default class HiveProcessTerminal extends HiveProcess {
                 this.buildTerminal(opts['-headless'] as boolean, opts['-debug'] as boolean);
             });
 
-        program.addNewCommand('debug', 'toggle debug mode').setAction(() => {
+        // terminal debug mode
+        program.addNewCommand('debug', 'toggle Terminal debug mode').setAction(() => {
             if (this.terminal) {
                 this.terminal.debug = !this.terminal.debug;
                 return `Debug = ${this.terminal.debug}`;
             } else {
-                return 'terminal is not initialized.';
+                return 'Terminal is not initialized.';
             }
         });
 
+        // remote shell system
         program
-            .addNewCommand('remote', 'remote terminal to target node via HiveNet')
+            .addNewCommand('remote', 'remote terminal to target node via HiveNetPacket')
             .addNewOption('-d', 'disconnect remote terminal')
             .addNewArgument('[target...]', 'target UUID or name')
             .setAction(async (args, opts, info) => {
@@ -72,6 +75,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                 return `Connected to target node: ${targetInfo.info.name} [HiveOS: ${targetInfo.info.HiveNodeVersion}]`;
             });
 
+        // WIP
         program.addNewCommand('getPassword', 'get password from user').setAction((_args, _opts, info) => {
             let invalid = false;
             if (info.rawData instanceof HiveNetPacket) {
@@ -146,6 +150,7 @@ export default class HiveProcessTerminal extends HiveProcess {
             return data;
         });
 
+        // ctrl + c
         this.os.on('sigint', () => {
             if (this.terminalDest != HIVENETADDRESS.LOCAL) {
                 this.terminalDest = HIVENETADDRESS.LOCAL;
