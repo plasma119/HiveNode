@@ -1,6 +1,7 @@
 import HiveComponent from '../lib/hiveComponent.js';
 import { Signal, StopPropagation } from '../lib/signals.js';
-import { DataSignature, DataSignaturesToString, HiveNetPacket } from './hiveNet.js';
+import { DataSignature, HiveNetPacket } from './hiveNet.js';
+import { DataSignaturesToString } from './serialize.js';
 
 /*
     OSI model layer 1 - physical layer

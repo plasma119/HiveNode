@@ -1,5 +1,5 @@
 import { ListenerSignature, DefaultListener } from '../../lib/basicEventEmitter.js';
-import { reverseMapObj, typeCheck } from '../../lib/lib.js';
+import { reverseMapObj } from '../../lib/lib.js';
 import { version } from '../../index.js';
 import HiveComponent from '../lib/hiveComponent.js';
 
@@ -73,7 +73,7 @@ export class HiveNetPacket {
 // TODO: auto test to prevent failing to reconstruct packet
 // TODO: packet ID? for debugging/tracking
 // TODO: packet creator? maybe extra metadata?
-const HiveNetPacketStructure = {
+export const HiveNetPacketStructure = {
     // data: 'any',
     src: 'string',
     dest: 'string',
@@ -153,51 +153,5 @@ export const HIVENETPORT = {
     // dynamic ports
     BASERANDOMPORT: 10000,
 };
+
 export const HIVENETPORTREVERSEMAP = reverseMapObj(HIVENETPORT);
-
-export function DataSignaturesToString(signatures: DataSignature[]) {
-    // @ts-ignore
-    return signatures.map((s) => `${s.name}[${s.by.name}]:${s.event}`).join('->');
-}
-
-export function DataSerialize(data: any, signatures: DataSignature[]) {
-    if (data instanceof HiveNetPacket && data.data === undefined) data.data = '';
-    if (data instanceof Error) data = data.message + data.stack;
-    return JSON.stringify({ data, signatures: SignaturePreSerialize(signatures) });
-}
-
-function SignaturePreSerialize(signatures: DataSignature[]) {
-    let s = signatures.slice();
-    s.forEach((s) => {
-        s.UUID = s.UUID;
-        s.name = s.name;
-        // @ts-ignore
-        s.by = { name: s.by.name };
-        s.event = s.event;
-    });
-    if (!s) s = [];
-    return s;
-}
-
-export function DataParsing(data: string, signatures: DataSignature[]) {
-    try {
-        let obj = JSON.parse(data);
-        if (obj.signatures && Array.isArray(obj.signatures)) {
-            signatures.unshift(...obj.signatures);
-            obj = obj.data;
-        }
-        return ObjectParsing(obj);
-    } catch (e) {
-        return data;
-    }
-}
-
-function ObjectParsing(obj: any) {
-    if (!obj) return obj;
-    if (typeof obj == 'string') return obj;
-    // try to rebuild HiveNet data packets
-    if (typeCheck(obj, HiveNetPacketStructure)) {
-        obj = new HiveNetPacket(obj);
-    }
-    return obj;
-}

@@ -7,7 +7,8 @@ import { getLoader } from '../loader.js';
 import Encryption from '../../lib/encryption.js';
 import { sleep } from '../../lib/lib.js';
 import HiveComponent from '../lib/hiveComponent.js';
-import { DataParsing, DataSerialize, DataSignature } from './hiveNet.js';
+import { DataSignature } from './hiveNet.js';
+import { DataParsing, DataSerialize } from './serialize.js';
 import DataIO from './dataIO.js';
 import HandShake from './handshake.js';
 

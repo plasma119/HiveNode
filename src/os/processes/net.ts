@@ -5,14 +5,16 @@ import { format, sleep } from '../../lib/lib.js';
 import { DataTransformer } from '../network/dataIO.js';
 import {
     DataSignature,
-    // DataParsing,
-    // DataSerialize,
-    DataSignaturesToString,
     HIVENETADDRESS,
     HiveNetDeviceInfo,
     HiveNetPacket,
     HIVENETPORT,
 } from '../network/hiveNet.js';
+import {
+    // DataParsing,
+    // DataSerialize,
+    DataSignaturesToString
+} from '../network/serialize.js';
 import HiveSocket from '../network/socket.js';
 import HiveNetSwitch from '../network/switch.js';
 import HiveProcess from '../process.js';

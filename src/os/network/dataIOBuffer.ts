@@ -2,7 +2,7 @@ import { inspect } from 'util';
 
 import DataIO from './dataIO.js';
 import HiveComponent from '../lib/hiveComponent.js';
-import { DataSignaturesToString } from './hiveNet.js';
+import { DataSignaturesToString } from './serialize.js';
 import { CircularArray } from '../../lib/circularArray.js';
 
 type DataIOBufferOptions = {

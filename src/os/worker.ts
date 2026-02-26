@@ -4,7 +4,8 @@ import path from 'path';
 
 import DataIO from './network/dataIO.js';
 import HiveComponent from './lib/hiveComponent.js';
-import { DataParsing, DataSerialize, DataSignature } from './network/hiveNet.js';
+import { DataSignature } from './network/hiveNet.js';
+import { DataParsing, DataSerialize } from './network/serialize.js';
 import { getLoader } from './loader.js';
 import HiveNetInterface, { PortIO } from './network/interface.js';
 import { BootConfig } from './bootConfig.js';

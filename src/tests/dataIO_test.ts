@@ -1,6 +1,7 @@
 import HiveComponent from '../os/lib/hiveComponent.js';
 import DataIO from '../os/network/dataIO.js';
-import { DataSignature, DataSignaturesToString } from '../os/network/hiveNet.js';
+import { DataSignature } from '../os/network/hiveNet.js';
+import { DataSignaturesToString } from '../os/network/serialize.js';
 
 function log(data: any, signatures: DataSignature[]) {
     console.log(data);

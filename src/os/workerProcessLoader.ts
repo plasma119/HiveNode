@@ -1,6 +1,7 @@
 import HiveComponent from './lib/hiveComponent.js';
 import DataIO from './network/dataIO.js';
-import { DataParsing, DataSerialize, DataSignature } from './network/hiveNet.js';
+import { DataSignature } from './network/hiveNet.js';
+import { DataParsing, DataSerialize } from './network/serialize.js';
 import { WorkerData, WorkerConfig } from './worker.js';
 import { hasLoader, resolveFileImport, setLoader } from './loader.js';
 import { sleep } from '../lib/lib.js';
