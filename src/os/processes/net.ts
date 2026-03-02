@@ -3,17 +3,11 @@ import { WebSocketServer } from 'ws';
 import HiveCommand from '../lib/hiveCommand.js';
 import { format, sleep } from '../../lib/lib.js';
 import { DataTransformer } from '../network/dataIO.js';
-import {
-    DataSignature,
-    HIVENETADDRESS,
-    HiveNetDeviceInfo,
-    HiveNetPacket,
-    HIVENETPORT,
-} from '../network/hiveNet.js';
+import { DataSignature, HIVENETADDRESS, HiveNetDeviceInfo, HiveNetPacket, HIVENETPORT } from '../network/hiveNet.js';
 import {
     // DataParsing,
     // DataSerialize,
-    DataSignaturesToString
+    DataSignaturesToString,
 } from '../network/serialize.js';
 import HiveSocket from '../network/socket.js';
 import HiveNetSwitch from '../network/switch.js';
@@ -40,7 +34,7 @@ export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
     infoMap: Map<string, { timestamp: number; info: HiveNetDeviceInfo }> = new Map();
     nameMap: Map<string, string> = new Map(); // Map<name, UUID>
 
-    switch: HiveNetSwitch = new HiveNetSwitch(`switch-[${this.os.NodeName}]`);
+    switch: HiveNetSwitch = new HiveNetSwitch(`switch-[${this.os.name}]`);
     server?: WebSocketServer;
     sshServer?: WebSocketServer;
 
@@ -48,8 +42,9 @@ export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
         const program = new HiveCommand('net', 'HiveNet Commands');
 
         // message
-        this.os.HTP.listen(HIVENETPORT.MESSAGE, (packet, signatures) => {
-            this.os.stdIO.output(packet.data, signatures);
+        this.os.HTP.listen(HIVENETPORT.MESSAGE, async (packet, signatures) => {
+            let from = (await this.getInfo(packet.src))?.info.name || 'unknown';
+            this.os.stdIO.output(`[net.message() from [${from}][${packet.src}]]: ${packet.data}`, signatures);
         });
         program
             .addNewCommand('message', 'message target node')
@@ -170,7 +165,7 @@ export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
                 resolve('Timeout');
             }, options.timeout);
 
-            this.os.HTP.sendAndReceiveOnce('ping', dest, options.dport, { ping: true }, { rawPacket: false, waitForEOC: false })
+            this.os.HTP.sendAndReceiveOnce(Date.now(), dest, options.dport, { ping: true }, { rawPacket: false, waitForEOC: false })
                 .then((data) => {
                     if (timeout) return;
                     clearTimeout(timer);
@@ -285,7 +280,7 @@ export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
                     // @ts-ignore
                     terminalPort.output(data, signatures);
                 },
-                'write to terminal'
+                'write to terminal',
             );
             //this.os.stdIO.passThrough(socketDT.stdIO);
             terminal.terminalDestPort = sport;
@@ -343,7 +338,7 @@ export default class HiveProcessNet extends HiveProcess<HiveProcessNetEvent> {
                         console.log(DataSignaturesToString(s));
                         console.log(d);
                     },
-                    'debug'
+                    'debug',
                 );
 
             client

@@ -52,6 +52,8 @@ import { timeFormat, dateTimeFormat } from '../lib/unitFormat.js';
 
 // TODO: dataIO connection to HiveOS for worker - done, but multi-layer is not supported yet
 
+// TODO: make each config a new session folder to store LevelDB and other stuff so that client config can use DB
+
 // TODO: maybe a system of direct plaintext WebSocket to another HiveNode for stable terminal output related debugging?
 
 // NAT might cause boradcast storm if reaching to inter-OS HiveNet, need to investigate further
@@ -80,7 +82,6 @@ export type CoreServices = {
     OSI model layer 6 - presentation layer
 */
 export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
-    NodeName: string;
     stdIO: DataIO;
     netInterface: HiveNetInterface;
     HTP: HTP;
@@ -95,9 +96,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     debugMode: boolean;
 
     constructor(name: string, debugMode: boolean = false) {
-        // reserve os.name to 'HiveOS' for ease of debugging
-        super('HiveOS', 'node');
-        this.NodeName = name;
+        super(name, 'node');
         this.stdIO = new DataIO(this, 'stdIO');
         this.netInterface = new HiveNetInterface(name);
         this.HTP = this.netInterface.HTP;

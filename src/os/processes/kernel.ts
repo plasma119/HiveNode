@@ -23,7 +23,7 @@ export default class HiveProcessKernel extends HiveProcess {
     systemShell?: HiveCommand;
 
     initProgram(): HiveCommand {
-        const kernel = new HiveCommand('kernel', `Kernel Shell[${this.os.NodeName}] HiveOS ${version}`);
+        const kernel = new HiveCommand('kernel', `Kernel Shell[${this.os.name}] HiveOS ${version}`);
 
         // void port
         this.os.HTP.listen(HIVENETPORT.DISCARD);
@@ -131,7 +131,7 @@ export default class HiveProcessKernel extends HiveProcess {
         await this._spawnCoreService(HiveProcessEventLogger, 'event', ['OS']);
         this.os.setEventLogger(this.os.newEventLogger('os'));
 
-        logger.log(`HiveNode OS[${this.os.NodeName}] version ${version}`, 'info');
+        logger.log(`HiveNode OS[${this.os.name}] version ${version}`, 'info');
 
         this.os.netInterface.setEventLogger(this.os.newEventLogger('os->netInterface'));
         this.os.HTP.setEventLogger(this.os.newEventLogger('os->HTP'));
