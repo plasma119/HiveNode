@@ -11,7 +11,7 @@
  * - auto unpacking/repacking HiveNet Packet
  * - progress data/reply handler
  * - auto completion helper
- * 
+ *
  * TODO: special progress update function for terminal display
  */
 
@@ -19,6 +19,7 @@ import HiveComponent from './hiveComponent.js';
 import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
 import { commonPrefix, findFirstWord, formatTab, typeCheck } from '../../lib/lib.js';
+import HAPI, { HAPITask } from '../network/protocol/HAPI.js';
 
 // this includes both '-var' and '-var boo'
 type OptionShape = `-${string}`;
@@ -33,7 +34,9 @@ export type HiveCommandInfo = {
     currentInput: string;
     programChain: HiveCommand[];
     terminalControl?: TerminalControlPacket;
-    reply: (message: any, forceReplyEmpty?: boolean) => void;
+    HAPITask: HAPITask;
+    reply: (message: any) => void;
+    rawReply: (message: any) => void;
 };
 
 // TODO: export/import system work in progress
@@ -84,15 +87,20 @@ export default class HiveCommand extends HiveComponent {
     stdIO: DataIO;
     description: string;
     isHelpCmd: boolean; // for auto-generated help command
+    
+    HAPI: HAPI;
 
     constructor(name: string = 'HiveCommand', description: string = '', stdIO?: DataIO, helpCmd: HiveSubCommand | boolean = true) {
         super(name);
         this.stdIO = stdIO || new DataIO(this, 'HiveCommand-stdIO');
         this.description = description;
         this.isHelpCmd = false;
-        if (!(this instanceof HiveSubCommand)) {
+        if (this instanceof HiveSubCommand) {
+            this.HAPI = this.getBaseProgram().HAPI;
+        } else {
             // only HiveCommand can listen to input from stdIO
             this.stdIO.on('input', this._inputHandler.bind(this), 'hiveCommand input');
+            this.HAPI = new HAPI();
         }
         if (helpCmd instanceof HiveSubCommand) {
             this.addCommand(helpCmd);
@@ -121,6 +129,31 @@ export default class HiveCommand extends HiveComponent {
         // unpack data
         let input = data instanceof HiveNetPacket ? data.data : data;
         let eoc = false;
+
+        let reply = (message: any) => {
+            // if (!eoc && (message === undefined || message === null)) return;
+            let returnData: any;
+            if (data instanceof HiveNetPacket && !(message instanceof HiveNetPacket)) {
+                // re-pack data
+                returnData = new HiveNetPacket({
+                    data: message,
+                    dest: data.src,
+                    dport: data.sport,
+                    flags: { eoc: eoc },
+                });
+            } else {
+                returnData = message;
+            }
+            if (replyOverride) {
+                replyOverride(returnData);
+            } else {
+                this.stdIO.output(returnData, signatures);
+            }
+        };
+
+        const task = this.HAPI.newTask(input, reply);
+        input = task.request.body;
+
         const info: HiveCommandInfo = {
             rawData: data,
             rawInput: input,
@@ -128,26 +161,9 @@ export default class HiveCommand extends HiveComponent {
             currentProgram: this,
             currentInput: input,
             programChain: [],
-            reply: (message, forceReplyEmpty) => {
-                if (!forceReplyEmpty && (message === undefined || message === null)) return;
-                let returnData: any;
-                if (data instanceof HiveNetPacket) {
-                    // re-pack data
-                    returnData = new HiveNetPacket({
-                        data: message,
-                        dest: data.src,
-                        dport: data.sport,
-                        flags: { eoc: eoc },
-                    });
-                } else {
-                    returnData = message;
-                }
-                if (replyOverride) {
-                    replyOverride(returnData);
-                } else {
-                    this.stdIO.output(returnData, signatures);
-                }
-            },
+            HAPITask: task,
+            reply: task.reply.bind(task),
+            rawReply: reply,
         };
 
         let result: any = '';
@@ -173,7 +189,9 @@ export default class HiveCommand extends HiveComponent {
 
         // return result
         eoc = true;
-        info.reply(result, true);
+        info.reply(result);
+
+        this.HAPI.closeTask(task);
     }
 
     parse(str: string, info: HiveCommandInfo): any {
@@ -546,7 +564,7 @@ export class HiveSubCommand extends HiveCommand {
             name: string;
             description?: string;
             defaultValue?: string | number;
-        }[]
+        }[],
     ) {
         argumentArr.forEach((arg) => this.addNewArgument(arg.name, arg.description, arg.defaultValue));
         return this;
@@ -569,7 +587,7 @@ export class HiveSubCommand extends HiveCommand {
             name: OptionShape;
             description?: string;
             defaultValue?: boolean | string | number;
-        }[]
+        }[],
     ) {
         optionArr.forEach((opt) => this.addNewOption(opt.name, opt.description, opt.defaultValue));
         return this;

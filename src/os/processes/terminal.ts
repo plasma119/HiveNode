@@ -4,9 +4,13 @@ import { StopPropagation } from '../lib/signals.js';
 import Terminal from '../lib/terminal.js';
 import { DataTransformer } from '../network/dataIO.js';
 import { HIVENETPORT, HIVENETADDRESS, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
+import HAPI, { HAPIRespond } from '../network/protocol/HAPI.js';
 import HiveProcess from '../process.js';
 import HiveProcessNet from './net.js';
 import HiveProcessShellDaemon from './shell.js';
+
+const VERSION = 'v1.0';
+const BUILD = '2026-2-25';
 
 export default class HiveProcessTerminal extends HiveProcess {
     shellPort: number = HIVENETPORT.SHELL;
@@ -14,14 +18,18 @@ export default class HiveProcessTerminal extends HiveProcess {
     terminalDestPort: number = HIVENETPORT.SHELL;
     terminal?: Terminal;
 
+    HAPI: HAPI = new HAPI();
+
     promptBuilder: PromptBuilder = new PromptBuilder();
 
-    completerCallback?: (value: string[] | PromiseLike<string[]>) => void;
+    completerCallback?: (list: string[]) => void;
 
     initProgram() {
         const program = new HiveCommand('terminal', 'Terminal Controller');
 
-        // should be only called on system boot up
+        program.addNewCommand('version', 'display current program version').setAction(() => `Version ${VERSION} Build ${BUILD}`);
+
+        // should only be called on system boot up
         program
             .addNewCommand('buildTerminal', 'initialize terminal')
             .addNewOption('-headless', 'disable user input for server node', false)
@@ -59,7 +67,7 @@ export default class HiveProcessTerminal extends HiveProcess {
                     }
                 } else if (!args['target']) {
                     return 'Target not specified.';
-                } else if (args['target'] == this.os.NodeName || args['target'] == this.os.netInterface.UUID) {
+                } else if (args['target'] == this.os.name || args['target'] == this.os.netInterface.UUID) {
                     return 'Cannot remote terminal to self.';
                 }
                 const net = this.os.getProcess(HiveProcessNet);
@@ -94,6 +102,10 @@ export default class HiveProcessTerminal extends HiveProcess {
         return program;
     }
 
+    main() {
+        this.setEventLogger(this.os.newEventLogger('terminal')); // TODO: verbose logging for terminal process
+    }
+
     buildTerminal(headless: boolean = false, debug: boolean = false) {
         if (headless) {
             // output only
@@ -103,50 +115,90 @@ export default class HiveProcessTerminal extends HiveProcess {
 
         // user shell
         let shelld = this.os.getProcess(HiveProcessShellDaemon);
-        if (!shelld) throw new Error('[ERROR] Failed to initialize system shell, cannot find shell daemon process');
+        if (!shelld) {
+            this.os.log('[Terminal] Failed to initialize user shell, cannot find shell daemon process', 'error');
+            throw new Error('[Terminal] Cannot find shell daemon process');
+        }
         let shell = shelld.spawnShell(this);
         shell.rename('terminal');
         this.shellPort = shell.port;
         this.terminalDestPort = shell.port;
 
-        // data piping
+        // data piping & terminal control system
         const port = this.os.HTP.listen(HIVENETPORT.TERMINAL);
         const dt = new DataTransformer(port);
         dt.setInputTransform((data) => {
             // terminal -> os -> shell
             if (typeof data == 'string' && data[0] == '$') {
                 // force input to local shell
-                return new HiveNetPacket({ data: data.slice(1), dest: HIVENETADDRESS.LOCAL, dport: this.shellPort });
-            }
-            if (typeof data == 'object' && data.terminalControl) {
-                // terminal control packet to local shell
+                return new HiveNetPacket({
+                    data: this.HAPI.newRequest(data.slice(1), 'cmd', 'capsule', 'capsule'),
+                    dest: HIVENETADDRESS.LOCAL,
+                    dport: this.shellPort,
+                });
+            } else if (typeof data == 'object' && data.terminalControl) {
                 const control = data as TerminalControlPacket;
                 if (control.input && control.input[0] == '$') {
+                    // user pressing completer with input '$'
+                    // terminal control packet to local shell
                     control.input = control.input.slice(1);
                     control.local = true;
-                    return new HiveNetPacket({ data: control, dest: HIVENETADDRESS.LOCAL, dport: this.shellPort });
+                    return new HiveNetPacket({
+                        data: this.HAPI.newRequest(control, 'completer', 'capsule', 'capsule'),
+                        dest: HIVENETADDRESS.LOCAL,
+                        dport: this.shellPort,
+                    });
                 }
             }
             // to target shell
-            return new HiveNetPacket({ data, dest: this.terminalDest, dport: this.terminalDestPort });
+            if (typeof data == 'object' && data.terminalControl) {
+                return new HiveNetPacket({
+                    data: this.HAPI.newRequest(data, 'completer', 'capsule', 'capsule'),
+                    dest: this.terminalDest,
+                    dport: this.terminalDestPort,
+                });
+            }
+            return new HiveNetPacket({
+                data: this.HAPI.newRequest(data, 'cmd', 'capsule', 'capsule'),
+                dest: this.terminalDest,
+                dport: this.terminalDestPort,
+            });
         });
         dt.setOutputTransform((packet) => {
             // shell -> os -> terminal
-            const data = packet instanceof HiveNetPacket ? packet.data : packet;
-            if (data && typeof data == 'object' && data.terminalControl && this.terminal) {
-                // terminal control system
-                const control = data as TerminalControlPacket;
-                if (this.completerCallback && control.completer && Array.isArray(control.completer)) {
-                    if (control.local) control.completer = control.completer.map((str) => `$${str}`);
-                    this.completerCallback(control.completer);
-                    this.completerCallback = undefined;
+            let data = packet instanceof HiveNetPacket ? packet.data : packet;
+            if (data && typeof data == 'object') {
+                if (data._type == 'HAPIRespond') {
+                    // HAPI respond capsule
+                    let res = data as HAPIRespond;
+                    data = res.body;
+                    if (!this.terminal) return StopPropagation; // should not happen
+
+                    // terminal control system
+                    if (res.type == 'completer') {
+                        // TODO: rework with HAPI
+                        const control = data as TerminalControlPacket;
+                        if (this.completerCallback && control.completer && Array.isArray(control.completer)) {
+                            // if (control.local) control.completer = control.completer.map((str) => `$${str}`);
+                            this.completerCallback(control.completer);
+                            this.completerCallback = undefined;
+                        }
+                        return StopPropagation;
+                    } else if (res.type == 'progress') {
+                        // TODO: rework with HAPI
+                        this.promptBuilder.progressPrompt = res.body;
+                        this.terminal.setPrompt(this.promptBuilder.build());
+                        // const control = data as TerminalControlPacket;
+                        // if (typeof control.progressPrompt == 'string') {
+                        //     this.promptBuilder.progressPrompt = control.progressPrompt;
+                        //     this.terminal.setPrompt(this.promptBuilder.build());
+                        // }
+                        return StopPropagation;
+                    }
                 }
-                if (typeof control.progressPrompt == 'string') {
-                    this.promptBuilder.progressPrompt = control.progressPrompt;
-                    this.terminal.setPrompt(this.promptBuilder.build());
-                }
-                return StopPropagation;
             }
+
+            if (packet instanceof HiveNetPacket && packet.flags.eoc && data === undefined) return StopPropagation;
             return data;
         });
 
@@ -167,7 +219,7 @@ export default class HiveProcessTerminal extends HiveProcess {
         // TODO: buffer screen for os.stdIO
         this.os.stdIO.on('output', dt.stdIO.outputBind, 'route os.stdIO to terminal');
         if (terminal && debug) terminal.debug = debug;
-        this.promptBuilder.basePrompt = `[${this.os.NodeName}]`;
+        this.promptBuilder.basePrompt = `[${this.os.name}]`;
         terminal.setPrompt(this.promptBuilder.build());
 
         // completer
@@ -182,8 +234,11 @@ export default class HiveProcessTerminal extends HiveProcess {
                 setTimeout(() => {
                     if (this.completerCallback) resolve([]);
                     this.completerCallback = undefined;
-                }, 10000);
-                this.completerCallback = resolve;
+                }, 3000);
+                this.completerCallback = (list: string[]) => {
+                    if (line[0] == '$') list = list.map((str) => `$${str}`);
+                    resolve(list);
+                };
             });
         });
 
@@ -204,7 +259,7 @@ export default class HiveProcessTerminal extends HiveProcess {
     getPassword(): Promise<string | { iv: string; hash: string }> {
         return new Promise((resolve) => {
             if (this.terminal) {
-                let iv = Encryption.randomData(16).toString('base64');
+                let iv = Encryption.randomData(16).toString('base64'); // maybe iv should be generated at the terminal lib?
                 this.terminal.getPassword(iv, (hash) => {
                     resolve({
                         iv: iv,
