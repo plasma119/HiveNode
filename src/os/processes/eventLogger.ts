@@ -57,7 +57,7 @@ export default class HiveProcessEventLogger extends HiveProcess {
                 let item = typeof opts['-item'] == 'string' ? Number.parseInt(opts['-item']) : 200;
                 if (item <= 0) return `Invalid item size [${item}]`;
                 let index = typeof opts['-index'] == 'string' ? Number.parseInt(opts['-index']) : 0;
-                if (index <= 0) return `Invalid index [${index}]`;
+                if (index < 0) return `Invalid index [${index}]`;
                 let list: EventLog[];
                 let str = `Event Logger [${this.root}]\n`;
                 if (tag) {
@@ -86,11 +86,11 @@ export default class HiveProcessEventLogger extends HiveProcess {
 
     main(argv: string[]) {
         if (argv[0] && typeof argv[0] == 'string') this.root = argv[0];
-        this.setEventLogger(this.newEventLogger('EventLogger'));
+        this.setEventLogger(this.newEventLogger('eventLogger'));
     }
 
     setRoot(root: string) {
-        this.logEvent(`[${this.root}]->[${root}]`, 'set root', 'event logger');
+        this.logEvent(`[${this.root}]->[${root}]`, 'set root', 'logger');
         this.root = root;
     }
 
@@ -99,7 +99,7 @@ export default class HiveProcessEventLogger extends HiveProcess {
     }
 
     newEventLogger(tag: string = 'unknown') {
-        this.logEvent(`tag:[${tag}]`, 'new logger', 'event logger');
+        this.logEvent(`tag:[${tag}]`, 'new logger', 'logger');
         return this._log.bind(this, tag);
     }
 }

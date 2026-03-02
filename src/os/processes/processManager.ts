@@ -21,7 +21,7 @@ export default class HiveProcessProcessManager extends HiveProcess {
             str += `Node Up time: ${nodeInfo.uptime.toFixed(1)}s\n`; // TODO: Format Time
             str += `Node Platform: ${nodeInfo.platform}\n`;
             str += `Node Version: ${nodeInfo.nodeVersion}\n`;
-            str += `Node CPU time: [${nodeCPUInfo.user}/${nodeCPUInfo.system}]\n`;
+            str += `Node CPU time [user/system]: [${nodeCPUInfo.user}/${nodeCPUInfo.system}]\n`;
             str += `Totoal RSS: ${memory.rss.toFixed(1)} MB, Heap: ${memory.heap.toFixed(1)}/${memory.heapMax.toFixed(1)} MB\n`;
 
             // TODO: workers/threads
@@ -60,7 +60,7 @@ export default class HiveProcessProcessManager extends HiveProcess {
 
 function recursiveProcessExplorer(hiveProcess: HiveProcess, tab: string = '') {
     if (tab.length > 100) throw new Error(`[recursiveProcessExplorer]: ERROR: Possible loop reference in hiveProcess`);
-    let str = `${tab}${hiveProcess.toString()} ${hiveProcess.argv}\n`;
+    let str = `${tab}${hiveProcess.toString()} [${hiveProcess.argv.join(', ')}]\n`;
     for (let [_pid, p] of hiveProcess.childs) {
         str += recursiveProcessExplorer(p, tab + '  ');
     }
