@@ -32,10 +32,11 @@ export type HAPIEvent = {
     requestCmd: (task: HAPITask) => void;
     requestCompleter: (task: HAPITask) => void;
     requestTaskkill: (task: HAPITask) => void;
+    taskkill: (taskUUID: string, callback: () => void) => void;
 };
 
 export default class HAPI extends HiveComponent<HAPIEvent> {
-    openTasks: Map<string, HAPITask> = new Map();
+    tasks: Map<string, HAPITask> = new Map();
 
     constructor() {
         super('HAPI');
@@ -59,13 +60,13 @@ export default class HAPI extends HiveComponent<HAPIEvent> {
 
     newTask(request: HAPIRequest | any, reply: (data: any) => void): HAPITask {
         const task = new HAPITask(this, request, reply);
-        this.openTasks.set(task.request.taskUUID, task);
+        this.tasks.set(task.request.taskUUID, task);
         this.emit('newTask', task);
         return task;
     }
 
     closeTask(task: HAPITask) {
-        this.openTasks.delete(task.request.taskUUID);
+        this.tasks.delete(task.request.taskUUID);
         this.emit('closeTask', task);
     }
 }
@@ -124,5 +125,9 @@ export class HAPITask extends HiveComponent {
                 body: data,
             });
         }
+    }
+
+    taskkill() {
+        throw new Error('Taskkill');
     }
 }

@@ -4,8 +4,9 @@ import { randomUUID } from 'crypto';
 
 import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
-import { uuidv7 } from '../../lib/lib.js';
+import { sleep, uuidv7 } from '../../lib/lib.js';
 import { timeFormat } from '../../lib/unitFormat.js';
+import { HIVENETADDRESS, HIVENETPORT } from '../network/hiveNet.js';
 
 type copyFolder = {
     name: string;
@@ -59,6 +60,60 @@ export default class HiveProcessUtil extends HiveProcess {
                 return uuidv7();
             });
 
+        program
+            .addNewCommand('taskkill')
+            .addNewOption('-spawn', 'spawn dummy task')
+            .addNewOption('-spawnReference', 'spawn reference task')
+            // generator function allows easy execution control by outside
+            .setAction(async function* gen(this: HiveProcessUtil, _args, opts, info): AsyncGenerator<any, any, any> {
+                if (opts['-spawn']) {
+                    try {
+                        yield console.log('Dummy task spawned.');
+                        yield info.reply(info.HAPITask.request.taskUUID);
+                        for (let i = 0; i < 9; i++) {
+                            yield await sleep(1000);
+                            yield console.log(`Dummy: ${i}/9`);
+                        }
+                        yield console.log('Taskkill Failed.');
+                    } finally {
+                        yield console.log('You cannot kill this');
+                    }
+                } else if (opts['-spawnReference']) {
+                    yield console.log('Reference task spawned.');
+                    yield info.reply(info.HAPITask.request.taskUUID);
+                    yield await sleep(11 * 1000);
+                    yield console.log('Reference task done.');
+                } else {
+                    yield this.os.HTP.send('util taskkill -spawnReference', HIVENETADDRESS.LOCAL, HIVENETPORT.SHELL);
+
+                    let taskUUID = yield await this.os.HTP.sendAndReceiveOnce(
+                        'util taskkill -spawn',
+                        HIVENETADDRESS.LOCAL,
+                        HIVENETPORT.SHELL,
+                        undefined,
+                        {
+                            rawPacket: false,
+                            waitForEOC: false,
+                        },
+                    );
+                    yield console.log(`taskkill: obtained dummy taskUUID: [${taskUUID}]`);
+
+                    yield await sleep(5 * 1000);
+                    yield console.log(`taskkill execute`);
+                    let HAPIPacket = yield info.HAPITask.HAPI.newRequest(taskUUID, 'taskkill');
+                    yield await this.os.HTP.sendAndReceiveOnce(HAPIPacket, HIVENETADDRESS.LOCAL, HIVENETPORT.SHELL, undefined, {
+                        rawPacket: false,
+                        waitForEOC: true,
+                    });
+                    yield console.log(`taskkill execution completed.`);
+
+                    yield await sleep(10 * 1000);
+                    return 'Is the dummy still awake?';
+                }
+                return null;
+            }, this); // need to manually pass in 'this'
+
+        // WIP
         program
             .addNewCommand('copy-no-dup', 'copy with no duplicate files based on file size/hash')
             .addNewOption('-test', 'list files to be copied but do not execute')

@@ -20,11 +20,13 @@ import DataIO from '../network/dataIO.js';
 import { DataSignature, HiveNetPacket, TerminalControlPacket } from '../network/hiveNet.js';
 import { commonPrefix, findFirstWord, formatTab, typeCheck } from '../../lib/lib.js';
 import HAPI, { HAPITask } from '../network/protocol/HAPI.js';
+import { cancelablePromise, CancelToken } from '../../lib/cancelablePromise.js';
 
 // this includes both '-var' and '-var boo'
 type OptionShape = `-${string}`;
 
 export type HiveCommandCallback = (args: { [key: string]: string }, opts: { [key: OptionShape]: boolean | string }, info: HiveCommandInfo) => any;
+export type HiveCommandCancelableCallback = (...args: Parameters<HiveCommandCallback>) => Generator<any, any, any>;
 
 export type HiveCommandInfo = {
     rawData: any;
@@ -35,6 +37,7 @@ export type HiveCommandInfo = {
     programChain: HiveCommand[];
     terminalControl?: TerminalControlPacket;
     HAPITask: HAPITask;
+    cancelToken: CancelToken;
     reply: (message: any) => void;
     rawReply: (message: any) => void;
 };
@@ -87,7 +90,7 @@ export default class HiveCommand extends HiveComponent {
     stdIO: DataIO;
     description: string;
     isHelpCmd: boolean; // for auto-generated help command
-    
+
     HAPI: HAPI;
 
     constructor(name: string = 'HiveCommand', description: string = '', stdIO?: DataIO, helpCmd: HiveSubCommand | boolean = true) {
@@ -162,6 +165,7 @@ export default class HiveCommand extends HiveComponent {
             currentInput: input,
             programChain: [],
             HAPITask: task,
+            cancelToken: new CancelToken(),
             reply: task.reply.bind(task),
             rawReply: reply,
         };
@@ -169,16 +173,34 @@ export default class HiveCommand extends HiveComponent {
         let result: any = '';
         // execute command
         try {
-            if (typeof input == 'object' && input.terminalControl) {
-                // terminal control packet
-                info.terminalControl = input as TerminalControlPacket;
-                info.rawInput = typeof info.terminalControl.input == 'string' ? info.terminalControl.input : '';
-            }
-            // TODO: shell execution packet: enable special reply mode
-            if (typeof info.rawInput != 'string') {
-                throw new HiveCommandError('Cannot recognize input data format');
-            }
-            result = await this.parse(info.rawInput, info);
+            await new Promise<void>((resolve, _reject) => {
+                if (task.request.type == 'taskkill') {
+                    // TESTING
+                    // I think this will blow up the taskkill cmd, not the target cmd.
+                    this.HAPI.emit('taskkill', input, resolve);
+                } else {
+                    this.HAPI.on('taskkill', (taskUUID, callback) => {
+                        if (taskUUID == task.request.taskUUID) {
+                            info.cancelToken.abort(); // maybe put the token into HAPI?
+                            info.cancelToken.onFinished(callback);
+                        }
+                    });
+
+                    // if (typeof input == 'object' && input.terminalControl) {
+                    if (task.request.type == 'completer') {
+                        // terminal control packet
+                        info.terminalControl = input as TerminalControlPacket;
+                        info.rawInput = typeof info.terminalControl.input == 'string' ? info.terminalControl.input : '';
+                    }
+
+                    // cmd execution
+                    if (typeof info.rawInput != 'string') {
+                        throw new HiveCommandError('Cannot recognize input data format');
+                    }
+                    result = this.parse(info.rawInput, info);
+                    resolve();
+                }
+            });
         } catch (e) {
             if (e instanceof HiveCommandError) {
                 result = e.message;
@@ -189,7 +211,7 @@ export default class HiveCommand extends HiveComponent {
 
         // return result
         eoc = true;
-        info.reply(result);
+        info.reply(await result);
 
         this.HAPI.closeTask(task);
     }
@@ -387,7 +409,7 @@ export class HiveSubCommand extends HiveCommand {
     baseProgram: HiveCommand;
     arguments: Map<String, HiveArgument> = new Map();
     options: Map<String, HiveOption> = new Map();
-    callback?: HiveCommandCallback;
+    callback?: HiveCommandCallback | HiveCommandCancelableCallback;
     hasVariadicArgument: boolean = false;
 
     constructor(program: HiveCommand, name: string, description = '', isHelpCmd = false) {
@@ -496,6 +518,9 @@ export class HiveSubCommand extends HiveCommand {
         }
 
         if (this.callback) {
+            if (this.callback.constructor.name === 'GeneratorFunction' || this.callback.constructor.name === 'AsyncGeneratorFunction') {
+                return cancelablePromise(this.callback, info.cancelToken)(this.getArguments(), this.getOptions(), info);
+            }
             return this.callback(this.getArguments(), this.getOptions(), info);
         }
 
@@ -601,8 +626,8 @@ export class HiveSubCommand extends HiveCommand {
         return this.options.get(name);
     }
 
-    setAction(callback: HiveCommandCallback) {
-        this.callback = callback;
+    setAction(callback: HiveCommandCallback | HiveCommandCancelableCallback, bindthis?: any) {
+        this.callback = bindthis ? callback.bind(bindthis) : callback;
         return this;
     }
 
