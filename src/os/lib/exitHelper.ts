@@ -3,7 +3,7 @@ import { spawn } from 'child_process';
 import { inspect } from 'util';
 
 import { IgnoreSIGINT, Signal } from './signals.js';
-import Logger from './logger.js';
+import Logger, { LoggerStream } from './logger.js';
 
 // Singleton
 class ExitHelper {
@@ -16,56 +16,77 @@ class ExitHelper {
     exitCallback?: Function;
     SIGINTCallback?: Function;
 
-    logger?: Logger;
-    crashLogger?: Logger;
+    logger?: Logger | LoggerStream;
+    crashLogger?: Logger | LoggerStream; // crash logger not be stream logger
 
     constructor() {
-        const exitHandler = this._exitHandler.bind(this);
+        const addExitHandle = (event: string, isCrash: boolean) => {
+            process.on(event, this._exitHandler.bind(this, event, isCrash));
+        };
 
         // catches closing application
-        process.on('SIGTERM', exitHandler);
-        process.on('SIGHUP', exitHandler);
+        addExitHandle('SIGTERM', false);
+        addExitHandle('SIGHUP', false);
 
         // catches ctrl+c event
         process.on('SIGINT', (exitCode) => {
             if (this.SIGINTCallback) {
                 if (this.SIGINTCallback(exitCode) === IgnoreSIGINT) return;
             }
-            exitHandler(exitCode);
+            this._exitHandler.bind(this, 'SIGINT', false, exitCode);
         });
 
         // catches "kill pid" (for example: nodemon restart)
-        process.on('SIGUSR1', exitHandler);
-        process.on('SIGUSR2', exitHandler);
+        addExitHandle('SIGUSR1', false);
+        addExitHandle('SIGUSR2', false);
 
         // catches uncaught exceptions
-        process.on('uncaughtException', exitHandler);
-        process.on('unhandledRejection', exitHandler);
+        addExitHandle('uncaughtException', true);
+        addExitHandle('unhandledRejection', true);
     }
 
     // synchronous writes to stdout
-    async _exitHandler(exitCode: NodeJS.Signals | Error) {
+    async _exitHandler(event: string, isCrash: boolean, exitCode: NodeJS.Signals | Error) {
         this._exitState++;
         if (this._exitState >= 3) process.exit(); // failed very hard
         if (this._exitState == 2) {
             // sigint/error during exit handling
+            // try to at least write crash log
             this.crashing = true;
             this.cleanUpList = [];
             this.SIGINTCallback = undefined;
             this.exitCallback = undefined;
+            fs.writeSync(1, `Fatal crash during crash handling!` + '\n');
+            if (this.crashLogger) await this.crashLogger.log(`Fatal crash during crash handling!`, true);
+            if (this.logger) await this.logger.log(`Fatal crash during crash handling!`, true);
         }
 
-        if (exitCode instanceof Error && exitCode.stack) {
+        if (isCrash && !exitCode) {
+            // somehow there is no error info...
+            // maybe a reject(void) somewhere...
+            // fill in a dummy error to handle
+            exitCode = new Error('Unknown Error!');
+        }
+
+        if (isCrash) {
             // crashing
             this.crashing = true;
-            fs.writeSync(1, exitCode.stack + '\n');
+            fs.writeSync(1, `Error: [${event}]` + '\n');
+
+            let stack = exitCode instanceof Error && exitCode.stack ? exitCode.stack : `[exitHelper]: Error: Invalid Error Object: [${exitCode}]`;
+            fs.writeSync(1, stack + '\n');
+            
             // must write crash log first, incase normal streamlogger crash on stackoverflow
-            if (this.crashLogger) await this.crashLogger.log(exitCode.stack);
+            if (this.crashLogger) {
+                await this.crashLogger.log(`Error: [${event}]`, true);
+                await this.crashLogger.log(stack, true);
+            }
 
             if (this.logger) {
+                await this.logger.log(`Writing crash log...`);
                 if (this.crashLogger) await this.logger.log(`Crash logger detected`);
-                await this.logger.log(`Writing crash log:`);
-                await this.logger.log(exitCode.stack);
+                await this.logger.log(`Error: [${event}]`, true);
+                await this.logger.log(stack, true);
             }
         } else {
             // normal exiting
@@ -140,7 +161,7 @@ class ExitHelper {
 
     exit(silent: boolean = false) {
         this._silent = silent;
-        this._exitHandler('SIGTERM');
+        this._exitHandler('exitHelper.exit()', false, 'SIGTERM');
     }
 
     restart() {

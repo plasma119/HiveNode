@@ -82,6 +82,7 @@ export default class HiveProcessKernel extends HiveProcess {
             .addNewOption('-stack', 'generate stack overflow')
             .addNewOption('-memory', 'generate memory overflow')
             .addNewOption('-heap', 'generate heap memory overflow')
+            .addNewOption('-promise', 'generate unhandled promise rejection')
             .setAction((_args, opts) => {
                 // out of HiveCommand's error catching
                 process.nextTick(() => {
@@ -92,9 +93,8 @@ export default class HiveProcessKernel extends HiveProcess {
                         }
                         stackoverflow();
                         return;
-                    }
-                    if (opts['-memory']) {
-                        // ... seems like node can hug onto a LOT of memory before blowing up
+                    } else if (opts['-memory']) {
+                        // ... seems like node can hang onto a LOT of memory before blowing up
                         function memoryOverflow() {
                             let o = [];
                             for (let i = 0; i < 100; i++) {
@@ -106,8 +106,7 @@ export default class HiveProcessKernel extends HiveProcess {
                         }
                         memoryOverflow();
                         return;
-                    }
-                    if (opts['-heap']) {
+                    } else if (opts['-heap']) {
                         // fatal error
                         function heapMemoryOverflow(_args?: any) {
                             let a = new Array(10000).fill(1);
@@ -116,6 +115,10 @@ export default class HiveProcessKernel extends HiveProcess {
                             heapMemoryOverflow(...a);
                         }
                         heapMemoryOverflow();
+                        return;
+                    } else if (opts['-promise']) {
+                        // very evil empty rejection
+                        new Promise((_resolve, reject) => reject());
                         return;
                     }
                     throw new Error('PANIC');
@@ -173,7 +176,7 @@ export default class HiveProcessKernel extends HiveProcess {
     private async _spawnCoreService<C extends Constructor<CoreServices[K]>, K extends keyof CoreServices>(
         constructor: C,
         serviceName: K,
-        argv?: string[]
+        argv?: string[],
     ) {
         const service = this.spawnChild(constructor, serviceName, argv);
         await service.onReadyAsync();
