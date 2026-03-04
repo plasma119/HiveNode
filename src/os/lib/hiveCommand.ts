@@ -176,7 +176,6 @@ export default class HiveCommand extends HiveComponent {
             await new Promise<void>((resolve, _reject) => {
                 if (task.request.type == 'taskkill') {
                     // TESTING
-                    // I think this will blow up the taskkill cmd, not the target cmd.
                     this.HAPI.emit('taskkill', input, resolve);
                 } else {
                     this.HAPI.on('taskkill', (taskUUID, callback) => {
@@ -213,6 +212,7 @@ export default class HiveCommand extends HiveComponent {
         eoc = true;
         info.reply(await result);
 
+        info.cancelToken.finish();
         this.HAPI.closeTask(task);
     }
 

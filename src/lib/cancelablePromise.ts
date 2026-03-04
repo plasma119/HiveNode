@@ -9,13 +9,14 @@ export class CancelToken {
     }
 
     onFinished(callback: () => void) {
-        if (this.finished) return this.finish();
         this.callback = callback;
+        if (this.finished) return this.finish();
     }
 
     finish() {
         this.finished = true;
         if (this.callback) this.callback();
+        this.callback = undefined;
     }
 }
 
