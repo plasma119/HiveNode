@@ -2,6 +2,7 @@ import { ListenerSignature, DefaultListener } from '../../lib/basicEventEmitter.
 import { reverseMapObj } from '../../lib/lib.js';
 import { version } from '../../index.js';
 import HiveComponent from '../lib/hiveComponent.js';
+import { HAPIRequest, HAPIRespond } from './protocol/HAPI.js';
 
 export type DataSignature = {
     by: HiveComponent;
@@ -57,15 +58,35 @@ export class HiveNetPacket {
     }
 
     toString(src: boolean = false, dest: boolean = false) {
+        // convert HiveNetPacket to human readable form
+        // [<src>:<sport>]->[<dest>:<dport>] [flags:<flag>]
+        // @<HAPI_type>.<type> [respond:<respondType>,progress:<progressType>] [<UUID>]
+        // : <raw data>
         let str = '';
+        let data = this.data;
         if (src) str += `[${this.src}:${this.sport}]`;
         if (src || dest) str += `->`;
         if (dest) str += `[${this.dest}:${this.dport}]`;
         let arr = [];
         for (let [key, value] of Object.entries(this.flags)) if (value) arr.push(key);
         if (arr.length > 0) str += `[flags:${arr}]`;
-        if (str.length > 0) str += ': ';
-        str += `${this.data}`;
+
+        if (typeof data == 'object') {
+            if (data._type == 'HAPIRequest') {
+                let req = data as HAPIRequest;
+                data = req.body;
+                if (str.length > 0) str += '\n';
+                str += `@${req._type}.${req.type} [respond:${req.respondType},progress:${req.progressType}] [${req.taskUUID}]`;
+            } else if (data._type == 'HAPIRespond') {
+                let res = data as HAPIRespond;
+                data = res.body;
+                if (str.length > 0) str += '\n';
+                str += `@${res._type}.${res.type} [${res.taskUUID}]`;
+            }
+        }
+
+        if (str.length > 0) str += '\n';
+        str += `${data}`;
         return str;
     }
 }

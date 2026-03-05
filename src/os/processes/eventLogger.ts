@@ -77,7 +77,7 @@ export default class HiveProcessEventLogger extends HiveProcess {
                 let slice = list.slice(index, item);
                 str += `Displaying [${slice.length}] log results:\n`;
                 str += slice.map((e) => `[${new Date(e.time).toISOString()}][${e.tag}][${e.category}][${e.event}]: ${e.log}`).join('\n');
-                str += `[${Math.max(list.length - index - item, 0)}/${list.length}] log results left.`;
+                str += `\n[${Math.max(list.length - index - item, 0)}/${list.length}] log results left.`;
                 return str;
             });
 
