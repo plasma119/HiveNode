@@ -28,7 +28,7 @@ import { timeFormat, dateTimeFormat } from '../lib/unitFormat.js';
 // TODO: actually use DataIOBuffer
 // TODO: define os.debugMode
 // TODO: add extra info for error catching in HiveCommand
-// TODO: client mode OS (since DB is locked to main OS only)
+// TODO: maybe a system of direct plaintext WebSocket to another HiveNode for stable terminal output related debugging?
 
 // TODO: re-visit HTP protocol system
 // TODO: net command refining
@@ -43,21 +43,17 @@ import { timeFormat, dateTimeFormat } from '../lib/unitFormat.js';
 
 // TODO: worker thread
 // TODO: refactor worker -> HiveNet connection mess
-
-// TODO: central server control system - hiveMind
-// TODO: update system
-// TODO: boot option select menu
-// TODO: fix bootConfig editor not able to set flag to false
-// TODO: add special flag to HiveCommand to specify stop parsing for option
-
 // TODO: dataIO connection to HiveOS for worker - done, but multi-layer is not supported yet
-
-// TODO: make each config a new session folder to store LevelDB and other stuff so that client config can use DB
-
-// TODO: maybe a system of direct plaintext WebSocket to another HiveNode for stable terminal output related debugging?
-
 // NAT might cause boradcast storm if reaching to inter-OS HiveNet, need to investigate further
 // worker/main script entry point could be specified as option
+
+// TODO: central server control system - hiveMind
+
+// TODO: update system
+
+// TODO: boot option select menu
+// TODO: fix bootConfig editor not able to set flag to false
+// TODO: make each config a new session folder to store LevelDB and other stuff so that client config can use DB
 
 export type HiveOSEvent = {
     sigint: () => void;
