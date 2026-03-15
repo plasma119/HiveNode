@@ -6,14 +6,13 @@ import { sleep } from '../lib/lib.js';
 import { hasLoader, resolveFileImport, setLoader } from './loader.js';
 import { BootConfig } from './bootConfig.js';
 
-export const BOOTLOADERVERSION = 'v1.26';
-export const BOOTLOADERVERSIONBUILD = '1-11-2025';
+export const BOOTLOADERVERSION = 'v1.3';
+export const BOOTLOADERVERSIONBUILD = '3-15-2026';
 
 console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
 
 let booted = false;
-let bootConfig: BootConfig | null = null;
-// TODO: inject boot config via argv
+
 sleep(3000).then(async () => {
     if (!booted && process.send) process.send('requestBootConfig');
     await sleep(3000);
@@ -24,7 +23,6 @@ process.on('message', async (message) => {
     if (booted) return;
     booted = true;
     const { config, argv } = message as { config: BootConfig; argv: string[] };
-    bootConfig = config;
     console.log(`[Boot Loader]: Boot config recieved.`);
 
     // set loader data
@@ -35,7 +33,7 @@ process.on('message', async (message) => {
     setLoader({
         type: 'os',
         argv: argv,
-        bootConfig,
+        bootConfig: config,
     });
 
     // debug flag
@@ -53,14 +51,12 @@ process.on('message', async (message) => {
     // start HiveNet server
     if (config.HiveNetServer) {
         os.log(`[Boot Loader]: Starting HiveNet server...`, 'info');
-        //os.kernel.program.stdIO.input('net listen');
         await os.shell.execute(`net listen -port ${config.HiveNetPort}`);
     }
 
     // connect to HiveNet server
     if (config.HiveNetIP) {
         os.log(`[Boot Loader]: Connecting to HiveNet [${config.HiveNetIP}]...`, 'info');
-        //os.kernel.program.stdIO.input(`net connect ${config.HiveNetIP}`);
         await os.shell.execute(`net connect ${config.HiveNetIP} -port ${config.HiveNetPort}`);
     }
 

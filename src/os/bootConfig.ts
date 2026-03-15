@@ -31,12 +31,15 @@ export const DEFAULTCONFIG: BootConfig = {
     HiveNetPort: 8082,
     HiveNetSecret: 'Secret',
     HiveNetSalt: 'Salt',
-    HiveNetSalt2: 'Salt2'
+    HiveNetSalt2: 'Salt2',
 };
 
-// TODO: help command
+export const PARSERVERSION = 'v1.3';
+export const PARSERVERSIONBUILD = '3-15-2026';
+
 export const BootConfigParserProgram = new HiveCommand('config');
 BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
+    .addNewOption('-version', `Boot config parser version ${PARSERVERSION} build ${PARSERVERSIONBUILD}`)
     .addNewOption('-name <name>', 'OS name')
     .addNewOption('-headless', 'run without user input prompt')
     .addNewOption('-debug', 'set debug flag in OS')
@@ -44,13 +47,16 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
     .addNewOption('-HiveNodePath <path>', 'path to HiveNode module (default auto resolve)')
     .addNewOption('-bootLoaderFile <path>', 'path to custom boot loader file')
     .addNewOption('-programFile <path>', 'path to main program file')
-    .addNewOption('-configFile <path>', 'path to config file (override by arguments)')
+    .addNewOption('-configFile <path>', 'path to config file (override by argv)')
     .addNewOption('-HiveNetServer', 'Auto start HiveNet server')
     .addNewOption('-HiveNetIP <ip>', 'Auto connect to HiveNet')
     .addNewOption('-HiveNetPort <port>', 'HiveNet port')
-    .addNewArgument('[argv...]', 'arguments pass to main program', '')
+    .addNewOption('-HiveNetSecret <secret>', '')
+    .addNewOption('-HiveNetSalt <salt>', '')
+    .addNewOption('-HiveNetSalt2 <salt2>', '')
+    .addNewArgument('[argv...]', 'arguments to be passed to main program', '')
     .setAction((args, opts) => {
-        let config: Partial<BootConfig> = {
+        const config: Partial<BootConfig> = {
             name: (opts['-name'] as string) || undefined,
             headless: (opts['-headless'] as boolean) || undefined,
             debug: (opts['-debug'] as boolean) || undefined,
@@ -62,6 +68,9 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
             HiveNetServer: (opts['-HiveNetServer'] as boolean) || undefined,
             HiveNetIP: (opts['-HiveNetIP'] as string) || undefined,
             HiveNetPort: Number.parseInt(opts['-HiveNetPort'] as string) || 8082,
+            HiveNetSecret: (opts['-HiveNetSecret'] as string) || undefined,
+            HiveNetSalt: (opts['-HiveNetSalt'] as string) || undefined,
+            HiveNetSalt2: (opts['-HiveNetSalt2'] as string) || undefined,
         };
         return {
             config: config,
@@ -69,13 +78,13 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
         };
     });
 
-export async function parseBIOSConfig(processArgvString: string): Promise<{ config: Partial<BootConfig>; argv: string }> {
+export async function parseBootConfig(processArgvString: string): Promise<{ config: Partial<BootConfig>; argv: string }> {
     const result = await BootConfigParserProgram.execute(`parse ${processArgvString}`);
     if (!result[0]) throw new Error('[parseBIOSConfig]: ERROR: Empty result');
     return result[0];
 }
 
-export function mergeBIOSConfig(...configs: (BootConfig | Partial<BootConfig>)[]) {
+export function mergeBootConfig(...configs: (BootConfig | Partial<BootConfig>)[]) {
     let config = Object.assign({}, DEFAULTCONFIG);
     if (configs.length == 0) return config;
     for (let nextConfig of configs) {

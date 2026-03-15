@@ -7,10 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { sleep } from '../lib/lib.js';
-import { parseBIOSConfig, mergeBIOSConfig, BootConfig } from './bootConfig.js';
+import { parseBootConfig, mergeBootConfig, BootConfig } from './bootConfig.js';
 
-export const BIOSVERSION = 'v1.21';
-export const BIOSVERSIONBUILD = '11-27-2023';
+export const BIOSVERSION = 'v1.3';
+export const BIOSVERSIONBUILD = '3-15-2026';
 
 (async () => {
     console.log(`[BIOS]: BIOS version ${BIOSVERSION} build ${BIOSVERSIONBUILD}`);
@@ -18,10 +18,8 @@ export const BIOSVERSIONBUILD = '11-27-2023';
     // extract config from argv
     let processArgvString = process.argv.slice(2).join(' ');
     console.log(`[BIOS]: Parsing argv [${processArgvString}]`);
-    let result = await parseBIOSConfig(processArgvString);
-
-    let { config: configArgv, argv } = result;
-    let config = mergeBIOSConfig(configArgv);
+    let { config: configArgv, argv } = await parseBootConfig(processArgvString);
+    let config = mergeBootConfig(configArgv);
 
     // extract config from file
     // TODO: reload this file on reboot?
@@ -33,22 +31,21 @@ export const BIOSVERSIONBUILD = '11-27-2023';
         }
         let configFile: BootConfig = JSON.parse(fs.readFileSync(config.configFile).toString());
         // argv has higher priority than config file
-        config = mergeBIOSConfig(configFile, configArgv);
+        config = mergeBootConfig(configFile, configArgv);
     } else {
         console.log(`[BIOS]: No config file specified.`);
     }
 
-    // hiveNode folder path
-    if (!config.HiveNodePath) {
-        config.HiveNodePath = path.relative(process.cwd(), path.join(__dirname, '/..')) + '/';
-        console.log(`[BIOS]: Auto set HiveNodePath to ${config.HiveNodePath}`);
+    // hiveNode dist folder path
+    if (config.HiveNodePath) {
+        console.log(`[BIOS]: Set HiveNodePath to [${config.HiveNodePath}]`);
     } else {
-        console.log(`[BIOS]: Set HiveNodePath to ${config.HiveNodePath}`);
+        config.HiveNodePath = path.relative(process.cwd(), path.join(__dirname, '..')) + '/';
+        console.log(`[BIOS]: Auto set HiveNodePath to [${config.HiveNodePath}]`);
     }
 
     // boot loader
-    const masterBootLoader = path.join(config.HiveNodePath, '/', 'os/bootLoader.js');
-    if (!config.bootLoaderFile) config.bootLoaderFile = masterBootLoader;
+    if (!config.bootLoaderFile) config.bootLoaderFile = path.join(config.HiveNodePath, 'os', 'bootLoader.js');
     console.log(`[BIOS]: Using boot loader from [${config.bootLoaderFile}]`);
 
     if (!fs.existsSync(config.bootLoaderFile)) {
@@ -63,16 +60,16 @@ export const BIOSVERSIONBUILD = '11-27-2023';
 
     async function bootup() {
         let booted = false;
-        const child = fork(config.bootLoaderFile, [config.configFile, argv], {
+        const child = fork(config.bootLoaderFile, undefined, {
             stdio: [0, 1, 2, 'ipc'],
         });
 
-        const bootFunction = () => {
+        const sendBootConfig = () => {
             child.send({ config, argv });
             booted = true;
         };
 
-        child.on('spawn', bootFunction);
+        child.on('spawn', sendBootConfig);
 
         child.on('message', (message) => {
             const data = message.toString();
@@ -83,7 +80,7 @@ export const BIOSVERSIONBUILD = '11-27-2023';
                     break;
 
                 case 'requestBootConfig':
-                    bootFunction();
+                    sendBootConfig();
                     break;
             }
         });
@@ -102,7 +99,7 @@ export const BIOSVERSIONBUILD = '11-27-2023';
         await sleep(1000);
         if (!booted) {
             console.log(`[BIOS]: Resending data to boot loader...`);
-            bootFunction();
+            sendBootConfig();
         }
     }
 })();

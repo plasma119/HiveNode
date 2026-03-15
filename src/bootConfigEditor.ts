@@ -3,7 +3,7 @@ import path from 'path';
 
 import HiveCommand, { HiveSubCommand } from './os/lib/hiveCommand.js';
 import Terminal from './os/lib/terminal.js';
-import { BootConfig, BootConfigParserProgram, DEFAULTCONFIG, mergeBIOSConfig } from './os/bootConfig.js';
+import { BootConfig, BootConfigParserProgram, DEFAULTCONFIG, mergeBootConfig } from './os/bootConfig.js';
 
 const configFolder = './config';
 let currentConfig: Partial<BootConfig> = DEFAULTCONFIG;
@@ -23,7 +23,7 @@ if (!fs.existsSync(configFolder)) {
 // init commands
 program.addNewCommand('ls', 'display config files').setAction(() => {
     let files = getConfigFiles();
-    let str = `Found ${files.length} config files.`;
+    let str = `Found [${files.length}] config files.`;
     for (let file of files) {
         str += `\n${file}`;
     }
@@ -31,17 +31,18 @@ program.addNewCommand('ls', 'display config files').setAction(() => {
 });
 
 program.addNewCommand('config', 'display current config setting').setAction((_args, _opts, info) => {
-    if (currentFile) info.reply(`Current config file: ${currentFile}`);
+    if (currentFile) info.reply(`Current config file: [${currentFile}]`);
     return currentConfig;
 });
 
+// ... whacky hack to intercept command action
 let parserProgram = BootConfigParserProgram.commands.get('parse') as HiveSubCommand;
 let parserProgramAction = parserProgram.callback;
 program.addCommand(parserProgram);
 parserProgram.setAction((args, opts, info) => {
     if (!parserProgramAction) return 'ERROR';
     let { config } = parserProgramAction(args, opts, info);
-    currentConfig = mergeBIOSConfig(currentConfig, config);
+    currentConfig = mergeBootConfig(currentConfig, config);
     return currentConfig;
 });
 
@@ -50,11 +51,11 @@ program
     .addNewArgument('<file>')
     .setAction((args, _opts, info) => {
         let file = getFilePath(args['file']);
-        if (!fs.existsSync(file)) return 'File does not exist!';
+        info.reply(`Loading config file: [${file}]`);
+        if (!fs.existsSync(file)) return 'File not found!';
         currentFile = file;
-        info.reply(`Loading config file: ${currentFile}`);
         let json = JSON.parse(fs.readFileSync(file).toString());
-        currentConfig = mergeBIOSConfig(json);
+        currentConfig = mergeBootConfig(json);
         return currentConfig;
     });
 
@@ -65,12 +66,13 @@ program
         let file = args['file'];
         if (file) {
             file = getFilePath(file);
-        } else {
+        } else if (currentFile) {
             file = currentFile;
-            info.reply(`Overwriting loaded config file.`);
+            info.reply(`Overwriting loaded config file`);
+        } else {
+            return 'Please specify file name.';
         }
-        if (!file) return 'Please specify file name.';
-        info.reply(`Saving to config file: ${file}`);
+        info.reply(`Saving to config file: [${file}]`);
         fs.writeFileSync(file, JSON.stringify(currentConfig, undefined, 2));
         return 'Done!';
     });
@@ -109,11 +111,11 @@ function getConfigFiles() {
 }
 
 function getFilePath(filename: string) {
-    return path.join(configFolder, '/', filename);
+    return path.join(configFolder, filename);
 }
 
 // init completed, display help info
 (async () => {
     await program.execute('help', (data) => program.stdIO.output(data));
-    program.stdIO.output(`Current config folder: ${path.resolve(configFolder)}`);
+    program.stdIO.output(`Current config folder: [${path.resolve(configFolder)}]`);
 })();
