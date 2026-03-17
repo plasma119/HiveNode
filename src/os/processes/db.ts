@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 
 import Level from 'level';
+import { createInterface } from 'readline/promises';
 
 import HiveCommand from '../lib/hiveCommand.js';
 import HiveProcess from '../process.js';
 import { formatTab } from '../../lib/lib.js';
-import { createInterface } from 'readline/promises';
 import { byteFormat, timeFormat } from '../../lib/unitFormat.js';
 
 type MasterRecord = {

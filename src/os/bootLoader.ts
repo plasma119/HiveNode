@@ -6,8 +6,8 @@ import { sleep } from '../lib/lib.js';
 import { hasLoader, resolveFileImport, setLoader } from './loader.js';
 import { BootConfig } from './bootConfig.js';
 
-export const BOOTLOADERVERSION = 'v1.3';
-export const BOOTLOADERVERSIONBUILD = '3-15-2026';
+export const BOOTLOADERVERSION = 'v1.4';
+export const BOOTLOADERVERSIONBUILD = '3-17-2026';
 
 console.log(`[Boot Loader]: Boot Loader version ${BOOTLOADERVERSION} build ${BOOTLOADERVERSIONBUILD}`);
 
@@ -45,20 +45,6 @@ process.on('message', async (message) => {
     // init HiveOS
     const os = new HiveOS(config.name);
     await os.kernel.onReadyAsync();
-    os.log(`[Boot Loader]: Building terminal: Headless[${config.headless}], Debug[${config.debug}]`, 'info');
-    os.buildTerminal(config.headless, config.debug);
-
-    // start HiveNet server
-    if (config.HiveNetServer) {
-        os.log(`[Boot Loader]: Starting HiveNet server...`, 'info');
-        await os.shell.execute(`net listen -port ${config.HiveNetPort}`);
-    }
-
-    // connect to HiveNet server
-    if (config.HiveNetIP) {
-        os.log(`[Boot Loader]: Connecting to HiveNet [${config.HiveNetIP}]...`, 'info');
-        await os.shell.execute(`net connect ${config.HiveNetIP} -port ${config.HiveNetPort}`);
-    }
 
     // execute program
     if (config.programFile) {

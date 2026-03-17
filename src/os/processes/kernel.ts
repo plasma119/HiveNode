@@ -27,12 +27,10 @@ export default class HiveProcessKernel extends HiveProcess {
 
         // void port
         this.os.HTP.listen(HIVENETPORT.DISCARD);
+
         // kernel port
         //this.os.HTP.listen(HIVENETPORT.KERNEL).connect(kernel.stdIO);
-        // shell port (deprecated)
-        //this.os.HTP.listen(HIVENETPORT.SHELL).connect(kernel.stdIO);
-        // node stdIO to net interface
-        //this.os.stdIO.on('input', kernel.stdIO.inputBind); // force direct input to local kernel
+
         this.os.stdIO.passThrough(this.os.HTP.listen(HIVENETPORT.STDIO));
 
         kernel
@@ -45,18 +43,6 @@ export default class HiveProcessKernel extends HiveProcess {
                     return version;
                 }
             });
-
-        kernel.addNewCommand('status', 'display system status').setAction(() => {
-            let str = '';
-            const usage = process.memoryUsage();
-            const rss = usage.rss / 1024 / 1024;
-            const heap = usage.heapUsed / 1024 / 1024;
-            const heapMax = usage.heapTotal / 1024 / 1024;
-            str += `Platform: ${process.platform}\n`;
-            str += `Node release: ${process.release.sourceUrl ? process.release.sourceUrl : 'unknown'}\n`;
-            str += `Totoal RSS: ${Math.floor(rss)} MB, Heap: ${Math.floor(heap)}/${Math.floor(heapMax)} MB\n`;
-            return str;
-        });
 
         kernel.addNewCommand('stop', 'terminate HiveNode').setAction(async (_args, _opts, info) => {
             info.reply('stopping...');
@@ -129,7 +115,10 @@ export default class HiveProcessKernel extends HiveProcess {
     }
 
     async main() {
-        // core services
+        const loder = getLoader();
+        const bootConfig = loder.bootConfig;
+
+        // init core services
         const logger = await this._spawnCoreService(HiveProcessLogger, 'logger'); // must be first service to be loaded
         await this._spawnCoreService(HiveProcessEventLogger, 'event', ['OS']);
         this.os.setEventLogger(this.os.newEventLogger('os'));
@@ -139,7 +128,23 @@ export default class HiveProcessKernel extends HiveProcess {
         this.os.netInterface.setEventLogger(this.os.newEventLogger('os->netInterface'));
         this.os.HTP.setEventLogger(this.os.newEventLogger('os->HTP'));
 
-        await this._spawnCoreService(HiveProcessDB, 'db');
+        const db = await this._spawnCoreService(HiveProcessDB, 'db');
+        if (db.ready) {
+            let uuid = await db.get('os', 'UUID');
+            if (uuid) {
+                logger.log(`[Kernel]: Loaded OS.UUID [${uuid}]`, 'info');
+            } else {
+                uuid = this.os.UUID;
+                await db.put('os', 'UUID', uuid);
+                logger.log(`[Kernel]: New OS.UUID [${uuid}]`, 'info');
+            }
+            this.os.UUID = uuid;
+            this.os.netInterface.UUID = uuid;
+        } else {
+            this.os.netInterface.UUID = this.os.UUID;
+            logger.log(`[Kernel]: Core service [DB] not avaliable`, 'warn');
+            logger.log(`[Kernel]: New temporary OS.UUID [${this.os.UUID}]`, 'info');
+        }
 
         const shelld = await this._spawnCoreService(HiveProcessShellDaemon, 'shelld');
         shelld.registerShellProgram(this.program);
@@ -148,29 +153,40 @@ export default class HiveProcessKernel extends HiveProcess {
         await this._spawnCoreService(HiveProcessTerminal, 'terminal');
         await this._spawnCoreService(HiveProcessSocketDaemon, 'socketd');
         await this._spawnCoreService(HiveProcessNet, 'net');
-
-        // register to shell
-        const service = this.program.addNewCommand('service', 'access to core service processes');
-        for (let process of Object.values(this.os.coreServices)) {
-            service.addCommand(process.program);
-        }
-
-        // shell programs
-        await this._spawnShellProgram(HiveProcessUtil, 'util');
-        await this._spawnShellProgram(HiveProcessProcessManager, 'top');
-
-        // other init
-        const loder = getLoader();
-        const bootConfig = loder.bootConfig;
         if (
             bootConfig.HiveNetSecret == DEFAULTCONFIG.HiveNetSecret ||
             bootConfig.HiveNetSalt == DEFAULTCONFIG.HiveNetSalt ||
             bootConfig.HiveNetSalt2 == DEFAULTCONFIG.HiveNetSalt2
         ) {
-            logger.log('Default Socket Secret Detected!', 'warn');
+            logger.log('[Kernel]: Default Socket Secret Detected!', 'warn');
         }
 
-        // TODO: maybe move terminal.build and other init from bootLoader to here?
+        // register core services to shell
+        const service = this.program.addNewCommand('service', 'access to core services');
+        for (let process of Object.values(this.os.coreServices)) {
+            service.addCommand(process.program);
+        }
+
+        // init shell programs
+        await this._spawnShellProgram(HiveProcessUtil, 'util');
+        await this._spawnShellProgram(HiveProcessProcessManager, 'top');
+
+        // init user terminal
+        this.os.log(`[Kernel]: Building terminal: Headless[${bootConfig.headless}], Debug[${bootConfig.debug}]`, 'info');
+        this.os.buildTerminal(bootConfig.headless, bootConfig.debug);
+
+        // other init
+        // start HiveNet server
+        if (bootConfig.HiveNetServer) {
+            this.os.log(`[Kernel]: Starting HiveNet server...`, 'info');
+            await this._executeShellCommand(`net listen -port ${bootConfig.HiveNetPort}`);
+        }
+
+        // connect to HiveNet server
+        if (bootConfig.HiveNetIP) {
+            this.os.log(`[Kernel]: Connecting to HiveNet [${bootConfig.HiveNetIP}]...`, 'info');
+            await this._executeShellCommand(`net connect ${bootConfig.HiveNetIP} -port ${bootConfig.HiveNetPort}`);
+        }
     }
 
     private async _spawnCoreService<C extends Constructor<CoreServices[K]>, K extends keyof CoreServices>(
@@ -188,21 +204,23 @@ export default class HiveProcessKernel extends HiveProcess {
         const service = this.spawnChild(constructor, serviceName);
         await service.onReadyAsync();
         this.os.registerShellProgram(service.program);
+        this.os.log(`[Kernel] Shell program [${serviceName}] ready`, 'info');
         return service;
+    }
+
+    private async _executeShellCommand(cmd: string) {
+        this.os.log(`[Kernel.shell]: ${cmd}`, 'info');
+        return await this.getSystemShell().execute(cmd);
     }
 
     getSystemShell() {
         if (this.systemShell) return this.systemShell;
         let shelld = this.os.getCoreService('shelld');
-        let shell = shelld.spawnShell(this, HIVENETPORT.SHELL); // for now
-        shell.rename('systemShell');
-        let shellProgram = shell.program;
-        this.os.stdIO.on('input', shellProgram.stdIO.inputBind, 'system shell input'); // force direct input to system shell
-        // placeholder
-        // let portIO = this.os.HTP.listen(HIVENETPORT.SHELL);
-        // portIO.on('input', shellProgram.stdIO.inputBind);
-        // portIO.connect(shellProgram.stdIO);
-        this.systemShell = shellProgram;
-        return shellProgram;
+        let shellProcess = shelld.spawnShell(this, HIVENETPORT.SHELL); // for now
+        shellProcess.rename('systemShell');
+        let shell = shellProcess.program;
+        this.os.stdIO.on('input', shell.stdIO.inputBind, 'system shell input'); // force direct input to system shell
+        this.systemShell = shell;
+        return shell;
     }
 }
