@@ -4,9 +4,9 @@ import { CoreServices } from '../os.js';
 import HiveProcess from '../process.js';
 import exitHelper from '../lib/exitHelper.js';
 import HiveCommand from '../lib/hiveCommand.js';
-import { Constructor, format, sleep } from '../../lib/lib.js';
+import { Constructor, format, sleep, uuidv7 } from '../../lib/lib.js';
 import DataIO from '../network/dataIO.js';
-import { HIVENETPORT } from '../network/hiveNet.js';
+import { HiveNetPacket, HIVENETPORT } from '../network/hiveNet.js';
 import { VERSION } from '../../tool/autoBuildVersion.js';
 import HiveProcessDB from './db.js';
 import HiveProcessEventLogger from './eventLogger.js';
@@ -110,6 +110,20 @@ export default class HiveProcessKernel extends HiveProcess {
                     throw new Error('PANIC');
                 });
             });
+
+        const config = kernel.addNewCommand('config', 'configure system');
+        config.addNewCommand('newUUID', 'Create new OS.UUID').setAction(async (_args, _opts, info) => {
+            let uuid = uuidv7();
+            let prev = this.os.UUID;
+            this.os.UUID = uuid;
+            this.os.netInterface.UUID = uuid;
+            const db = this.os.getCoreService('db');
+            if (db.ready) await db.put('os', 'UUID', uuid);
+            if (info.rawData instanceof HiveNetPacket && info.rawData.src == prev) {
+                info.overrideReplyDestination(uuid);
+            }
+            return `New OS.UUID: [${uuid}]`;
+        });
 
         return kernel;
     }

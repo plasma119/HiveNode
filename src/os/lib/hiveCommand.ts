@@ -40,6 +40,7 @@ export type HiveCommandInfo = {
     cancelToken: CancelToken;
     reply: (message: any) => void;
     rawReply: (message: any) => void;
+    overrideReplyDestination: (dest?: string, dport?: number) => void;
 };
 
 // TODO: export/import system work in progress
@@ -130,8 +131,16 @@ export default class HiveCommand extends HiveComponent {
 
     async _inputHandler(data: any, signatures: DataSignature[], replyOverride?: (data: any) => void) {
         // unpack data
-        let input = data instanceof HiveNetPacket ? data.data : data;
+        let input = data;
         let eoc = false;
+        let replyDest = '';
+        let replyDport = 0;
+
+        if (data instanceof HiveNetPacket) {
+            input = data.data;
+            replyDest = data.src;
+            replyDport = data.sport;
+        }
 
         let reply = (message: any) => {
             // if (!eoc && (message === undefined || message === null)) return;
@@ -140,8 +149,8 @@ export default class HiveCommand extends HiveComponent {
                 // re-pack data
                 returnData = new HiveNetPacket({
                     data: message,
-                    dest: data.src,
-                    dport: data.sport,
+                    dest: replyDest,
+                    dport: replyDport,
                     flags: { eoc: eoc },
                 });
             } else {
@@ -168,6 +177,10 @@ export default class HiveCommand extends HiveComponent {
             cancelToken: new CancelToken(),
             reply: task.reply.bind(task),
             rawReply: reply,
+            overrideReplyDestination: (dest?: string, dport?: number) => {
+                if (dest) replyDest = dest;
+                if (dport) replyDport = dport;
+            },
         };
 
         let result: any = '';
