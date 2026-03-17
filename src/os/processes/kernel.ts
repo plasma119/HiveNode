@@ -1,3 +1,5 @@
+import path from 'path';
+
 import { version } from '../../index.js';
 import { getLoader } from '../loader.js';
 import { CoreServices } from '../os.js';
@@ -131,18 +133,21 @@ export default class HiveProcessKernel extends HiveProcess {
     async main() {
         const loder = getLoader();
         const bootConfig = loder.bootConfig;
+        this.os.session = bootConfig.session;
 
         // init core services
-        const logger = await this._spawnCoreService(HiveProcessLogger, 'logger'); // must be first service to be loaded
-        await this._spawnCoreService(HiveProcessEventLogger, 'event', ['OS']);
-        this.os.setEventLogger(this.os.newEventLogger('os'));
+        const logger = await this._spawnCoreService(HiveProcessLogger, 'logger', [path.join('log', bootConfig.session)]); // must be first service to be loaded
 
         logger.log(`HiveNode OS[${this.os.name}] version ${version}`, 'info');
+        logger.log(`Session [${this.os.session}]`, 'info');
+
+        await this._spawnCoreService(HiveProcessEventLogger, 'event', ['OS']);
+        this.os.setEventLogger(this.os.newEventLogger('os'));
 
         this.os.netInterface.setEventLogger(this.os.newEventLogger('os->netInterface'));
         this.os.HTP.setEventLogger(this.os.newEventLogger('os->HTP'));
 
-        const db = await this._spawnCoreService(HiveProcessDB, 'db');
+        const db = await this._spawnCoreService(HiveProcessDB, 'db', [path.join('LevelDB', bootConfig.session)]);
         if (db.ready) {
             let uuid = await db.get('os', 'UUID');
             if (uuid) {

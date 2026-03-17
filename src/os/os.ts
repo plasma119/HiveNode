@@ -90,6 +90,7 @@ export default class HiveOS extends HiveNetDevice<HiveOSEvent> {
     processes: Map<number, HiveProcess>;
     nextpid: number;
     debugMode: boolean;
+    session: string = 'HiveNode';
 
     constructor(name: string, debugMode: boolean = false) {
         super(name, 'node');

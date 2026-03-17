@@ -114,12 +114,13 @@ export default class HiveProcessDB extends HiveProcess implements DBWrapper {
         return program;
     }
 
-    async main() {
+    async main(argv: string[]) {
         this.setEventLogger(this.os.newEventLogger('DB'));
+        this.databasePath = argv[0] || 'LevelDB';
 
         // init DB
         if (!fs.existsSync(this.databasePath)) {
-            this.os.log(`[DB] Creating folder for Level DB: ${this.databasePath}`, 'info');
+            this.os.log(`[DB] Creating folder for Level DB: [${this.databasePath}]`, 'info');
             fs.mkdirSync(this.databasePath, { recursive: true });
         }
         this.database = new Level.Level(this.databasePath, { keyEncoding: 'utf8', valueEncoding: 'utf8' });

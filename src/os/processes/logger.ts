@@ -42,9 +42,10 @@ export default class HiveProcessLogger extends HiveProcess {
 
     constructor(name: string, os: HiveOS, pid: number, ppid: number, argv: string[]) {
         super(name, os, pid, ppid, argv);
+        let logFolder = argv[0] || './log';
         this.logger = new LoggerStream({
             name: 'HiveOS',
-            logFolder: './log',
+            logFolder: logFolder,
             logFileName: '',
             logFileTimestamp: 'date',
             newFilePerDay: false,
@@ -53,7 +54,7 @@ export default class HiveProcessLogger extends HiveProcess {
         });
         this.crashLogger = new Logger({
             name: 'HiveOS-Crash',
-            logFolder: './log',
+            logFolder: logFolder,
             logFileName: 'crash',
             logFileTimestamp: 'full',
             newFilePerDay: false,
@@ -119,7 +120,7 @@ export default class HiveProcessLogger extends HiveProcess {
 
     log(message: any, level: keyof typeof logLevel) {
         let levelNumber = this.parseLogLevelNumber(level);
-        if (!levelNumber) throw new Error(`Invalid log level [${level}]`);
+        if (!levelNumber) throw new Error(`[logger] Invalid log level [${level}]`);
         if (levelNumber == 1) this.crashLogger.log(message); // fatal, crash logger is synchronous direct write
         this.buffer.push({ message, level });
         if (levelNumber <= this.logLevel) {
@@ -134,7 +135,7 @@ export default class HiveProcessLogger extends HiveProcess {
 
     setLogLevel(level: keyof typeof logLevel) {
         let levelNumber = this.parseLogLevelNumber(level);
-        if (!levelNumber) throw new Error(`Invalid log level [${level}]`);
+        if (!levelNumber) throw new Error(`[logger] Invalid log level [${level}]`);
         this.logLevel = levelNumber;
         return this.logLevel;
     }

@@ -2,16 +2,22 @@ import HiveCommand from './lib/hiveCommand.js';
 
 export type BootConfig = {
     name: string;
+    session: string;
+
     headless: boolean;
     debug: boolean;
     debugDataIO: boolean;
+
     HiveNodePath: string;
     bootLoaderFile: string;
+
     programFile: string;
     configFile: string;
+
     HiveNetServer: boolean;
     HiveNetIP: string;
     HiveNetPort: number;
+
     HiveNetSecret: string;
     HiveNetSalt: string;
     HiveNetSalt2: string;
@@ -19,6 +25,7 @@ export type BootConfig = {
 
 export const DEFAULTCONFIG: BootConfig = {
     name: 'HiveNode',
+    session: 'HiveNode',
     headless: false,
     debug: false,
     debugDataIO: false,
@@ -34,13 +41,14 @@ export const DEFAULTCONFIG: BootConfig = {
     HiveNetSalt2: 'Salt2',
 };
 
-export const PARSERVERSION = 'v1.3';
-export const PARSERVERSIONBUILD = '3-15-2026';
+export const PARSERVERSION = 'v1.4';
+export const PARSERVERSIONBUILD = '3-18-2026';
 
 export const BootConfigParserProgram = new HiveCommand('config');
 BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
     .addNewOption('-version', `Boot config parser version ${PARSERVERSION} build ${PARSERVERSIONBUILD}`)
     .addNewOption('-name <name>', 'OS name')
+    .addNewOption('-session <name>', 'session name for individual HiveNode instances')
     .addNewOption('-headless', 'run without user input prompt')
     .addNewOption('-debug', 'set debug flag in OS')
     .addNewOption('-debugDataIO', 'set debug flag in DataIO')
@@ -58,6 +66,7 @@ BootConfigParserProgram.addNewCommand('parse', 'parse config from argv')
     .setAction((args, opts) => {
         const config: Partial<BootConfig> = {
             name: (opts['-name'] as string) || undefined,
+            session: (opts['-session'] as string) || undefined,
             headless: (opts['-headless'] as boolean) || undefined,
             debug: (opts['-debug'] as boolean) || undefined,
             debugDataIO: (opts['-debugDataIO'] as boolean) || undefined,
