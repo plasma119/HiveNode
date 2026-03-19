@@ -9,15 +9,15 @@ export default class LRUMap<K, V> {
     limit: number;
 
     private _map: Map<K, Node<K, V>> = new Map();
-    head?: Node<K, V>; // newest node
-    tail?: Node<K, V>; // oldest node
+    _head?: Node<K, V>; // newest node
+    _tail?: Node<K, V>; // oldest node
 
-    constructor(limit?: number, iterable?: Iterable<[K, V]>) {
+    constructor(limit?: number, from?: Iterable<[K, V]>) {
         this.limit = typeof limit == 'number' ? limit : Infinity;
         if (this.limit < 0) this.limit = 0;
-        if (iterable) {
+        if (from) {
             if (limit === undefined) this.limit = Infinity;
-            this.assign(iterable);
+            this.assign(from);
             if (limit === undefined) this.limit = this.size;
         }
     }
@@ -25,27 +25,27 @@ export default class LRUMap<K, V> {
     _getNode(key: K) {
         const node = this._map.get(key);
         if (!node) return;
-        if (node === this.head) return node;
+        if (node === this._head) return node;
         // update most recently used node
         if (node.prev) {
-            if (node === this.tail) this.tail = node.prev;
+            if (node === this._tail) this._tail = node.prev;
             node.prev.next = node.next;
         }
         if (node.next) {
             node.next.prev = node.prev;
         }
         node.prev = undefined;
-        node.next = this.head;
-        if (this.head) {
-            this.head.prev = node;
+        node.next = this._head;
+        if (this._head) {
+            this._head.prev = node;
         }
-        this.head = node;
+        this._head = node;
         return node;
     }
 
-    assign(iterable: Iterable<[K, V]>) {
+    assign(from: Iterable<[K, V]>) {
         if (this.limit == 0) return this;
-        for (let [key, value] of iterable) {
+        for (let [key, value] of from) {
             this.set(key, value);
         }
         return this;
@@ -69,14 +69,14 @@ export default class LRUMap<K, V> {
         // new node
         node = new Node(key, value);
         this._map.set(key, node);
-        if (this.head) {
-            node.next = this.head;
-            this.head.prev = node;
+        if (this._head) {
+            node.next = this._head;
+            this._head.prev = node;
         }
-        if (!this.tail) {
-            this.tail = node;
+        if (!this._tail) {
+            this._tail = node;
         }
-        this.head = node;
+        this._head = node;
 
         ++this.size;
         if (this.size > this.limit) {
@@ -87,15 +87,15 @@ export default class LRUMap<K, V> {
     }
 
     pop() {
-        const node = this.tail;
+        const node = this._tail;
         if (node) {
             if (node.prev) {
                 node.prev.next = undefined;
-                this.tail = node.prev;
+                this._tail = node.prev;
             } else {
                 // last node in list
-                this.head = undefined;
-                this.tail = undefined;
+                this._head = undefined;
+                this._tail = undefined;
             }
             node.next = node.prev = undefined;
             this._map.delete(node.key);
@@ -120,14 +120,14 @@ export default class LRUMap<K, V> {
         } else if (node.prev) {
             // node is tail
             node.prev.next = undefined;
-            this.tail = node.prev;
+            this._tail = node.prev;
         } else if (node.next) {
             // node is head
             node.next.prev = undefined;
-            this.head = node.next;
+            this._head = node.next;
         } else {
             // single node
-            this.tail = this.head = undefined;
+            this._tail = this._head = undefined;
         }
 
         this.size--;
@@ -150,32 +150,32 @@ export default class LRUMap<K, V> {
 
     clear() {
         // Not clearing links should be safe, as long as user don't grab and hold node
-        this.head = this.tail = undefined;
+        this._head = this._tail = undefined;
         this.size = 0;
         this._map.clear();
     }
 
     keys() {
-        return new NodeIterator(this.head, (node) => node.key);
+        return new NodeIterator(this._head, (node) => node.key);
     }
 
     values() {
-        return new NodeIterator(this.head, (node) => node.value);
+        return new NodeIterator(this._head, (node) => node.value);
     }
 
     entries() {
-        return new NodeIterator(this.head, (node) => [node.key, node.value]);
+        return new NodeIterator(this._head, (node) => [node.key, node.value]);
     }
 
     [Symbol.iterator]() {
-        return new NodeIterator(this.head, (node) => [node.key, node.value]);
+        return new NodeIterator(this._head, (node) => [node.key, node.value]);
     }
 
     forEach(func: (value: V, key: K, LRUMap: this) => any, thisObj?: any) {
         if (typeof thisObj !== 'object') {
             thisObj = this;
         }
-        let node = this.head;
+        let node = this._head;
         while (node) {
             func.call(thisObj, node.value, node.key, this);
             node = node.next;
@@ -184,7 +184,7 @@ export default class LRUMap<K, V> {
 
     toString() {
         let str = '';
-        let node = this.head;
+        let node = this._head;
         while (node) {
             str += String(node.key) + ':' + node.value;
             node = node.next;

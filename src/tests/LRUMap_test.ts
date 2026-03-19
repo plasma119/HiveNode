@@ -10,8 +10,8 @@ export const test: Test = {
                 let LRU = new LRUMap(4);
                 assert(LRU.size);
                 assert(LRU.limit);
-                assert(LRU.head);
-                assert(LRU.tail);
+                assert(LRU._head);
+                assert(LRU._tail);
 
                 LRU.set('adam', 29).set('john', 26).set('angela', 24).set('bob', 48);
                 assert(LRU.toString());
@@ -90,8 +90,8 @@ export const test: Test = {
                 let verifyEntries = function (LRU: LRUMap<string, number>) {
                     assert(LRU.size);
                     assert(LRU.limit);
-                    assert(LRU.tail?.key);
-                    assert(LRU.head?.key);
+                    assert(LRU._tail?.key);
+                    assert(LRU._head?.key);
                     assert(LRU.get('adam'));
                     assert(LRU.get('john'));
                     assert(LRU.get('angela'));
@@ -138,8 +138,8 @@ export const test: Test = {
                 ]);
                 assert(LRU.size);
                 assert(LRU.limit);
-                assert(LRU.tail?.key);
-                assert(LRU.head?.key);
+                assert(LRU._tail?.key);
+                assert(LRU._head?.key);
                 LRU.forEach(function (v, k) {
                     assert([v, k]);
                 });
@@ -186,8 +186,8 @@ export const test: Test = {
                 LRU.delete('john');
                 assert(LRU.size);
                 assert(LRU.get('john'));
-                assert(LRU.tail?.key);
-                assert(LRU.head?.key);
+                assert(LRU._tail?.key);
+                assert(LRU._head?.key);
             },
         },
 
@@ -200,8 +200,8 @@ export const test: Test = {
                 assert(LRU.size);
                 LRU.clear();
                 assert(LRU.size);
-                assert(LRU.head);
-                assert(LRU.tail);
+                assert(LRU._head);
+                assert(LRU._tail);
             },
         },
         {
@@ -239,24 +239,24 @@ export const test: Test = {
                 LRU.set('a', 3);
                 LRU.set('a', 4);
                 assert(LRU.size);
-                assert(LRU.head?.key);
-                assert(LRU.head?.value);
-                assert(LRU.tail?.key);
-                assert(LRU.tail?.value);
+                assert(LRU._head?.key);
+                assert(LRU._head?.value);
+                assert(LRU._tail?.key);
+                assert(LRU._tail?.value);
 
                 LRU.set('a', 5);
                 assert(LRU.size);
-                assert(LRU.head?.key);
-                assert(LRU.head?.value);
-                assert(LRU.tail?.key);
-                assert(LRU.tail?.value);
+                assert(LRU._head?.key);
+                assert(LRU._head?.value);
+                assert(LRU._tail?.key);
+                assert(LRU._tail?.value);
 
                 LRU.set('b', 6);
                 assert(LRU.size);
-                assert(LRU.head?.key);
-                assert(LRU.head?.value);
-                assert(LRU.tail?.key);
-                assert(LRU.tail?.value);
+                assert(LRU._head?.key);
+                assert(LRU._head?.value);
+                assert(LRU._tail?.key);
+                assert(LRU._tail?.value);
 
                 LRU.pop();
                 assert(LRU.size);
