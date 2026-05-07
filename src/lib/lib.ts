@@ -2,15 +2,15 @@ export function randomInt(range: number = 32768) {
     return Math.floor(Math.random() * range);
 }
 
-let padding = new Array(80).fill(' ').join('');
 // format output columns
+const padding = new Array(160).fill(' ').join('');
 export function format(rows: string[][], seperator = '') {
-    let len: number[] = [];
+    const len: number[] = [];
     for (let i = 0; i < rows.length; i++) {
-        let cols = rows[i];
+        const cols = rows[i];
         for (let j = 0; j < cols.length; j++) {
             if (!len[j]) len[j] = 0;
-            let l = cols[j].length;
+            const l = cols[j].length;
             if (l > len[j]) len[j] = l;
             if (len[j] > padding.length) len[j] = padding.length;
         }
@@ -28,7 +28,7 @@ export function formatTab(rows: string[], seperator = '', delimiter = '\t') {
     );
 }
 
-export function arrayUnion(array1: any[], array2: any[]) {
+export function arrayUnion<T>(array1: T[], array2: T[]) {
     return Array.from(new Set(array1.concat(array2)));
 }
 
@@ -52,20 +52,19 @@ export function sleep(ms: number) {
 }
 
 export function isFunction(target: any): boolean {
-    return target && (Object.prototype.toString.call(target) === '[object Function]' || 'function' === typeof target || target instanceof Function);
+    return Object.prototype.toString.call(target) === '[object Function]' || 'function' === typeof target || target instanceof Function;
 }
 
 // https://stackoverflow.com/questions/57118453/structural-type-checking-in-javascript
 // this one is for simple object checking only
 export function duckTypeCheck(obj: any, model: any) {
-    for (let prop in model) {
+    for (const prop in model) {
         if (!(prop in obj) || typeof obj[prop] !== typeof model[prop] || Array.isArray(model[prop]) !== Array.isArray(obj[prop])) {
             return false;
         }
         if (typeof model[prop] === 'object' && !Array.isArray(model[prop])) {
-            if (!duckTypeCheck(obj[prop], model[prop])) {
-                return false;
-            }
+            if (typeof obj[prop] != 'object') return false;
+            if (!duckTypeCheck(obj[prop], model[prop])) return false;
         }
     }
     return true;
@@ -79,7 +78,7 @@ export function typeCheck(obj: any, model: any): boolean {
 }
 
 function typeCheckObject(obj: any, model: any): boolean {
-    for (let prop in model) {
+    for (const prop in model) {
         const type = model[prop];
         const data = obj[prop];
         if (type === 'any') return true;
@@ -95,7 +94,7 @@ function typeCheckObject(obj: any, model: any): boolean {
                 let pass = false;
                 for (let j = 0; j < type.length; j++) {
                     // check multiple possible types defined in model
-                    if (typeCheckObject(data[i], type[j])) {
+                    if (typeCheck(data[i], type[j])) {
                         pass = true;
                         break;
                     }
@@ -104,14 +103,15 @@ function typeCheckObject(obj: any, model: any): boolean {
             }
         } else if (typeof type == 'object') {
             // recursive typecheck
-            if (!typeCheckObject(data, type)) return false;
+            if (typeof data != 'object') return false;
+            if (!typeCheck(data, type)) return false;
         }
     }
     return true;
 }
 
 function typeCheckHelper(data: any, type: string): boolean {
-    let tokens = type.split('|');
+    const tokens = type.split('|');
     for (let i = 0; i < tokens.length; i++) {
         if (typeCheckSimple(data, tokens[i])) return true;
     }
@@ -176,9 +176,9 @@ parseArgv:             Executed: 3087747, time: 30s, calls/s = 102925
 */
 export function parseArgv(string: string): string[] {
     let start = 0;
-    let argv: string[] = [];
+    const argv: string[] = [];
     do {
-        let result = findFirstWord(string, start);
+        const result = findFirstWord(string, start);
         if (!result) break;
         argv.push(string.substring(result[0], result[1]));
         start = result[1] + 1;
@@ -231,7 +231,7 @@ export function findFirstWord(string: string, start: number = 0): number[] | nul
     if (match != '') {
         // bad input, cannot find ending quote
         // try find next complete word's end
-        let result = findFirstWord(string, start + 1);
+        const result = findFirstWord(string, start + 1);
         if (!result) return null;
         result[0] = start;
         return result;
